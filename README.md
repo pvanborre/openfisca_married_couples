@@ -131,7 +131,7 @@ From now on you have 2 docker images (that you can see in Docker Desktop) :
 
 Now the steps to follow are : 
 
-+ Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfARe02.sas7bdat, fpr_mrfARe02.sas7bdat (where AR are the 2 last digits of the year). You may also prefer to get your files on CASD.
++ Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfxxxxxxx.sas7bdat, fpr_irfxxxxxxx.sas7bdat. You may also prefer to get your files on CASD.
 
 + Place these 4 files in _openfisca-france-data/docker/data/data-in_ folder.
 
