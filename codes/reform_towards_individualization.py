@@ -245,6 +245,8 @@ def simulation_reforme(annee = None):
     plt.show()
     plt.savefig('../outputs/graphe_14_{}.png'.format(period))
 
+    return pourcentage_gagnants
+
 
 
 
@@ -304,9 +306,6 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
     simulation = sb.build(tax_benefit_system)
     return simulation
-
-
-
 
 
 simulation_reforme()
