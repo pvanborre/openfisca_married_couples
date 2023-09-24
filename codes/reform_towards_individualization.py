@@ -245,7 +245,6 @@ def simulation_reforme(annee = None):
     plt.show()
     plt.savefig('../outputs/graphe_14_{}.png'.format(period))
 
-    return pourcentage_gagnants
 
 
 

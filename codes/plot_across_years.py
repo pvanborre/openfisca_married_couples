@@ -7,9 +7,9 @@ def plot_results(results):
 
     plt.figure()
     plt.plot(years, numeric_results, marker='o', linestyle='-')
-    plt.xlabel('Year')
-    plt.ylabel('Result Value')
-    plt.title('Results Over Time')
+    plt.xlabel('Annees')
+    plt.ylabel('Pourcentage de gagnants')
+    plt.title('Pourcentage de gagnants à une réforme vers \n l\'individualisation de l\'impot au cours du temps')
     plt.grid()
 
     plt.show()
