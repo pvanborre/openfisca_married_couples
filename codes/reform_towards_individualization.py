@@ -250,6 +250,7 @@ def simulation_reforme(annee = None):
 
 
 
+
 def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entite, id_entite_join, role_entite, nom_role_0, nom_role_1, nom_role_2):
 
     # il faut bien mettre le bon nombre d'entites avec le .unique()
@@ -304,9 +305,6 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
     simulation = sb.build(tax_benefit_system)
     return simulation
-
-
-
 
 
 simulation_reforme()
