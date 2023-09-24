@@ -76,7 +76,7 @@ Then launch your container from the Docker image :
 ```sh
 # replace my 3 paths by where_you_cloned/openfisca_married_couples/codes and where_you_cloned/openfisca_married_couples/data and where_you_cloned/openfisca_married_couples/outputs
 docker run -it --name openfisca-container -v C:/Users/pvanb/Projects/openfisca_married_couples/codes:/app/codes -v C:/Users/pvanb/Projects/openfisca_married_couples/data:/app/data -v C:/Users/pvanb/Projects/openfisca_married_couples/outputs:/app/outputs public-openfisca-image /bin/bash
-# The -v flags indicates that your codes and data on your disk will be accessible inside the container, in the folders app/codes and app/data
+# The -v flags indicates that your codes, data and outputs on your disk will be accessible inside the container, in the folders app/codes, app/data and app/outputs
 ```
 
 Now you should be inside your container in your terminal, in the app/codes folder.
@@ -104,11 +104,12 @@ exit
 and then 
 ```sh
 docker rm openfisca-container
+# to delete the container
 ``` 
 
-# The tough point : get your .h5 data 
+# The tough part : get your .h5 data 
 
-To run simulations on data, you need to transform your SAS ERFS-FPR files to data that OpenFisca can read (that is .h5 files). Remark : you really need SAS files, STATA files would not work.
+To run simulations on data, you need to transform your SAS ERFS-FPR files to data that OpenFisca can read (that is, .h5 files). Remark : you really need SAS files, STATA files would not work.
 
 Go to a folder of your choice and clone the openfisca-france-data repository :
 
@@ -124,9 +125,9 @@ docker build -t public-openfisca-france-data . -f ./docker/Dockerfile
 
 From now on you have 2 docker images (that you can see in Docker Desktop) :
 
-+ one is called **public-openfisca-image** and containers from this image are designed to run python codes to do simulations, reforms etc.
++ one is called **public-openfisca-image** and containers from this image (called **openfisca-container**) are designed to run python codes to do simulations, reforms etc.
 
-+ this other is called **public-openfisca-france-data** and is useful to transform your ERFS-FPR files (.sas7bdat files) to data consumable by OpenFisca (.h5 files)
++ this other is called **public-openfisca-france-data** and containers from this image (called **openfisca-container2**) are useful to transform your ERFS-FPR files (.sas7bdat files) to data consumable by OpenFisca (.h5 files)
 
 Now the steps to follow are : 
 
@@ -134,7 +135,7 @@ Now the steps to follow are :
 
 + Place these 4 files in _openfisca-france-data/docker/data/data-in_ folder.
 
-+ Place these 4 files also in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_year_ folder. (you should create the folder _donnees\_sas\_year_ for that)
++ Place these 4 files also in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_year_ folder (you should create the folder _donnees\_sas\_year_ for that).
 
 + Then edit _openfisca-france-data/docker/data/raw_data.ini_ to specify the year.
 It should look for instance like this 
@@ -155,7 +156,7 @@ Now you are able to run your container from your image
 docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder public-openfisca-france-data /bin/bash
 ``` 
 
-You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your terminal/container): this takes between 5 and 10 minutes
+You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes between 5 and 10 minutes
 ```sh
 if [[ -z "${DATA_FOLDER}" ]]; then
   export DATA_FOLDER=/mnt
@@ -200,15 +201,31 @@ python /opt/openfisca-france-data/openfisca_france_data/erfs_fpr/input_data_buil
 ## For years 201X - 2017 
 
 ```sh
+# replace flat_YEAR.h5 by the YEAR you are interested in (201X - 2017)
 python /mnt/mon_input_data_builder/new_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
 
 ## For even older years
 
 ```sh
+# replace flat_YEAR.h5 by the YEAR you are interested in (before 201X)
 python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
 
 
 
 Finally, copy paste the _flat\_YEAR.h5_ file that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the folder _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/year_
+
+Then do :
+```sh
+exit
+docker rm openfisca-container2
+``` 
+
+And now these followings commands should work (provided you modified the year at the beginning of the _without\_reform.py_ file):
+```sh
+# replace my 3 paths by where_you_cloned/openfisca_married_couples/codes and where_you_cloned/openfisca_married_couples/data and where_you_cloned/openfisca_married_couples/outputs
+docker run -it --name openfisca-container -v C:/Users/pvanb/Projects/openfisca_married_couples/codes:/app/codes -v C:/Users/pvanb/Projects/openfisca_married_couples/data:/app/data -v C:/Users/pvanb/Projects/openfisca_married_couples/outputs:/app/outputs public-openfisca-image /bin/bash
+
+python without_reform.py
+``` 
