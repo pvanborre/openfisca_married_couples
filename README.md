@@ -133,7 +133,7 @@ Now the steps to follow are :
 
 + Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfxxxxxxx.sas7bdat, fpr_irfxxxxxxx.sas7bdat. You may also prefer to get your files on CASD.
 
-+ Place these 4 files in _openfisca-france-data/docker/data/data-in_ folder.
++ Place these 4 files in _openfisca-france-data/docker/data/data-in_ folder. Important : make sure that no other .sas7bdat is here in this folder. For instance, if data from another year is there you need to delete it.
 
 + Place these 4 files also in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_year_ folder (you should create the folder _donnees\_sas\_year_ for that).
 
@@ -198,17 +198,17 @@ You need then one last command, that depends on the year you are considering :
 python /opt/openfisca-france-data/openfisca_france_data/erfs_fpr/input_data_builder/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
  
-## For years 201X - 2017 
+## For years 2014 - 2017 
 
 ```sh
-# replace flat_YEAR.h5 by the YEAR you are interested in (201X - 2017)
+# replace flat_YEAR.h5 by the YEAR you are interested in (2014 - 2017)
 python /mnt/mon_input_data_builder/new_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
 
-## For even older years
+## Before 2014
 
 ```sh
-# replace flat_YEAR.h5 by the YEAR you are interested in (before 201X)
+# replace flat_YEAR.h5 by the YEAR you are interested in (before 2014)
 python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
 
