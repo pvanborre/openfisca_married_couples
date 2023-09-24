@@ -1,20 +1,25 @@
 # openfisca_married_couples
-Repo to store codes using the microsimulation tool OpenFisca in order to simulate a separate tax for married couples
+Repo to store codes using the microsimulation tool OpenFisca in order to simulate a reform where married couples would be taxed separately
 
 # First Installation 
 
 ## On Windows
 
-First, install a WSL : open a terminal in adminsitrator mode and run.
+First, install a WSL. In such a virtual machine, you can run Linux commands even if you base OS is Windows. To do so, open a terminal in adminsitrator mode and run :
 ```sh
 wsl --install
 ```
-Then restart your computer
+Then restart your computer.
 
 
-Second, install Docker Desktop on your computer (follow the instructions on this link : https://docs.docker.com/desktop/install/windows-install/)
+Second, install Docker Desktop on your computer (follow the instructions on this link : https://docs.docker.com/desktop/install/windows-install/).
 
 Launch Docker Desktop. Docker enables you to get a good reproductibility of codes, a bit like a virtual machine.
+
+Check you have git on your computer by opening a terminal and running :
+```sh
+git --version
+``` 
 
 Go to a folder in your computer, open a terminal, clone this repository and go into it :
 ```sh
@@ -22,12 +27,13 @@ git clone https://github.com/pvanborre/openfisca_married_couples.git
 cd openfisca_married_couples
 ```
 
-
-Then construct the Docker Image (it indicates all versions that are needed to run codes thanks to the Dockerfile)
+Then construct the Docker Image (it indicates all versions that are needed to run codes thanks to the Dockerfile) :
 ```sh
 docker build --tag public-openfisca-image .
 # the . at the end is important... (it indicates that the Dockerfile is at this location)
 ```
+
+
 
 ## On Linux (not tested)
 
@@ -35,28 +41,37 @@ Install Docker Desktop on your computer (follow the instructions on this link : 
 
 Launch Docker Desktop. Docker enables you to get a good reproductibility of codes, a bit like a virtual machine.
 
+Check you have git on your computer by opening a terminal and running :
+```sh
+git --version
+``` 
+
 Go to a folder in your computer, open a terminal, clone this repository and go into it :
 ```sh
 git clone https://github.com/pvanborre/openfisca_married_couples.git
 cd openfisca_married_couples
 ```
 
-
-Then construct the Docker Image (it indicates all versions that are needed to run codes thanks to the Dockerfile)
+Then construct the Docker Image (it indicates all versions that are needed to run codes thanks to the Dockerfile) : 
 ```sh
 docker build --tag public-openfisca-image .
 # the . at the end is important... (it indicates that the Dockerfile is at this location)
 ```
 
-# On MacOSX 
+
+## On MacOSX 
 
 This is not recommended since Docker works poorly on Mac...
 
+
 # Usage 
 
-Launch Docker Desktop. Docker Desktop needs to be launched every time you want to run a code, otherwise you will get the following error : 'error during connect: this error may indicate that the docker daemon is not running'
+Launch Docker Desktop. Docker Desktop needs to be launched every time you want to run a code, otherwise you will get the following error : 
+```sh
+error during connect: this error may indicate that the docker daemon is not running
+```
 
-Then launch your container from the Docker image:
+Then launch your container from the Docker image :
 
 ```sh
 # replace my 3 paths by where_you_cloned/openfisca_married_couples/codes and where_you_cloned/openfisca_married_couples/data and where_you_cloned/openfisca_married_couples/outputs
@@ -79,7 +94,7 @@ python reform_towards_individualization.py
 ```
 
 
-If you want to edit the codes, you can just open any code editor you like on your disk and inside the container it will be able to recognize modifications.
+If you want to edit the codes, you can just open any code editor you like and edit codes on your disk. Inside the container Docker will be able to recognize modifications you did on your disk. (thanks to the -v flag we ran above).
 
 When you are finished running codes, write 
 ```sh
@@ -93,37 +108,29 @@ docker rm openfisca-container
 
 # The tough point : get your .h5 data 
 
-In the folder data/year you need to place the flat_year.h5 dataset. This dataset comes from the ERFS-FPR and were transformed to be consumable by OpenFisca.
+To run simulations on data, you need to transform your SAS ERFS-FPR files to data that OpenFisca can read (that is .h5 files). Remark : you really need SAS files, STATA files would not work.
 
-How to get this .h5 file ?
-
-Check you have git on your computer by opening a terminal and running
-```sh
-git --version
-``` 
-
-Then go to a folder of your choice and clone the openfisca-france-data repository
+Go to a folder of your choice and clone the openfisca-france-data repository :
 
 ```sh
 git clone https://github.com/openfisca/openfisca-france-data.git
 cd openfisca-france-data
 ``` 
 
-Then build your docker image 
+Then build your docker image :
 ```sh
 docker build -t public-openfisca-france-data . -f ./docker/Dockerfile
 ``` 
 
 From now on you have 2 docker images (that you can see in Docker Desktop) :
 
-+ one is called public-openfisca-image and containers from this image are designed to run python codes to do simulations, reforms etc.
++ one is called **public-openfisca-image** and containers from this image are designed to run python codes to do simulations, reforms etc.
 
-+ this other is called public-openfisca-france-data and is useful to transform your ERFS-FPR files in SAS to data consumable by OpenFisca (.h5 files)
++ this other is called **public-openfisca-france-data** and is useful to transform your ERFS-FPR files (.sas7bdat files) to data consumable by OpenFisca (.h5 files)
 
 Now the steps to follow are : 
 
 + Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfARe02.sas7bdat, fpr_mrfARe02.sas7bdat (where AR are the 2 last digits of the year). You may also prefer to get your files on CASD.
-
 
 + Place these 4 files in _openfisca-france-data/docker/data/data-in_ folder.
 
@@ -181,18 +188,27 @@ else
 fi
 ``` 
 
-Now run this command for years 2019 and 2018
+You need then one last command, that depends on the year you are considering : 
+
+## For years 2019 and 2018
+
 ```sh
 # replace flat_YEAR.h5 by the YEAR you are interested in (2018 or 2019)
 python /opt/openfisca-france-data/openfisca_france_data/erfs_fpr/input_data_builder/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
  
-For years 201X - 2017 run
+## For years 201X - 2017 
+
 ```sh
 python /mnt/mon_input_data_builder/new_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
 
-For even older years run
+## For even older years
+
 ```sh
 python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
 ``` 
+
+
+
+Finally, copy paste the _flat\_YEAR.h5_ file that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the folder _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/year_
