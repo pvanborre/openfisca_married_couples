@@ -31,7 +31,7 @@ def build_variables_individuelles(temporary_store = None, year = None):
     openfisca_by_erfs_variable = {
         'chomage_i': 'chomage_imposable',
         'pens_alim_recue_i': 'pensions_alimentaires_percues',
-        'pens_invalidite_i': 'pensions_invalidite',
+        #'pens_invalidite_i': 'pensions_invalidite',
         'rag_i': 'rag',
         'retraites_i': 'retraite_imposable',
         'ric_i': 'ric',
