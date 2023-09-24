@@ -1,5 +1,5 @@
 # openfisca_married_couples
-Repo to store codes using the microsimulation tool OpenFisca in order to simulate a reform where married couples would be taxed separately
+Repo to store codes using the microsimulation tool OpenFisca in order to simulate a reform where married couples would be taxed separately.
 
 # Description 
 
@@ -13,6 +13,7 @@ In the _codes_ folder, you will find the 2 most important codes :
 
 
 In the _data_ folder, the .h5 files (ERFS-FPR) are stored year per year.
+
 In the _mon\_input\_data\_builder_ folder, utils to transform SAS files into .h5 files are stored.
 
 In the _outputs_ folder, you will find all the outputs (graphs etc).
@@ -107,8 +108,10 @@ python test_without_data.py
 
 You can now launch python codes running on data provided you have the .h5 data (see below)
 ```sh
-python without_reform.py
-python reform_towards_individualization.py
+# replace 2018 by any YEAR you are interested in and you have the openfisca_erfs_fpr_YEAR.h5 stored in the folder openfisca_married_couples/data/YEAR
+
+python without_reform.py -y 2018
+python reform_towards_individualization.py -y 2018
 ```
 
 
@@ -181,7 +184,7 @@ Now you are able to run your container from your image
 docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder public-openfisca-france-data /bin/bash
 ``` 
 
-You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes between 5 and 10 minutes
+You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes around 5 minutes
 ```sh
 if [[ -z "${DATA_FOLDER}" ]]; then
   export DATA_FOLDER=/mnt
@@ -219,7 +222,9 @@ Now run :
 python /opt/openfisca-france-data/openfisca_france_data/erfs_fpr/input_data_builder/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
 ``` 
 
-Finally, copy paste the _openfisca\_erfs\_fpr\_2018.h5_ and _openfisca\_erfs\_fpr\_2019.h5_ files that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the two folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2018_ and _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2019_
+Finally, copy the _openfisca\_erfs\_fpr\_2018.h5_ and _openfisca\_erfs\_fpr\_2019.h5_ files that are in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_. 
+
+Paste them in the two folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2018_ and _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2019_
 
 Then do :
 ```sh
@@ -259,7 +264,7 @@ Now you are able to run your container from your image
 docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder public-openfisca-france-data /bin/bash
 ``` 
 
-You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes between 5 and 10 minutes
+You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes around 18 minutes on my computer 
 ```sh
 if [[ -z "${DATA_FOLDER}" ]]; then
   export DATA_FOLDER=/mnt
@@ -292,12 +297,14 @@ else
 fi
 ``` 
 
-Now run : 
+Now run (this takes around 8 minutes on my computer)
 ```sh
 python /mnt/mon_input_data_builder/new_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
 ``` 
 
-Finally, copy paste the 4 files _openfisca\_erfs\_fpr\_2014.h5_ to _openfisca\_erfs\_fpr\_2017.h5_ files that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the 4 corresponding folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2014_ to _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2017_
+Finally, copy the 4 files _openfisca\_erfs\_fpr\_2014.h5_ to _openfisca\_erfs\_fpr\_2017.h5_ files that are in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_.
+
+Paste them in the 4 corresponding folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2014_ to _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2017_.
 
 Then do :
 ```sh
@@ -305,7 +312,94 @@ exit
 docker rm openfisca-container2
 ``` 
 
-### Before 2014
+
+### For years 2005 - 2013 
+
+
++ Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfxxxxxxx.sas7bdat, fpr_irfxxxxxxx.sas7bdat. You may also prefer to get your files on CASD. Because there a 9 years, you should have 36 files.
+
++ Place these 36 files in _openfisca-france-data/docker/data/data-in_ folder. Important : make sure that no other .sas7bdat is here in this folder (this folder should contain only these 36 files).
+
++ Create 9 new folders _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2005_ to _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2013_
+
++ In each of these 4 new folders, place the 4 files of the year. You should have 4 files in each of your 9 _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_20xx_ folders
+
++ Then edit _openfisca-france-data/docker/data/raw_data.ini_ to specify the years.
+It looks like this :
+```ini
+[erfs_fpr]
+2005 = ./data-in/erfs-fpr/donnees_sas_2005
+2006 = ./data-in/erfs-fpr/donnees_sas_2006
+2007 = ./data-in/erfs-fpr/donnees_sas_2007
+2008 = ./data-in/erfs-fpr/donnees_sas_2008
+2009 = ./data-in/erfs-fpr/donnees_sas_2009
+2010 = ./data-in/erfs-fpr/donnees_sas_2010
+2011 = ./data-in/erfs-fpr/donnees_sas_2011
+2012 = ./data-in/erfs-fpr/donnees_sas_2012
+2013 = ./data-in/erfs-fpr/donnees_sas_2013
+```
+
+Now you are able to run your container from your image
+```sh
+# replace the first link by where you cloned openfisca-france-data 
+# C:/Users/where_you_cloned_openfisca-france-data/openfisca-france-data/docker/data
+
+# replace the second link by where you cloned openfisca_married_couples 
+# C:/Users/where_you_cloned_openfisca_married_couples/openfisca_married_couples/mon_input_data_builder
+
+docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder public-openfisca-france-data /bin/bash
+``` 
+
+You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes around 40 minutes on my computer 
+```sh
+if [[ -z "${DATA_FOLDER}" ]]; then
+  export DATA_FOLDER=/mnt
+fi
+cd $DATA_FOLDER
+# Cleaning
+echo "Cleaning directories..."
+rm $DATA_FOLDER/data-out/tmp/*
+rm $DATA_FOLDER/data-out/*.h5
+rm $DATA_FOLDER/data-out/data_collections/*.json
+# Clean config file
+sed -i '/erfs_fpr = /d' $DATA_FOLDER/config.ini
+sed -i '/openfisca_erfs_fpr = /d' $DATA_FOLDER/config.ini
+echo "Building collection in `pwd`..."
+build-collection -c erfs_fpr -d -m -v  -p $DATA_FOLDER 2>&1
+if [ $? -eq 0 ]; then
+    echo "Building collection finished."
+else
+    echo "ERROR in build-collection"
+    echo "Content of $DATA_FOLDER : "
+    ls $DATA_FOLDER
+    echo "Content of $DATA_FOLDER/data-in/: "
+    ls $DATA_FOLDER/data-in/
+    echo "Content of $DATA_FOLDER/data-out/ : "
+    ls $DATA_FOLDER/data-out/
+    echo "Content of $DATA_FOLDER/data-out/tmp/ : "
+    ls $DATA_FOLDER/data-out/tmp/
+    echo "---------------- DONE WITH ERROR -----------------------------"
+    exit 1
+fi
+``` 
+
+Now run (this takes around 20 minutes on my computer)
+```sh
+python /mnt/mon_input_data_builder/before_2014_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
+``` 
+
+Finally, copy the 9 files _openfisca\_erfs\_fpr\_2005.h5_ to _openfisca\_erfs\_fpr\_2013.h5_ files that are in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_.
+
+Paste them in the 9 corresponding folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2005_ to _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2013_.
+
+Then do :
+```sh
+exit
+docker rm openfisca-container2
+``` 
+
+
+### Before 2005
 
 TO COMPLETE 
 
@@ -330,5 +424,13 @@ And now these followings commands should work (provided you modified the year at
 # replace my 3 paths by where_you_cloned/openfisca_married_couples/codes and where_you_cloned/openfisca_married_couples/data and where_you_cloned/openfisca_married_couples/outputs
 docker run -it --name openfisca-container -v C:/Users/pvanb/Projects/openfisca_married_couples/codes:/app/codes -v C:/Users/pvanb/Projects/openfisca_married_couples/data:/app/data -v C:/Users/pvanb/Projects/openfisca_married_couples/outputs:/app/outputs public-openfisca-image /bin/bash
 
-python without_reform.py
+python without_reform.py -y YEAR
+``` 
+
+If you want to run all codes in a single command you could do this :
+```sh
+for i in $(seq 2005 2019);
+do
+    python reform_towards_individualization.py -y $i
+done
 ``` 
