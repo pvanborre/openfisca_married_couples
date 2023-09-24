@@ -3,6 +3,8 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 
+import click
+
 from openfisca_core.simulation_builder import SimulationBuilder
 from openfisca_core.reforms import Reform
 
@@ -11,18 +13,7 @@ from openfisca_france.model.base import *
 
 
 pandas.options.display.max_columns = None
-
-annee = 2018
-
-filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
-data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
-data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
-data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
-
-print("Table des personnes")
-print(data_persons, "\n\n\n\n\n")
-
-
+#annee_simulation = 2009
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -145,13 +136,116 @@ class vers_individualisation(Reform):
 
         self.replace_variable(irpp)
 
-
-        
-
-
-
 tax_benefit_system = FranceTaxBenefitSystem()
 tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+
+@click.command()
+@click.option('-y', '--annee', default = None, type = int, required = True)
+def simulation_reforme(annee = None):
+    filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
+    data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
+    data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
+    data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
+
+    print("Table des personnes")
+    print(data_persons, "\n\n\n\n\n")
+
+    #####################################################
+    ########### Simulation ##############################
+    #####################################################
+
+
+
+
+    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
+    simulation.trace = True #utile pour voir toutes les étapes de la simulation
+
+    period = str(annee)
+
+    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
+
+    for ma_variable in data_persons.columns.tolist():
+        # variables pouvant entrer dans la simulation 
+        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
+                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
+                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
+                            "idmen_x", "idfoy_x", "idfam_x"]:
+            # variables définies au niveau de l'individu
+            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
+                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
+            # variables définies au niveau du ménage
+            else:
+                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
+    
+
+
+
+    total_taxes = simulation.calculate('irpp', period)
+    print(total_taxes)
+
+
+    maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
+
+    primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
+    primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
+    print("revenu du déclarant principal", primary_earning_maries_pacses)
+
+    secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
+    print("revenu du conjoint", secondary_earning_maries_pacses)
+
+    #simulation.tracer.print_computation_log()
+
+        
+    #####################################################
+    ########### Reproduction graphe 14 ##################
+    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, parmi les couples mariés ou pacsés, en janvier de l'année considérée
+    #####################################################
+
+    # Statistiques descriptives
+    nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
+    print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
+    print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
+
+
+    # on enlève les outliers
+    condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
+    primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
+    print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
+
+    # TODO question (j'aimerais bien ici ajouter les poids wprm ici)
+    # serait facile à ajouter ici mais dans la def de tau2 dans la réforme serait plus compliqué car il n'existe pas de poids dans la simulation 
+    rapport = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
+    print("rapport", rapport)
+
+    # nombre de gagnants
+    is_winner = secondary_earning_maries_pacses*rapport > primary_earning_maries_pacses
+    print("Nombre de gagnants", is_winner.sum())
+    pourcentage_gagnants = round(100*is_winner.sum()/len(primary_earning_maries_pacses))
+    print("Pourcentage de gagnants", pourcentage_gagnants)
+
+
+
+    plt.figure()
+    x = numpy.linspace(0, 600000, 4)
+    plt.plot(x, x, label = "1e bissectrice x -> x")
+    plt.plot(x, rapport*x, label = "Droite de séparation des foyers fiscaux perdants et gagnants")
+    plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
+
+    plt.annotate(str(pourcentage_gagnants)+ " %", xy = (1000000, 100000), bbox = dict(boxstyle ="round", fc ="0.8"))
+    plt.grid()
+    plt.axis('equal')  
+
+    plt.xlabel('Revenu annuel du secondary earner du foyer fiscal')
+    plt.ylabel('Revenu annuel du primary earner du foyer fiscal')
+    plt.title("Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, \n parmi les couples mariés ou pacsés français, en janvier {}".format(period))
+
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/graphe_14_{}.png'.format(period))
+
+
 
 
 
@@ -214,97 +308,5 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 
 
-#####################################################
-########### Simulation ##############################
-#####################################################
 
-simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-simulation.trace = True #utile pour voir toutes les étapes de la simulation
-
-period = str(annee)
-
-data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
-
-for ma_variable in data_persons.columns.tolist():
-    # variables pouvant entrer dans la simulation 
-    if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
-                           "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
-                           "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
-                           "idmen_x", "idfoy_x", "idfam_x"]:
-        # variables définies au niveau de l'individu
-        if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
-            simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
-        # variables définies au niveau du ménage
-        else:
-            simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
-  
-
-
-
-total_taxes = simulation.calculate('irpp', period)
-print(total_taxes)
-
-
-maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
-
-primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
-primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
-print("revenu du déclarant principal", primary_earning_maries_pacses)
-
-secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
-secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
-print("revenu du conjoint", secondary_earning_maries_pacses)
-
-
-
-
-#simulation.tracer.print_computation_log()
-
-
-#####################################################
-########### Reproduction graphe 14 ##################
-# Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, parmi les couples mariés ou pacsés, en janvier de l'année considérée
-#####################################################
-
-# Statistiques descriptives
-nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
-print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
-print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
-
-
-# on enlève les outliers
-condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
-primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
-secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
-print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
-
-# TODO question (j'aimerais bien ici ajouter les poids wprm ici)
-# serait facile à ajouter ici mais dans la def de tau2 dans la réforme serait plus compliqué car il n'existe pas de poids dans la simulation 
-rapport = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
-print("rapport", rapport)
-
-# nombre de gagnants
-is_winner = secondary_earning_maries_pacses*rapport > primary_earning_maries_pacses
-print("Nombre de gagnants", is_winner.sum())
-pourcentage_gagnants = round(100*is_winner.sum()/len(primary_earning_maries_pacses))
-print("Pourcentage de gagnants", pourcentage_gagnants)
-
-
-
-plt.figure()
-x = numpy.linspace(0, 600000, 4)
-plt.plot(x, x, label = "1e bissectrice x -> x")
-plt.plot(x, rapport*x, label = "Droite de séparation des foyers fiscaux perdants et gagnants")
-plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
-
-plt.annotate(str(pourcentage_gagnants)+ " %", xy = (1000000, 100000), bbox = dict(boxstyle ="round", fc ="0.8"))
-plt.grid()
-plt.axis('equal')  
-
-plt.xlabel('Revenu annuel du secondary earner du foyer fiscal')
-plt.ylabel('Revenu annuel du primary earner du foyer fiscal')
-plt.title("Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, \n parmi les couples mariés ou pacsés français, en janvier {}".format(period))
-
-plt.legend()
-plt.show()
-plt.savefig('../outputs/graphe_14_{}.png'.format(period))
+simulation_reforme()
