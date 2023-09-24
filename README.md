@@ -7,9 +7,15 @@ In the _codes_ folder, you will find the 2 most important codes :
 
 + _without\_reform.py_, that computes the tax paid by French "foyers_fiscaux" in the situation of a given year.
 
-+ _reform\_towards\_individualization.py_, that computes the tax paid by French "foyers_fiscaux" in the reformed situation of a given year. Then, after the reform, the marginal tax rate on primary earnings is higher than in the status quo, and the marginal tax rate on secondary earnings is lower. It is a revenue-neutral reform toward individual taxation where the tax system is modified so that the increased revenue from higher taxes on primary earnings equals the loss of revenue due to the lower taxes on secondary earnings. For more details see the paper by Pierre Boyer (https://www.cesifo.org/en/publications/2023/working-paper/taxation-couples, section 7.3).
++ _reform\_towards\_individualization.py_, that computes the tax paid by French "foyers_fiscaux" in the reformed situation of a given year. Then, after the reform, the marginal tax rate on primary earnings is higher than in the status quo, and the marginal tax rate on secondary earnings is lower. It is a revenue-neutral reform toward individual taxation where the tax system is modified so that the increased revenue from higher taxes on primary earnings equals the loss of revenue due to the lower taxes on secondary earnings. For more details see the paper by Pierre Boyer (https://www.cesifo.org/en/publications/2023/working-paper/taxation-couples, section 7.3). This code also stores all graphs 14 of the paper in the _output_ folder.
+
++ _plot\_across\_years.sh_ : bash script that gets the percentage of winners of a reform towards individual taxation across years
+
++ _plot\_across\_years.py_ : python plot to plot the output of the _plot\_across\_years.sh_ files. This corresponds to graph 15 section 7.3 of the paper.
 
 + _test\_without\_data.py_, only useful to check that your installation without the .h5 part has succeded.
+
+
 
 
 In the _data_ folder, the .h5 files (ERFS-FPR) are stored year per year.
