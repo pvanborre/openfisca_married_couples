@@ -1,6 +1,8 @@
 import numpy
 import pandas
 
+import click
+
 from openfisca_core.simulation_builder import SimulationBuilder
 from openfisca_france import FranceTaxBenefitSystem
 
@@ -8,15 +10,59 @@ pandas.options.display.max_columns = None
 
 tax_benefit_system = FranceTaxBenefitSystem()
 
-annee = 2018
 
-filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
-data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
-data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
-data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
+@click.command()
+@click.option('-y', '--annee', default = None, type = int, required = True)
+def simulate_sans_reforme(annee = None):
+    filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
+    data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
+    data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
+    data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
 
-print("Table des personnes")
-print(data_persons, "\n\n\n\n\n")
+    print("Table des personnes")
+    print(data_persons, "\n\n\n\n\n")
+
+    
+    #####################################################
+    ########### Simulation ##############################
+    #####################################################
+
+    simulation = initialiser_simulation(tax_benefit_system, data_persons)
+    period = str(annee)
+
+    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
+
+    for ma_variable in data_persons.columns.tolist():
+        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
+                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
+                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
+                            "idmen_x", "idfoy_x", "idfam_x"]:
+            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
+                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
+            else:
+                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
+    
+
+
+    total_taxes = simulation.calculate('irpp', period)
+    irpp_positif = numpy.where(total_taxes != 0, -total_taxes, 0)
+    print("Impot payé par chacun des foyers fiscaux", irpp_positif)
+
+    
+
+    print("déciles d'impot pour les foyers fiscaux",
+        weighted_quantile(values = irpp_positif, 
+                            quantiles = numpy.linspace(0.1, 0.9, 9), 
+                            sample_weight=data_persons.wprm, 
+                        values_sorted=False))
+
+    # On obtient les déciles suivants d'impôt sur le revenu, s'appliquant aux foyers fiscaux 
+    # pas aux ménages (on exclut les ménages ne remplissant pas de déclarations fiscales)
+    # je pense notamment aux jeunes déclarant encore avec leurs parents, ce qui fait que nos déciles sont plus élevés que si on avait considéré l'entité ménages
+    # comme on le fait dans l'ERFS tables menages et mrf 
+
+
+
 
 
 
@@ -79,36 +125,10 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 
 
-#####################################################
-########### Simulation ##############################
-#####################################################
-
-simulation = initialiser_simulation(tax_benefit_system, data_persons)
-period = str(annee)
-
-data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
-
-for ma_variable in data_persons.columns.tolist():
-    if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
-                           "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
-                           "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
-                           "idmen_x", "idfoy_x", "idfam_x"]:
-        if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
-            simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
-        else:
-            simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
-  
-
-
-total_taxes = simulation.calculate('irpp', period)
-
 
 #####################################################
 ########### Visualisation ###########################
 #####################################################
-
-irpp_positif = numpy.where(total_taxes != 0, -total_taxes, 0)
-print("Impot payé par chacun des foyers fiscaux", irpp_positif)
 
 
 def weighted_quantile(values, quantiles, sample_weight=None, values_sorted=False):
@@ -144,15 +164,4 @@ def weighted_quantile(values, quantiles, sample_weight=None, values_sorted=False
 
 
 
-
-
-print("déciles d'impot pour les foyers fiscaux",
-      weighted_quantile(values = irpp_positif, 
-                        quantiles = numpy.linspace(0.1, 0.9, 9), 
-                        sample_weight=data_persons.wprm, 
-                      values_sorted=False))
-
-# On obtient les déciles suivants d'impôt sur le revenu, s'appliquant aux foyers fiscaux 
-# pas aux ménages (on exclut les ménages ne remplissant pas de déclarations fiscales)
-# je pense notamment aux jeunes déclarant encore avec leurs parents, ce qui fait que nos déciles sont plus élevés que si on avait considéré l'entité ménages
-# comme on le fait dans l'ERFS tables menages et mrf 
+simulate_sans_reforme()
