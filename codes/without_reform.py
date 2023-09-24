@@ -10,9 +10,10 @@ tax_benefit_system = FranceTaxBenefitSystem()
 
 annee = 2018
 
-filename = "../data/{}/flat_{}.h5".format(annee, annee)
-data_persons = pandas.read_hdf(filename, key = "input")#, stop =11)
-
+filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
+data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
+data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
+data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
 
 print("Table des personnes")
 print(data_persons, "\n\n\n\n\n")

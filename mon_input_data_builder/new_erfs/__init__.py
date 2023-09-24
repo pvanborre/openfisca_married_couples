@@ -21,7 +21,7 @@ from openfisca_france_data.erfs_fpr.input_data_builder import (
     step_04_famille as famille,
     )
 
-import new_erfs.step_06_final_new as final
+import step_06_final_new as final
     
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

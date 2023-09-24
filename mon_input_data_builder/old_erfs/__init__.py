@@ -13,11 +13,11 @@ from openfisca_france_data.erfs_fpr import REFERENCE_YEAR
 
 warnings.filterwarnings("ignore", ".*is an invalid version and will not be supported in a future release.*")
 
-import step_01_preprocessing as preprocessing
-import step_02_menage as menage
-import step_03_variables_individuelles as variables_individuelles
-import step_04_famille as famille
-import step_06_final as final
+import step_01_preprocessing_old as preprocessing
+import step_02_menage_old as menage
+import step_03_variables_individuelles_old as variables_individuelles
+import step_04_famille_old as famille
+import step_06_final_old as final
     
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

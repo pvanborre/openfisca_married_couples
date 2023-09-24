@@ -3,6 +3,7 @@
 *.pdf
 *.html
 
+__pycache__
 
 *.h5
 *.sas7bdat
