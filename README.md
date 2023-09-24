@@ -111,14 +111,14 @@ cd openfisca-france-data
 
 Then build your docker image 
 ```sh
-docker build -t openfisca-france-data . -f ./docker/Dockerfile
+docker build -t public-openfisca-france-data . -f ./docker/Dockerfile
 ``` 
 
 From now on you have 2 docker images (that you can see in Docker Desktop) :
 
 + one is called public-openfisca-image and containers from this image are designed to run python codes to do simulations, reforms etc.
 
-+ this other is called openfisca-france-data and is useful to transform your ERFS-FPR files in SAS to data consumable by OpenFisca (.h5 files)
++ this other is called public-openfisca-france-data and is useful to transform your ERFS-FPR files in SAS to data consumable by OpenFisca (.h5 files)
 
 Now the steps to follow are : 
 
@@ -145,7 +145,7 @@ Now you are able to run your container from your image
 # replace the second link by where you cloned openfisca_married_couples 
 # C:/Users/where_you_cloned_openfisca_married_couples/openfisca_married_couples/mon_input_data_builder
 
-docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder openfisca-france-data /bin/bash
+docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder public-openfisca-france-data /bin/bash
 ``` 
 
 You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your terminal/container): this takes between 5 and 10 minutes
