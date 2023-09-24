@@ -1,6 +1,24 @@
 # openfisca_married_couples
 Repo to store codes using the microsimulation tool OpenFisca in order to simulate a reform where married couples would be taxed separately
 
+# Description 
+
+In the _codes_ folder, you will find the 2 most important codes :
+
++ _without\_reform.py_, that computes the tax paid by French "foyers_fiscaux" in the situation of a given year.
+
++ _reform\_towards\_individualization.py_, that computes the tax paid by French "foyers_fiscaux" in the reformed situation of a given year. Then, after the reform, the marginal tax rate on primary earnings is higher than in the status quo, and the marginal tax rate on secondary earnings is lower. It is a revenue-neutral reform toward individual taxation where the tax system is modified so that the increased revenue from higher taxes on primary earnings equals the loss of revenue due to the lower taxes on secondary earnings. For more details see the paper by Pierre Boyer (https://www.cesifo.org/en/publications/2023/working-paper/taxation-couples, section 7.3).
+
++ _test\_without\_data.py_, only useful to check that your installation without the .h5 part has succeded.
+
+
+In the _data_ folder, the .h5 files (ERFS-FPR) are stored year per year.
+In the _mon\_input\_data\_builder_ folder, utils to transform SAS files into .h5 files are stored.
+
+In the _outputs_ folder, you will find all the outputs (graphs etc).
+
+
+
 # First Installation 
 
 ## On Windows
@@ -109,6 +127,8 @@ docker rm openfisca-container
 
 # The tough part : get your .h5 data 
 
+## First installation
+
 To run simulations on data, you need to transform your SAS ERFS-FPR files to data that OpenFisca can read (that is, .h5 files). Remark : you really need SAS files, STATA files would not work.
 
 Go to a folder of your choice and clone the openfisca-france-data repository :
@@ -129,20 +149,25 @@ From now on you have 2 docker images (that you can see in Docker Desktop) :
 
 + this other is called **public-openfisca-france-data** and containers from this image (called **openfisca-container2**) are useful to transform your ERFS-FPR files (.sas7bdat files) to data consumable by OpenFisca (.h5 files)
 
-Now the steps to follow are : 
+## Usage
 
-+ Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfxxxxxxx.sas7bdat, fpr_irfxxxxxxx.sas7bdat. You may also prefer to get your files on CASD.
+### For years 2018 and 2019 
 
-+ Place these 4 files in _openfisca-france-data/docker/data/data-in_ folder. Important : make sure that no other .sas7bdat is here in this folder. For instance, if data from another year is there you need to delete it.
++ Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfxxxxxxx.sas7bdat, fpr_irfxxxxxxx.sas7bdat. You may also prefer to get your files on CASD. Because there a 2 years, you should have 8 files.
 
-+ Place these 4 files also in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_year_ folder (you should create the folder _donnees\_sas\_year_ for that).
++ Place these 8 files in _openfisca-france-data/docker/data/data-in_ folder. Important : make sure that no other .sas7bdat is here in this folder (this folder should contain only these 8 files).
 
-+ Then edit _openfisca-france-data/docker/data/raw_data.ini_ to specify the year.
-It should look for instance like this 
++ Create 2 new folders _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2018_ and _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2019_
+
++ In each of these 2 new folders, place the 4 files of the year. You should have 4 files in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2018_ and 4 files in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2019_
+
++ Then edit _openfisca-france-data/docker/data/raw_data.ini_ to specify the years.
+It looks like this :
 ```ini
 [erfs_fpr]
 
 2018 = ./data-in/erfs-fpr/donnees_sas_2018
+2019 = ./data-in/erfs-fpr/donnees_sas_2019
 ```
 
 Now you are able to run your container from your image
@@ -189,27 +214,103 @@ else
 fi
 ``` 
 
-You need then one last command, that depends on the year you are considering : 
-
-## For years 2019 and 2018
-
+Now run : 
 ```sh
-# replace flat_YEAR.h5 by the YEAR you are interested in (2018 or 2019)
-python /opt/openfisca-france-data/openfisca_france_data/erfs_fpr/input_data_builder/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
-``` 
- 
-## For years 2014 - 2017 
-
-```sh
-# replace flat_YEAR.h5 by the YEAR you are interested in (2014 - 2017)
-python /mnt/mon_input_data_builder/new_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
+python /opt/openfisca-france-data/openfisca_france_data/erfs_fpr/input_data_builder/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
 ``` 
 
-## Before 2014
+Finally, copy paste the _openfisca\_erfs\_fpr\_2018.h5_ and _openfisca\_erfs\_fpr\_2019.h5_ files that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the two folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2018_ and _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2019_
+
+Then do :
+```sh
+exit
+docker rm openfisca-container2
+``` 
+
+### For years 2014 - 2017 
+
+
++ Download 4 files per year on the 'Reseau Quetelet' (https://commande.progedo.fr/fr/utilisateur/connexion) : you should now have files named fpr_menage_YEAR.sas7bdat, fpr_indiv_YEAR.sas7bdat, fpr_mrfxxxxxxx.sas7bdat, fpr_irfxxxxxxx.sas7bdat. You may also prefer to get your files on CASD. Because there a 4 years, you should have 16 files.
+
++ Place these 16 files in _openfisca-france-data/docker/data/data-in_ folder. Important : make sure that no other .sas7bdat is here in this folder (this folder should contain only these 16 files).
+
++ Create 4 new folders _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2014_ to _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2017_
+
++ In each of these 4 new folders, place the 4 files of the year. You should have 4 files in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2014_, 4 files in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2015_, 4 files in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2016_ and 4 files in _openfisca-france-data/docker/data/data-in/erfs-fpr/donnees\_sas\_2017_
+
++ Then edit _openfisca-france-data/docker/data/raw_data.ini_ to specify the years.
+It looks like this :
+```ini
+[erfs_fpr]
+2014 = ./data-in/erfs-fpr/donnees_sas_2014
+2015 = ./data-in/erfs-fpr/donnees_sas_2015
+2016 = ./data-in/erfs-fpr/donnees_sas_2016
+2017 = ./data-in/erfs-fpr/donnees_sas_2017
+```
+
+Now you are able to run your container from your image
+```sh
+# replace the first link by where you cloned openfisca-france-data 
+# C:/Users/where_you_cloned_openfisca-france-data/openfisca-france-data/docker/data
+
+# replace the second link by where you cloned openfisca_married_couples 
+# C:/Users/where_you_cloned_openfisca_married_couples/openfisca_married_couples/mon_input_data_builder
+
+docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfisca/gestion_donnees_erfs/openfisca-france-data/docker/data:/mnt -v C:/Users/pvanb/Projects/openfisca_married_couples/mon_input_data_builder:/mnt/mon_input_data_builder public-openfisca-france-data /bin/bash
+``` 
+
+You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes between 5 and 10 minutes
+```sh
+if [[ -z "${DATA_FOLDER}" ]]; then
+  export DATA_FOLDER=/mnt
+fi
+cd $DATA_FOLDER
+# Cleaning
+echo "Cleaning directories..."
+rm $DATA_FOLDER/data-out/tmp/*
+rm $DATA_FOLDER/data-out/*.h5
+rm $DATA_FOLDER/data-out/data_collections/*.json
+# Clean config file
+sed -i '/erfs_fpr = /d' $DATA_FOLDER/config.ini
+sed -i '/openfisca_erfs_fpr = /d' $DATA_FOLDER/config.ini
+echo "Building collection in `pwd`..."
+build-collection -c erfs_fpr -d -m -v  -p $DATA_FOLDER 2>&1
+if [ $? -eq 0 ]; then
+    echo "Building collection finished."
+else
+    echo "ERROR in build-collection"
+    echo "Content of $DATA_FOLDER : "
+    ls $DATA_FOLDER
+    echo "Content of $DATA_FOLDER/data-in/: "
+    ls $DATA_FOLDER/data-in/
+    echo "Content of $DATA_FOLDER/data-out/ : "
+    ls $DATA_FOLDER/data-out/
+    echo "Content of $DATA_FOLDER/data-out/tmp/ : "
+    ls $DATA_FOLDER/data-out/tmp/
+    echo "---------------- DONE WITH ERROR -----------------------------"
+    exit 1
+fi
+``` 
+
+Now run : 
+```sh
+python /mnt/mon_input_data_builder/new_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
+``` 
+
+Finally, copy paste the 4 files _openfisca\_erfs\_fpr\_2014.h5_ to _openfisca\_erfs\_fpr\_2017.h5_ files that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the 4 corresponding folders _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2014_ to _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/2017_
+
+Then do :
+```sh
+exit
+docker rm openfisca-container2
+``` 
+
+### Before 2014
+
+TO COMPLETE 
 
 ```sh
-# replace flat_YEAR.h5 by the YEAR you are interested in (before 2014)
-python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini --file ./data-out/flat_YEAR.h5 2>&1
+python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini  2>&1
 ``` 
 
 
@@ -221,6 +322,8 @@ Then do :
 exit
 docker rm openfisca-container2
 ``` 
+
+### For all years 
 
 And now these followings commands should work (provided you modified the year at the beginning of the _without\_reform.py_ file):
 ```sh
