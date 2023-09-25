@@ -13,7 +13,6 @@ from openfisca_france.model.base import *
 
 
 pandas.options.display.max_columns = None
-#annee_simulation = 2009
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -85,6 +84,159 @@ class vers_individualisation(Reform):
         self.add_variable(secondary_earning)
 
 
+        class cdf_primary_earnings(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "cdf des primary earnings"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+            
+                primary_earning = foyer_fiscal('primary_earning', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                primary_earnings_maries_pacses = primary_earning[maries_ou_pacses]
+                counts = numpy.array([numpy.sum(primary_earnings_maries_pacses <= y1) for y1 in primary_earnings_maries_pacses])
+
+                cdf = numpy.zeros_like(primary_earning, dtype=float)
+                cdf[maries_ou_pacses] = counts/len(primary_earnings_maries_pacses)
+                print('primary_earnings', primary_earning)
+                print("check de la cdf primary", cdf)
+                
+                return cdf
+
+        self.add_variable(cdf_primary_earnings)
+
+
+        class cdf_secondary_earnings(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "cdf des secondary earnings"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                secondary_earning = foyer_fiscal('secondary_earning', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                secondary_earnings_maries_pacses = secondary_earning[maries_ou_pacses]
+                counts = numpy.array([numpy.sum(secondary_earnings_maries_pacses <= y2) for y2 in secondary_earnings_maries_pacses])
+
+                cdf = numpy.zeros_like(secondary_earning, dtype=float)
+                cdf[maries_ou_pacses] = counts/len(secondary_earnings_maries_pacses)
+                print("check de la cdf secondary", cdf)
+                return cdf
+
+        self.add_variable(cdf_secondary_earnings)
+
+
+        class density_primary_earnings(Variable):
+            # autre option : faire la densité plus à la main en regardant le nombre de mecs ayant même valeur autour d'eux a 5 euros près et comparer
+            value_type = float
+            entity = FoyerFiscal
+            label = "density des primary earnings"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                primary_earning = foyer_fiscal('primary_earning', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                primary_earnings_maries_pacses = primary_earning[maries_ou_pacses]
+                
+                # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
+                n = len(primary_earnings_maries_pacses)
+                estimated_std = numpy.std(primary_earnings_maries_pacses, ddof=1)  
+                bandwidth = 1.06 * estimated_std * n ** (-1/5)
+                print("primary bandwidth", bandwidth)
+
+                # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
+                
+                kernel_values = gaussian_kernel((primary_earnings_maries_pacses[:, numpy.newaxis] - primary_earnings_maries_pacses) / bandwidth)
+                density = numpy.zeros_like(primary_earning, dtype=float)
+                density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+                density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
+
+                print("check de la densite primary", density)
+                print("autre maniere densite", 'TODO')
+                print("verif somme primary", numpy.sum(density))
+                return density
+
+        self.add_variable(density_primary_earnings)
+
+        class density_secondary_earnings(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "density des secondary earnings"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                secondary_earning = foyer_fiscal('secondary_earning', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                secondary_earnings_maries_pacses = secondary_earning[maries_ou_pacses]
+                
+                # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
+                n = len(secondary_earnings_maries_pacses)
+                estimated_std = numpy.std(secondary_earnings_maries_pacses, ddof=1)  
+                bandwidth = 1.06 * estimated_std * n ** (-1/5)
+                print("secondary bandwidth", bandwidth)
+
+                # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
+                kernel_values = gaussian_kernel((secondary_earnings_maries_pacses[:, numpy.newaxis] - secondary_earnings_maries_pacses) / bandwidth)
+                density = numpy.zeros_like(secondary_earning, dtype=float)
+                density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+                density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
+
+                print("check de la densite secondary", density)
+                print("verif somme secondary", numpy.sum(density))
+                return density
+
+        self.add_variable(density_secondary_earnings)
+
+
+        class primary_revenue_function(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "overall tax revenue when the marginal tax rate for primary earners is slightly increased"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                primary_earning = foyer_fiscal('primary_earning', period)
+                cdf = foyer_fiscal('cdf_primary_earnings', period)
+                density = foyer_fiscal('density_primary_earnings', period)
+
+                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                elasticity_1 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                # maybe in the section change/add parameters of the system
+
+                behavioral = - primary_earning * density * elasticity_1 * ir_taux_marginal/(1 - ir_taux_marginal) #esperance dans le papier page 111 comment le traduire ici 
+                mechanical = 1 - cdf
+                return (behavioral + mechanical) * maries_ou_pacses
+
+        self.add_variable(primary_revenue_function)
+
+
+        class secondary_revenue_function(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "overall tax revenue when the marginal tax rate for secondary earners is slightly decreased (or increased ?)"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                secondary_earning = foyer_fiscal('secondary_earning', period)
+                cdf = foyer_fiscal('cdf_secondary_earnings', period)
+                density = foyer_fiscal('density_secondary_earnings', period)
+
+                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                elasticity_2 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                # maybe in the section change/add parameters of the system
+
+                behavioral = - secondary_earning * density * elasticity_2 * ir_taux_marginal/(1 - ir_taux_marginal) #esperance dans le papier page 111 comment le traduire ici 
+                mechanical = 1 - cdf
+                return (behavioral + mechanical) * maries_ou_pacses
+
+        self.add_variable(secondary_revenue_function)
+
+
         class irpp(Variable):
             value_type = float
             entity = FoyerFiscal
@@ -104,15 +256,22 @@ class vers_individualisation(Reform):
                 
                 primary_earning_maries_pacses = foyer_fiscal('primary_earning', period) 
                 secondary_earning_maries_pacses = foyer_fiscal('secondary_earning', period) 
-                
+                primary_revenue_function = foyer_fiscal('primary_revenue_function', period)
+                secondary_revenue_function = foyer_fiscal('secondary_revenue_function', period)
+
+                print("primary_revenue_function", primary_revenue_function)
+                print("its sum", numpy.sum(primary_revenue_function))
+                print("secondary_revenue_function", secondary_revenue_function)
+                print("its sum", numpy.sum(secondary_revenue_function))
+                print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
 
                 tau_1 = 0.1 # comment bien choisir tau_1 ????
-                tau_2 = - tau_1 * sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses) 
+                tau_2 = - tau_1 * numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) 
                 # cette déf de tau_2 assure qu'on est à budget de l'Etat constant 
                 # car avant on avait SUM(IRPP) et désormais on a SUM(IRPP) + tau_1 SUM(revenu_declarant_principal) + tau_2 SUM(revenu_conjoint)
                 # on égalise les deux termes et on trouve l'expression demandée 
 
-                print("tau_2 est", sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses) , "fois plus élevé que tau_1 en valeur absolue") 
+                print("tau_2 est", numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) , "fois plus élevé que tau_1 en valeur absolue") 
 
                 return (
                     (iai > P.seuil) * (
@@ -136,8 +295,9 @@ class vers_individualisation(Reform):
 
         self.replace_variable(irpp)
 
-tax_benefit_system = FranceTaxBenefitSystem()
-tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+
+def gaussian_kernel(x):
+    return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
@@ -153,6 +313,9 @@ def simulation_reforme(annee = None):
     #####################################################
     ########### Simulation ##############################
     #####################################################
+
+    tax_benefit_system = FranceTaxBenefitSystem()
+    tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
 
 
 
