@@ -192,35 +192,7 @@ docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfis
 
 You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes around 5 minutes
 ```sh
-if [[ -z "${DATA_FOLDER}" ]]; then
-  export DATA_FOLDER=/mnt
-fi
-cd $DATA_FOLDER
-# Cleaning
-echo "Cleaning directories..."
-rm $DATA_FOLDER/data-out/tmp/*
-rm $DATA_FOLDER/data-out/*.h5
-rm $DATA_FOLDER/data-out/data_collections/*.json
-# Clean config file
-sed -i '/erfs_fpr = /d' $DATA_FOLDER/config.ini
-sed -i '/openfisca_erfs_fpr = /d' $DATA_FOLDER/config.ini
-echo "Building collection in `pwd`..."
-build-collection -c erfs_fpr -d -m -v  -p $DATA_FOLDER 2>&1
-if [ $? -eq 0 ]; then
-    echo "Building collection finished."
-else
-    echo "ERROR in build-collection"
-    echo "Content of $DATA_FOLDER : "
-    ls $DATA_FOLDER
-    echo "Content of $DATA_FOLDER/data-in/: "
-    ls $DATA_FOLDER/data-in/
-    echo "Content of $DATA_FOLDER/data-out/ : "
-    ls $DATA_FOLDER/data-out/
-    echo "Content of $DATA_FOLDER/data-out/tmp/ : "
-    ls $DATA_FOLDER/data-out/tmp/
-    echo "---------------- DONE WITH ERROR -----------------------------"
-    exit 1
-fi
+bash ./mon_input_data_builder/erfs-fpr.sh
 ``` 
 
 Now run : 
@@ -272,35 +244,7 @@ docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfis
 
 You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes around 18 minutes on my computer 
 ```sh
-if [[ -z "${DATA_FOLDER}" ]]; then
-  export DATA_FOLDER=/mnt
-fi
-cd $DATA_FOLDER
-# Cleaning
-echo "Cleaning directories..."
-rm $DATA_FOLDER/data-out/tmp/*
-rm $DATA_FOLDER/data-out/*.h5
-rm $DATA_FOLDER/data-out/data_collections/*.json
-# Clean config file
-sed -i '/erfs_fpr = /d' $DATA_FOLDER/config.ini
-sed -i '/openfisca_erfs_fpr = /d' $DATA_FOLDER/config.ini
-echo "Building collection in `pwd`..."
-build-collection -c erfs_fpr -d -m -v  -p $DATA_FOLDER 2>&1
-if [ $? -eq 0 ]; then
-    echo "Building collection finished."
-else
-    echo "ERROR in build-collection"
-    echo "Content of $DATA_FOLDER : "
-    ls $DATA_FOLDER
-    echo "Content of $DATA_FOLDER/data-in/: "
-    ls $DATA_FOLDER/data-in/
-    echo "Content of $DATA_FOLDER/data-out/ : "
-    ls $DATA_FOLDER/data-out/
-    echo "Content of $DATA_FOLDER/data-out/tmp/ : "
-    ls $DATA_FOLDER/data-out/tmp/
-    echo "---------------- DONE WITH ERROR -----------------------------"
-    exit 1
-fi
+bash ./mon_input_data_builder/erfs-fpr.sh
 ``` 
 
 Now run (this takes around 8 minutes on my computer)
@@ -358,35 +302,7 @@ docker run -it --name openfisca-container2 -v C:/Users/pvanb/Projects/my_openfis
 
 You are now in your container and you should be in the mnt/ folder. Run the following script (copy and paste it in your container): this takes around 40 minutes on my computer 
 ```sh
-if [[ -z "${DATA_FOLDER}" ]]; then
-  export DATA_FOLDER=/mnt
-fi
-cd $DATA_FOLDER
-# Cleaning
-echo "Cleaning directories..."
-rm $DATA_FOLDER/data-out/tmp/*
-rm $DATA_FOLDER/data-out/*.h5
-rm $DATA_FOLDER/data-out/data_collections/*.json
-# Clean config file
-sed -i '/erfs_fpr = /d' $DATA_FOLDER/config.ini
-sed -i '/openfisca_erfs_fpr = /d' $DATA_FOLDER/config.ini
-echo "Building collection in `pwd`..."
-build-collection -c erfs_fpr -d -m -v  -p $DATA_FOLDER 2>&1
-if [ $? -eq 0 ]; then
-    echo "Building collection finished."
-else
-    echo "ERROR in build-collection"
-    echo "Content of $DATA_FOLDER : "
-    ls $DATA_FOLDER
-    echo "Content of $DATA_FOLDER/data-in/: "
-    ls $DATA_FOLDER/data-in/
-    echo "Content of $DATA_FOLDER/data-out/ : "
-    ls $DATA_FOLDER/data-out/
-    echo "Content of $DATA_FOLDER/data-out/tmp/ : "
-    ls $DATA_FOLDER/data-out/tmp/
-    echo "---------------- DONE WITH ERROR -----------------------------"
-    exit 1
-fi
+bash ./mon_input_data_builder/erfs-fpr.sh
 ``` 
 
 Now run (this takes around 20 minutes on my computer)
@@ -407,21 +323,7 @@ docker rm openfisca-container2
 
 ### Before 2005
 
-TO COMPLETE 
-
-```sh
-python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini  2>&1
-``` 
-
-
-
-Finally, copy paste the _flat\_YEAR.h5_ file that is in _C:/Users/where\_you\_cloned\_openfisca-france-data/openfisca-france-data/docker/data/data-out_ in the folder _C:/Users/where\_you\_cloned\_openfisca\_married\_couples/openfisca\_married\_couples/data/year_
-
-Then do :
-```sh
-exit
-docker rm openfisca-container2
-``` 
+It is very complicated to get the .h5 data here.
 
 ### For all years 
 
