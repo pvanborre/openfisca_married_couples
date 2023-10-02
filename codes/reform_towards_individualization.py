@@ -139,7 +139,7 @@ def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
 
 
-def density_earnings(earning, maries_ou_pacses):
+def density_earnings(earning, maries_ou_pacses, period, title):
     earnings_maries_pacses = earning[maries_ou_pacses]
     
     # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
@@ -155,7 +155,15 @@ def density_earnings(earning, maries_ou_pacses):
     density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
 
     print("check de la densite", density)
-    # TODO plot here
+
+    # plot here figure B14 probability density function 
+    plt.figure()
+    plt.scatter(earning[earning >= 0], density[earning >= 0], s = 10)
+    plt.xlabel('Revenu annuel')
+    plt.title("Probability density function of {type} earnings, en janvier {annee}".format(type = title, annee = period))
+    plt.show()
+    plt.savefig('../outputs/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
+
     return density
 
 
@@ -264,10 +272,10 @@ def simulation_reforme(annee = None):
     
 
     cdf_primary_earnings = simulation.calculate('cdf_primary_earnings', period)
-    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses)
+    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     cdf_secondary_earnings = simulation.calculate('cdf_secondary_earnings', period)
-    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses)
+    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
