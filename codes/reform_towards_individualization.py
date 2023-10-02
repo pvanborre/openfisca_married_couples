@@ -244,7 +244,28 @@ class vers_individualisation(Reform):
 
         self.add_variable(secondary_esperance_taux_marginal)
 
+        class primary_elasticity(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "primary earner elasticity"
+            definition_period = YEAR
 
+            def formula(foyer_fiscal, period):
+                # on néglige le terme en T''
+                primary_earning = foyer_fiscal('primary_earning', period)
+                secondary_earning = foyer_fiscal('secondary_earning', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                total_earning = primary_earning + secondary_earning
+                total_earning[total_earning == 0] = 0.01
+                eps1 = 0.75
+                eps2 = 0.25 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                # maybe in the section change/add parameters of the system
+                # autre solution le sortir de la simulation 
+                # vraie forumule en lemma 4 mais je ne sais pas obtenir T'' : peut etre plot T' et obtenir sa dérivée
+                return maries_ou_pacses*(eps1*primary_earning + eps2*secondary_earning)/total_earning
+
+                
+        self.add_variable(primary_elasticity)
 
 
 
@@ -261,9 +282,7 @@ class vers_individualisation(Reform):
                 primary_esperance_taux_marginal = foyer_fiscal('primary_esperance_taux_marginal', period)
 
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_1 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
-                # maybe in the section change/add parameters of the system
-                # autre solution le sortir de la simulation 
+                elasticity_1 = foyer_fiscal('primary_elasticity', period)
 
                 behavioral = - primary_earning * density * elasticity_1 * primary_esperance_taux_marginal  
                 mechanical = 1 - cdf
@@ -285,8 +304,7 @@ class vers_individualisation(Reform):
                 secondary_esperance_taux_marginal = foyer_fiscal('secondary_esperance_taux_marginal', period)
 
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_2 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
-                # maybe in the section change/add parameters of the system
+                elasticity_2 = foyer_fiscal('primary_elasticity', period)
 
                 behavioral = - secondary_earning * density * elasticity_2 * secondary_esperance_taux_marginal 
                 mechanical = 1 - cdf
@@ -490,8 +508,9 @@ def simulation_reforme(annee = None):
     print('rapport integrales', primary_integral/secondary_integral)
     # pour les élasticités 0.5/0.5 on retrouve bien le même rapport que sum(primary_revenue_function)/sum(secondary_revenue_function)
 
-def gaussian_kernel_plot(x, x_i, bandwidth):
-    return numpy.exp(-0.5 * ((x - x_i) / bandwidth) ** 2) / (bandwidth * numpy.sqrt(2 * numpy.pi))
+
+# def gaussian_kernel_plot(x, x_i, bandwidth):
+#     return numpy.exp(-0.5 * ((x - x_i) / bandwidth) ** 2) / (bandwidth * numpy.sqrt(2 * numpy.pi))
 
 
 def tracer_et_integrer_revenue_fonctions(income, values, title):
@@ -527,6 +546,8 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     return integral_pchip
 
 
+# TODO : plot cumulative distribution function (figure b21 et 22)
+# TODO : plot esperance T'/(1-T') (figure b23 et 24)
 
 
 def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entite, id_entite_join, role_entite, nom_role_0, nom_role_1, nom_role_2):
