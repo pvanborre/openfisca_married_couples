@@ -308,13 +308,30 @@ def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
 
 
+def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
+    revenu = primary_earning + secondary_earning
 
-def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
-    total_earning = primary_earning + secondary_earning
-    total_earning[total_earning == 0] = 0.01
+    sorted_indices = numpy.argsort(revenu)
+    earning_sorted = revenu[sorted_indices]
+    ir_marginal_sorted = ir_taux_marginal[sorted_indices]
 
-    # vraie forumule en lemma 4 mais je ne sais pas obtenir T'' : peut etre plot T' et obtenir sa dérivée
-    return maries_ou_pacses*(eps1*primary_earning + eps2*secondary_earning)/total_earning
+    unique_incomes = numpy.unique(earning_sorted) #unique nécessaire car sinon divisions par 0 dans le gradient
+    mean_values = [numpy.mean(ir_marginal_sorted[earning_sorted == i]) for i in unique_incomes]
+    tax_two_sorted = numpy.gradient(mean_values, unique_incomes)
+    tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
+
+    original_indices = numpy.argsort(sorted_indices)
+    return tax_two_original[original_indices]
+
+def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
+    # formule en lemma 4 : gérer les 0
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal)*(eps1*primary_earning + eps2*secondary_earning)
+    return maries_ou_pacses*eps1*1/denominateur
+
+def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
+    # formule en lemma 4 
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal)*(eps1*primary_earning + eps2*secondary_earning)
+    return maries_ou_pacses*eps2*1/denominateur
 
 
 def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -391,21 +408,22 @@ def simulation_reforme(annee = None):
     cdf_secondary_earnings = simulation.calculate('cdf_secondary_earnings', period)
     density_secondary_earnings = simulation.calculate('density_secondary_earnings', period)
     secondary_esperance_taux_marginal = simulation.calculate('secondary_esperance_taux_marginal', period)
+    ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
+    tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
     eps1 = 0.5
     eps2 = 0.5
-    primary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2)
-    
+    primary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
+    secondary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
     primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
-    secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
-    
-    #simulation.tracer.print_computation_log()
+    secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
 
-        
-    #####################################################
-    ########### Reproduction graphe 14 ##################
-    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, parmi les couples mariés ou pacsés, en janvier de l'année considérée
-    #####################################################
+    graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, period)
+
+def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, period):
+
+    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
+    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
 
     primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
     print("revenu du déclarant principal", primary_earning_maries_pacses)
@@ -480,8 +498,6 @@ def simulation_reforme(annee = None):
     # pour les élasticités 0.5/0.5 on retrouve bien le même rapport que sum(primary_revenue_function)/sum(secondary_revenue_function)
 
 
-# def gaussian_kernel_plot(x, x_i, bandwidth):
-#     return numpy.exp(-0.5 * ((x - x_i) / bandwidth) ** 2) / (bandwidth * numpy.sqrt(2 * numpy.pi))
 
 
 def tracer_et_integrer_revenue_fonctions(income, values, title):
@@ -491,11 +507,8 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     income = income[sorted_indices]
     values = values[sorted_indices]
 
-    # on retire les valeurs les plus élevées car pas très bien renseignées dans l'ERFS + pousse à l'erreur la methode des trapezes
-    # values = values[income < 200000]
-    # income = income[income < 200000]
 
-    unique_incomes = numpy.unique(income)
+    unique_incomes = numpy.unique(income) # on a besoin du unique pour l'interpolation 
     mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
     
     pchip = PchipInterpolator(unique_incomes, mean_values)
