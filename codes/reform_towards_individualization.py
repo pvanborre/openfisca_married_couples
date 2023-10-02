@@ -86,58 +86,29 @@ class vers_individualisation(Reform):
         self.add_variable(secondary_earning)
 
 
-        class cdf_primary_earnings(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "cdf des primary earnings"
-            definition_period = YEAR
 
-            def formula(foyer_fiscal, period):
-            
-                primary_earning = foyer_fiscal('primary_earning', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+def cdf_earnings(earning, maries_ou_pacses, period, title):
+    earnings_maries_pacses = earning[maries_ou_pacses]
+    counts = numpy.array([numpy.sum(earnings_maries_pacses <= y2) for y2 in earnings_maries_pacses])
 
-                primary_earnings_maries_pacses = primary_earning[maries_ou_pacses]
-                counts = numpy.array([numpy.sum(primary_earnings_maries_pacses <= y1) for y1 in primary_earnings_maries_pacses])
+    cdf = numpy.zeros_like(earning, dtype=float)
+    cdf[maries_ou_pacses] = counts/len(earnings_maries_pacses)
+    print("check de la cdf", cdf)
 
-                cdf = numpy.zeros_like(primary_earning, dtype=float)
-                cdf[maries_ou_pacses] = counts/len(primary_earnings_maries_pacses)
-                print('primary_earnings', primary_earning)
-                print("check de la cdf primary", cdf)
-                
-                return cdf
+    # plot here figure B17 cumulative distribution function of gross income
+    plt.figure()
+    plt.scatter(earning[earning >= 0], cdf[earning >= 0], s = 10)
+    plt.xlabel('Revenu annuel')
+    plt.title("Cumulative distribution function of {type} earnings, en janvier {annee}".format(type = title, annee = period))
+    plt.show()
+    plt.savefig('../outputs/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
 
-        self.add_variable(cdf_primary_earnings)
+    return cdf
 
 
-        class cdf_secondary_earnings(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "cdf des secondary earnings"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                secondary_earning = foyer_fiscal('secondary_earning', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-
-                secondary_earnings_maries_pacses = secondary_earning[maries_ou_pacses]
-                counts = numpy.array([numpy.sum(secondary_earnings_maries_pacses <= y2) for y2 in secondary_earnings_maries_pacses])
-
-                cdf = numpy.zeros_like(secondary_earning, dtype=float)
-                cdf[maries_ou_pacses] = counts/len(secondary_earnings_maries_pacses)
-                print("check de la cdf secondary", cdf)
-                return cdf
-
-        self.add_variable(cdf_secondary_earnings)
-
-
-        
-
-       
 
 def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
-
 
 def density_earnings(earning, maries_ou_pacses, period, title):
     earnings_maries_pacses = earning[maries_ou_pacses]
@@ -271,10 +242,11 @@ def simulation_reforme(annee = None):
     secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
     
 
-    cdf_primary_earnings = simulation.calculate('cdf_primary_earnings', period)
+    cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
-    cdf_secondary_earnings = simulation.calculate('cdf_secondary_earnings', period)
+    
+    cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
