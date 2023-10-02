@@ -3,6 +3,7 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
+from scipy.interpolate import CubicSpline
 
 import click
 
@@ -262,6 +263,7 @@ class vers_individualisation(Reform):
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
                 elasticity_1 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
+                # autre solution le sortir de la simulation 
 
                 behavioral = - primary_earning * density * elasticity_1 * primary_esperance_taux_marginal  
                 mechanical = 1 - cdf
@@ -486,6 +488,7 @@ def simulation_reforme(annee = None):
     primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
     secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
     print('rapport integrales', primary_integral/secondary_integral)
+    # pour les élasticités 0.5/0.5 on retrouve bien le même rapport que sum(primary_revenue_function)/sum(secondary_revenue_function)
 
 def gaussian_kernel_plot(x, x_i, bandwidth):
     return numpy.exp(-0.5 * ((x - x_i) / bandwidth) ** 2) / (bandwidth * numpy.sqrt(2 * numpy.pi))
@@ -498,21 +501,33 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     income = income[sorted_indices]
     values = values[sorted_indices]
 
+    # on retire les valeurs les plus élevées car pas très bien renseignées dans l'ERFS + pousse à l'erreur la methode des trapezes
+    values = values[income < 200000]
+    income = income[income < 200000]
 
-    # x_continuous = numpy.linspace(min(income), max(income), 1000)
-    # output_continuous = numpy.zeros_like(x_continuous)
+    unique_incomes = numpy.unique(income)
+    mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
+    cs = CubicSpline(unique_incomes, mean_values)
 
-    # n = len(income)       
-    # estimated_std = numpy.std(income, ddof=1) # même bandwidth que pour la densité plus haut  
-    # bandwidth = 1.06 * estimated_std * n ** (-1/5)
+    # first_part = numpy.linspace(min(income), 20000, 5000)
+    # second_part = numpy.linspace(20000, max(income), 1000)
+    # x_continuous = numpy.concatenate((first_part, second_part))
 
-    # for i, x in enumerate(x_continuous):
-    #     # pour chaque point, on place une gaussienne centrée sur lui
-    #     # puis on somme les contributions de chaque point 
-    #     output_continuous[i] = numpy.sum(values * gaussian_kernel_plot(x, income, bandwidth))
+    x_continuous = numpy.linspace(min(income), max(income), 1000)
+    output_continuous = numpy.zeros_like(x_continuous)
+
+    n = len(income)       
+    estimated_std = numpy.std(income, ddof=1) # même bandwidth que pour la densité plus haut  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+
+    for i, x in enumerate(x_continuous):
+        # pour chaque point, on place une gaussienne centrée sur lui
+        # puis on somme les contributions de chaque point 
+        output_continuous[i] = numpy.sum(values * gaussian_kernel_plot(x, income, bandwidth))
 
     plt.figure()
-    #plt.plot(x_continuous, output_continuous, label=title)
+    plt.plot(x_continuous, output_continuous, label=title)
+    plt.plot(x_continuous, cs(x_continuous), label=title)
     plt.scatter(income, values, label='Discrete Data', color='red')
     plt.xlabel('Income')
     plt.ylabel(title)
@@ -521,14 +536,14 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     plt.savefig('../outputs/{}_revenue_function.png'.format(title))
 
     # On utilise la méthode des trapeze pour l'intégrale 
-    integral = 0.0
+    # integral = 0.0
 
-    for i in range(1, len(income)):
-        delta_x = income[i] - income[i - 1]
-        integral += 0.5 * (values[i] + values[i - 1]) * delta_x
+    # for i in range(1, len(income)):
+    #     delta_x = income[i] - income[i - 1]
+    #     integral += 0.5 * (values[i] + values[i - 1]) * delta_x
 
 
-    #integral, _ = quad(lambda x: numpy.interp(x, x_continuous, output_continuous), min(income), max(income))
+    integral, _ = quad(lambda x: numpy.interp(x, x_continuous, output_continuous), min(income), max(income))
     print("Integral", title, integral)
     return integral
 
