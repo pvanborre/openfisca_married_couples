@@ -448,7 +448,7 @@ def simulation_reforme(annee = None):
 
     plt.figure()
     x = numpy.linspace(0, 600000, 4)
-    plt.plot(x, x, label = "1e bissectrice x -> x")
+    plt.plot(x, x, c = '#828282')
     plt.plot(x, rapport*x, label = "Droite de séparation des foyers fiscaux perdants et gagnants")
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
@@ -483,8 +483,9 @@ def simulation_reforme(annee = None):
     print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
     print("on doit ici trouver une valeur proche de 1 car l'augmentation d'impots pour les primary doit compenser pour le budget de l'Etat la baisse pour les secondary, la réforme étant revenue neutral")
 
-    tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
-    tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
+    primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
+    secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
+    print('rapport integrales', primary_integral/secondary_integral)
 
 def gaussian_kernel_plot(x, x_i, bandwidth):
     return numpy.exp(-0.5 * ((x - x_i) / bandwidth) ** 2) / (bandwidth * numpy.sqrt(2 * numpy.pi))
@@ -492,21 +493,26 @@ def gaussian_kernel_plot(x, x_i, bandwidth):
 
 def tracer_et_integrer_revenue_fonctions(income, values, title):
 
-    x_continuous = numpy.linspace(min(income), max(income), 1000)
-    output_continuous = numpy.zeros_like(x_continuous)
+    # on trie les inputs
+    sorted_indices = numpy.argsort(income)
+    income = income[sorted_indices]
+    values = values[sorted_indices]
 
-    n = len(income)       
-    estimated_std = numpy.std(income, ddof=1) # même bandwidth que pour la densité plus haut  
-    bandwidth = 1.06 * estimated_std * n ** (-1/5)
-    
 
-    for i, x in enumerate(x_continuous):
-        # pour chaque point, on place une gaussienne centrée sur lui
-        # puis on somme les contributions de chaque point 
-        output_continuous[i] = numpy.sum(values * gaussian_kernel_plot(x, income, bandwidth))
+    # x_continuous = numpy.linspace(min(income), max(income), 1000)
+    # output_continuous = numpy.zeros_like(x_continuous)
+
+    # n = len(income)       
+    # estimated_std = numpy.std(income, ddof=1) # même bandwidth que pour la densité plus haut  
+    # bandwidth = 1.06 * estimated_std * n ** (-1/5)
+
+    # for i, x in enumerate(x_continuous):
+    #     # pour chaque point, on place une gaussienne centrée sur lui
+    #     # puis on somme les contributions de chaque point 
+    #     output_continuous[i] = numpy.sum(values * gaussian_kernel_plot(x, income, bandwidth))
 
     plt.figure()
-    plt.plot(x_continuous, output_continuous, label=title)
+    #plt.plot(x_continuous, output_continuous, label=title)
     plt.scatter(income, values, label='Discrete Data', color='red')
     plt.xlabel('Income')
     plt.ylabel(title)
@@ -514,8 +520,17 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     plt.show()
     plt.savefig('../outputs/{}_revenue_function.png'.format(title))
 
-    integral, _ = quad(lambda x: numpy.interp(x, x_continuous, output_continuous), min(income), max(income))
-    print("Integral:", integral)
+    # On utilise la méthode des trapeze pour l'intégrale 
+    integral = 0.0
+
+    for i in range(1, len(income)):
+        delta_x = income[i] - income[i - 1]
+        integral += 0.5 * (values[i] + values[i - 1]) * delta_x
+
+
+    #integral, _ = quad(lambda x: numpy.interp(x, x_continuous, output_continuous), min(income), max(income))
+    print("Integral", title, integral)
+    return integral
 
 
 
