@@ -248,6 +248,25 @@ def simulation_reforme(annee = None):
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
+    graphe14(primary_earning_maries_pacses = primary_earning_maries_pacses, 
+             secondary_earning_maries_pacses = secondary_earning_maries_pacses,
+             maries_ou_pacses = maries_ou_pacses, 
+             ancien_irpp = ancien_irpp, 
+             ir_taux_marginal = ir_taux_marginal,
+             tax_two_derivative_simulation = tax_two_derivative_simulation,
+             cdf_primary_earnings = cdf_primary_earnings,
+             cdf_secondary_earnings = cdf_secondary_earnings,
+             density_primary_earnings = density_primary_earnings,
+             density_secondary_earnings = density_secondary_earnings,
+             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+             period = period)
+    
+def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
+ 
+    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
+    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
+
     eps1 = 0.75
     eps2 = 0.25
 
@@ -257,12 +276,6 @@ def simulation_reforme(annee = None):
     primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
     secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
 
-    graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, ancien_irpp, period)
-
-def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, ancien_irpp, period):
-
-    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
-    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
 
     primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
     print("revenu du déclarant principal", primary_earning_maries_pacses)
@@ -301,10 +314,6 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, pri
     print('rapport integrales', rapport)
     # pour les élasticités 0.5/0.5 on retrouve bien rapport = rapport_sommes 
 
-    # TODO question (j'aimerais bien ici ajouter les poids wprm ici)
-    # serait facile à ajouter ici mais dans la def de tau2 dans la réforme serait plus compliqué car il n'existe pas de poids dans la simulation 
-    rapport_sommes = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
-    print("rapport avec sommes", rapport_sommes)
 
     tau_1 = 0.1 # comment bien choisir tau_1 ????
     tau_2 = - tau_1 * rapport
