@@ -2,6 +2,7 @@
 import numpy
 import pandas
 import matplotlib.pyplot as plt
+from scipy.integrate import quad
 
 import click
 
@@ -155,7 +156,7 @@ class vers_individualisation(Reform):
                 density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
 
                 print("check de la densite primary", density)
-                print("autre maniere densite", 'TODO')
+                #print("autre maniere densite", 'TODO')
                 print("verif somme primary", numpy.sum(density))
                 return density
 
@@ -190,6 +191,61 @@ class vers_individualisation(Reform):
 
         self.add_variable(density_secondary_earnings)
 
+        class primary_esperance_taux_marginal(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "E(ir_taux_marginal/(1 - ir_taux_marginal) | y1 = y10)"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                primary_earning = foyer_fiscal('primary_earning', period)
+                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                # le code ci dessous ne marche pas par souci de mémoire   (d'où la version avec une boucle for plus bas)      
+                # primary_earning_reshaped = primary_earning.reshape(-1, 1)
+                # diff = numpy.abs(primary_earning_reshaped - primary_earning)
+                # ir_taux_marginal = numpy.where(diff <= 5, ir_taux_marginal, 0) # 5 tolérance sur égalite y1 = y10
+                # output = numpy.mean(ir_taux_marginal / (1 - ir_taux_marginal), axis=1)
+
+                output = numpy.zeros_like(primary_earning, dtype=float)
+                for i in range(len(primary_earning)):
+                    diff = numpy.abs(primary_earning - primary_earning[i])
+                    ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
+                    ir_taux_marginal2[diff > 5] = 0
+                    output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
+
+
+                return output*maries_ou_pacses
+
+                
+        self.add_variable(primary_esperance_taux_marginal)
+
+        class secondary_esperance_taux_marginal(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "E(ir_taux_marginal/(1 - ir_taux_marginal) | y2 = y20)"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                secondary_earning = foyer_fiscal('secondary_earning', period)
+                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                                
+                output = numpy.zeros_like(secondary_earning, dtype=float)
+                for i in range(len(secondary_earning)):
+                    diff = numpy.abs(secondary_earning - secondary_earning[i])
+                    ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
+                    ir_taux_marginal2[diff > 5] = 0
+                    output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
+
+                return output*maries_ou_pacses
+
+        self.add_variable(secondary_esperance_taux_marginal)
+
+
+
+
 
         class primary_revenue_function(Variable):
             value_type = float
@@ -201,13 +257,13 @@ class vers_individualisation(Reform):
                 primary_earning = foyer_fiscal('primary_earning', period)
                 cdf = foyer_fiscal('cdf_primary_earnings', period)
                 density = foyer_fiscal('density_primary_earnings', period)
+                primary_esperance_taux_marginal = foyer_fiscal('primary_esperance_taux_marginal', period)
 
-                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
                 elasticity_1 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
 
-                behavioral = - primary_earning * density * elasticity_1 * ir_taux_marginal/(1 - ir_taux_marginal) #esperance dans le papier page 111 comment le traduire ici 
+                behavioral = - primary_earning * density * elasticity_1 * primary_esperance_taux_marginal  
                 mechanical = 1 - cdf
                 return (behavioral + mechanical) * maries_ou_pacses
 
@@ -224,76 +280,76 @@ class vers_individualisation(Reform):
                 secondary_earning = foyer_fiscal('secondary_earning', period)
                 cdf = foyer_fiscal('cdf_secondary_earnings', period)
                 density = foyer_fiscal('density_secondary_earnings', period)
+                secondary_esperance_taux_marginal = foyer_fiscal('secondary_esperance_taux_marginal', period)
 
-                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
                 elasticity_2 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
 
-                behavioral = - secondary_earning * density * elasticity_2 * ir_taux_marginal/(1 - ir_taux_marginal) #esperance dans le papier page 111 comment le traduire ici 
+                behavioral = - secondary_earning * density * elasticity_2 * secondary_esperance_taux_marginal 
                 mechanical = 1 - cdf
                 return (behavioral + mechanical) * maries_ou_pacses
 
         self.add_variable(secondary_revenue_function)
 
 
-        class irpp(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "Impot sur le revenu réformé"
-            definition_period = YEAR
+        # class irpp(Variable):
+        #     value_type = float
+        #     entity = FoyerFiscal
+        #     label = "Impot sur le revenu réformé"
+        #     definition_period = YEAR
 
-            def formula(foyer_fiscal, period, parameters):
+        #     def formula(foyer_fiscal, period, parameters):
 
-                iai = foyer_fiscal('iai', period)
-                credits_impot = foyer_fiscal('credits_impot', period)
-                acomptes_ir = foyer_fiscal('acomptes_ir', period)
-                contribution_exceptionnelle_hauts_revenus = foyer_fiscal('contribution_exceptionnelle_hauts_revenus', period)
-                P = parameters(period).impot_revenu.calcul_impot_revenu.recouvrement
+        #         iai = foyer_fiscal('iai', period)
+        #         credits_impot = foyer_fiscal('credits_impot', period)
+        #         acomptes_ir = foyer_fiscal('acomptes_ir', period)
+        #         contribution_exceptionnelle_hauts_revenus = foyer_fiscal('contribution_exceptionnelle_hauts_revenus', period)
+        #         P = parameters(period).impot_revenu.calcul_impot_revenu.recouvrement
 
-                pre_result = iai - credits_impot - acomptes_ir + contribution_exceptionnelle_hauts_revenus
+        #         pre_result = iai - credits_impot - acomptes_ir + contribution_exceptionnelle_hauts_revenus
 
                 
-                primary_earning_maries_pacses = foyer_fiscal('primary_earning', period) 
-                secondary_earning_maries_pacses = foyer_fiscal('secondary_earning', period) 
-                primary_revenue_function = foyer_fiscal('primary_revenue_function', period)
-                secondary_revenue_function = foyer_fiscal('secondary_revenue_function', period)
+        #         primary_earning_maries_pacses = foyer_fiscal('primary_earning', period) 
+        #         secondary_earning_maries_pacses = foyer_fiscal('secondary_earning', period) 
+        #         primary_revenue_function = foyer_fiscal('primary_revenue_function', period)
+        #         secondary_revenue_function = foyer_fiscal('secondary_revenue_function', period)
 
-                print("primary_revenue_function", primary_revenue_function)
-                print("its sum", numpy.sum(primary_revenue_function))
-                print("secondary_revenue_function", secondary_revenue_function)
-                print("its sum", numpy.sum(secondary_revenue_function))
-                print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
+        #         print("primary_revenue_function", primary_revenue_function)
+        #         print("its sum", numpy.sum(primary_revenue_function))
+        #         print("secondary_revenue_function", secondary_revenue_function)
+        #         print("its sum", numpy.sum(secondary_revenue_function))
+        #         print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
 
-                tau_1 = 0.1 # comment bien choisir tau_1 ????
-                tau_2 = - tau_1 * numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) 
-                # cette déf de tau_2 assure qu'on est à budget de l'Etat constant 
-                # car avant on avait SUM(IRPP) et désormais on a SUM(IRPP) + tau_1 SUM(revenu_declarant_principal) + tau_2 SUM(revenu_conjoint)
-                # on égalise les deux termes et on trouve l'expression demandée 
+        #         tau_1 = 0.1 # comment bien choisir tau_1 ????
+        #         tau_2 = - tau_1 * numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) 
+        #         # cette déf de tau_2 assure qu'on est à budget de l'Etat constant 
+        #         # car avant on avait SUM(IRPP) et désormais on a SUM(IRPP) + tau_1 SUM(revenu_declarant_principal) + tau_2 SUM(revenu_conjoint)
+        #         # on égalise les deux termes et on trouve l'expression demandée 
 
-                print("tau_2 est", numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) , "fois plus élevé que tau_1 en valeur absolue") 
+        #         print("tau_2 est", numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) , "fois plus élevé que tau_1 en valeur absolue") 
 
-                return (
-                    (iai > P.seuil) * (
-                        (pre_result < P.min)
-                        * (pre_result > 0)
-                        * iai
-                        * 0
-                        + ((pre_result <= 0) + (pre_result >= P.min))
-                        * (- pre_result)
-                        )
-                    + (iai <= P.seuil) * (
-                        (pre_result < 0)
-                        * (-pre_result)
-                        + (pre_result >= 0)
-                        * 0
-                        * iai
-                        )
-                    + tau_1 * primary_earning_maries_pacses/12 
-                    + tau_2 * secondary_earning_maries_pacses/12 
-                    )
+        #         return (
+        #             (iai > P.seuil) * (
+        #                 (pre_result < P.min)
+        #                 * (pre_result > 0)
+        #                 * iai
+        #                 * 0
+        #                 + ((pre_result <= 0) + (pre_result >= P.min))
+        #                 * (- pre_result)
+        #                 )
+        #             + (iai <= P.seuil) * (
+        #                 (pre_result < 0)
+        #                 * (-pre_result)
+        #                 + (pre_result >= 0)
+        #                 * 0
+        #                 * iai
+        #                 )
+        #             + tau_1 * primary_earning_maries_pacses/12 
+        #             + tau_2 * secondary_earning_maries_pacses/12 
+        #             )
 
-        self.replace_variable(irpp)
+        # self.replace_variable(irpp)
 
 
 def gaussian_kernel(x):
@@ -409,7 +465,57 @@ def simulation_reforme(annee = None):
     plt.savefig('../outputs/graphe_14_{}.png'.format(period))
 
 
+    #### Graphe 14 V2
 
+    primary_revenue_function = simulation.calculate('primary_revenue_function', period)
+    primary_revenue_function = primary_revenue_function[maries_ou_pacses]
+    primary_revenue_function = primary_revenue_function[condition]
+
+    secondary_revenue_function = simulation.calculate('secondary_revenue_function', period)
+    secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
+    secondary_revenue_function = secondary_revenue_function[condition]
+    
+
+    print("primary_revenue_function", primary_revenue_function)
+    print("its sum", numpy.sum(primary_revenue_function))
+    print("secondary_revenue_function", secondary_revenue_function)
+    print("its sum", numpy.sum(secondary_revenue_function))
+    print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
+    print("on doit ici trouver une valeur proche de 1 car l'augmentation d'impots pour les primary doit compenser pour le budget de l'Etat la baisse pour les secondary, la réforme étant revenue neutral")
+
+    tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
+    tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
+
+def gaussian_kernel_plot(x, x_i, bandwidth):
+    return numpy.exp(-0.5 * ((x - x_i) / bandwidth) ** 2) / (bandwidth * numpy.sqrt(2 * numpy.pi))
+
+
+def tracer_et_integrer_revenue_fonctions(income, values, title):
+
+    x_continuous = numpy.linspace(min(income), max(income), 1000)
+    output_continuous = numpy.zeros_like(x_continuous)
+
+    n = len(income)       
+    estimated_std = numpy.std(income, ddof=1) # même bandwidth que pour la densité plus haut  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+    
+
+    for i, x in enumerate(x_continuous):
+        # pour chaque point, on place une gaussienne centrée sur lui
+        # puis on somme les contributions de chaque point 
+        output_continuous[i] = numpy.sum(values * gaussian_kernel_plot(x, income, bandwidth))
+
+    plt.figure()
+    plt.plot(x_continuous, output_continuous, label=title)
+    plt.scatter(income, values, label='Discrete Data', color='red')
+    plt.xlabel('Income')
+    plt.ylabel(title)
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/{}_revenue_function.png'.format(title))
+
+    integral, _ = quad(lambda x: numpy.interp(x, x_continuous, output_continuous), min(income), max(income))
+    print("Integral:", integral)
 
 
 
