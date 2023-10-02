@@ -203,17 +203,11 @@ class vers_individualisation(Reform):
                 ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
 
-                # le code ci dessous ne marche pas par souci de mémoire   (d'où la version avec une boucle for plus bas)      
-                # primary_earning_reshaped = primary_earning.reshape(-1, 1)
-                # diff = numpy.abs(primary_earning_reshaped - primary_earning)
-                # ir_taux_marginal = numpy.where(diff <= 5, ir_taux_marginal, 0) # 5 tolérance sur égalite y1 = y10
-                # output = numpy.mean(ir_taux_marginal / (1 - ir_taux_marginal), axis=1)
-
                 output = numpy.zeros_like(primary_earning, dtype=float)
                 for i in range(len(primary_earning)):
                     diff = numpy.abs(primary_earning - primary_earning[i])
                     ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
-                    ir_taux_marginal2[diff > 5] = 0
+                    ir_taux_marginal2[diff > 2] = 0
                     output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
 
 
@@ -237,7 +231,7 @@ class vers_individualisation(Reform):
                 for i in range(len(secondary_earning)):
                     diff = numpy.abs(secondary_earning - secondary_earning[i])
                     ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
-                    ir_taux_marginal2[diff > 5] = 0
+                    ir_taux_marginal2[diff > 2] = 0
                     output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
 
                 return output*maries_ou_pacses
@@ -324,7 +318,7 @@ def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
     return tax_two_original[original_indices]
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
-    # formule en lemma 4 : gérer les 0
+    # formule en lemma 4 
     denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal)*(eps1*primary_earning + eps2*secondary_earning)
     return maries_ou_pacses*eps1*1/denominateur
 
@@ -367,7 +361,7 @@ def simulation_reforme(annee = None):
 
 
     simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-    simulation.trace = True #utile pour voir toutes les étapes de la simulation
+    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
 
     period = str(annee)
 
@@ -442,10 +436,28 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, pri
     secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
     print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
 
+    primary_revenue_function = primary_revenue_function[maries_ou_pacses]
+    primary_revenue_function = primary_revenue_function[condition]
+    secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
+    secondary_revenue_function = secondary_revenue_function[condition]
+
+    print("primary_revenue_function", primary_revenue_function)
+    print("its sum", numpy.sum(primary_revenue_function))
+    print("secondary_revenue_function", secondary_revenue_function)
+    print("its sum", numpy.sum(secondary_revenue_function))
+    print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
+    print("on doit ici trouver une valeur proche de 1 car l'augmentation d'impots pour les primary doit compenser pour le budget de l'Etat la baisse pour les secondary, la réforme étant revenue neutral")
+
+    primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
+    secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
+    rapport = primary_integral/secondary_integral
+    print('rapport integrales', rapport)
+    # pour les élasticités 0.5/0.5 on retrouve bien rapport = rapport_sommes 
+
     # TODO question (j'aimerais bien ici ajouter les poids wprm ici)
     # serait facile à ajouter ici mais dans la def de tau2 dans la réforme serait plus compliqué car il n'existe pas de poids dans la simulation 
-    rapport = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
-    print("rapport", rapport)
+    rapport_sommes = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
+    print("rapport avec sommes", rapport_sommes)
 
     # nombre de gagnants
     is_winner = secondary_earning_maries_pacses*rapport > primary_earning_maries_pacses
@@ -474,30 +486,10 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, pri
     plt.savefig('../outputs/graphe_14_{}.png'.format(period))
 
 
-    #### Graphe 14 V2
 
-    #primary_revenue_function = simulation.calculate('primary_revenue_function', period)
-    primary_revenue_function = primary_revenue_function[maries_ou_pacses]
-    primary_revenue_function = primary_revenue_function[condition]
-
-    #secondary_revenue_function = simulation.calculate('secondary_revenue_function', period)
-    secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
-    secondary_revenue_function = secondary_revenue_function[condition]
     
 
-    print("primary_revenue_function", primary_revenue_function)
-    print("its sum", numpy.sum(primary_revenue_function))
-    print("secondary_revenue_function", secondary_revenue_function)
-    print("its sum", numpy.sum(secondary_revenue_function))
-    print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
-    print("on doit ici trouver une valeur proche de 1 car l'augmentation d'impots pour les primary doit compenser pour le budget de l'Etat la baisse pour les secondary, la réforme étant revenue neutral")
-
-    primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
-    secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
-    print('rapport integrales', primary_integral/secondary_integral)
-    # pour les élasticités 0.5/0.5 on retrouve bien le même rapport que sum(primary_revenue_function)/sum(secondary_revenue_function)
-
-
+    
 
 
 def tracer_et_integrer_revenue_fonctions(income, values, title):
