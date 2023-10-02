@@ -267,75 +267,73 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
     # parmi les couples mariés ou pacsés, en janvier de l'année considérée
 
-    eps1 = 0.75
-    eps2 = 0.25
+    eps1_tab = [0.25, 0.5, 0.75]
+    eps2_tab = [0.75, 0.5, 0.25]
+    rapport = [0.0]*len(eps1_tab)
+    pourcentage_gagnants = [0.0]*len(eps1_tab)
 
-    primary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
-    secondary_elasticity_maries_pacses = secondary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
-    
-    primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
-    secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
-
-
-    primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
-    print("revenu du déclarant principal", primary_earning_maries_pacses)
-    secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
-    print("revenu du conjoint", secondary_earning_maries_pacses)
-
-    # Statistiques descriptives
-    nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
-    print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
-    print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
+    for i in range(1):
+        primary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
+        secondary_elasticity_maries_pacses = secondary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
+        
+        primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
+        secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
 
 
-    # on enlève les outliers
-    condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
-    primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
-    secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
-    print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
+        primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
+        print("revenu du déclarant principal", primary_earning_maries_pacses)
+        secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
+        print("revenu du conjoint", secondary_earning_maries_pacses)
 
-    primary_revenue_function = primary_revenue_function[maries_ou_pacses]
-    primary_revenue_function = primary_revenue_function[condition]
-    secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
-    secondary_revenue_function = secondary_revenue_function[condition]
-    ancien_irpp = ancien_irpp[maries_ou_pacses]
-    ancien_irpp = ancien_irpp[condition]
-
-    print("primary_revenue_function", primary_revenue_function)
-    print("its sum", numpy.sum(primary_revenue_function))
-    print("secondary_revenue_function", secondary_revenue_function)
-    print("its sum", numpy.sum(secondary_revenue_function))
-    print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
-    print("on doit ici trouver une valeur proche de 1 car l'augmentation d'impots pour les primary doit compenser pour le budget de l'Etat la baisse pour les secondary, la réforme étant revenue neutral")
-
-    primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
-    secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
-    rapport = primary_integral/secondary_integral
-    print('rapport integrales', rapport)
-    # pour les élasticités 0.5/0.5 on retrouve bien rapport = rapport_sommes 
+        # Statistiques descriptives
+        nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
+        print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
+        print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
 
 
-    tau_1 = 0.1 # comment bien choisir tau_1 ????
-    tau_2 = - tau_1 * rapport
-    
-    nouvel_irpp = -ancien_irpp + tau_1 * primary_earning_maries_pacses/12 + tau_2 * secondary_earning_maries_pacses/12 
-    print("IR après réforme", nouvel_irpp)
+        # on enlève les outliers
+        condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
+        primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
+        secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
+        print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
 
-    # nombre de gagnants
-    is_winner = secondary_earning_maries_pacses*rapport > primary_earning_maries_pacses
-    print("Nombre de gagnants", is_winner.sum())
-    pourcentage_gagnants = round(100*is_winner.sum()/len(primary_earning_maries_pacses))
-    print("Pourcentage de gagnants", pourcentage_gagnants)
+        primary_revenue_function = primary_revenue_function[maries_ou_pacses]
+        primary_revenue_function = primary_revenue_function[condition]
+        secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
+        secondary_revenue_function = secondary_revenue_function[condition]
+        ancien_irpp = ancien_irpp[maries_ou_pacses]
+        ancien_irpp = ancien_irpp[condition]
+
+        primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
+        secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
+        rapport[i] = primary_integral/secondary_integral
+        print('rapport integrales scenario ', i, " ", rapport[i])
+
+
+        tau_1 = 0.1 # comment bien choisir tau_1 ????
+        tau_2 = - tau_1 * rapport[i]
+        
+        nouvel_irpp = -ancien_irpp + tau_1 * primary_earning_maries_pacses/12 + tau_2 * secondary_earning_maries_pacses/12 
+        print("IR après réforme scenario ", i, " ", nouvel_irpp)
+
+        # nombre de gagnants
+        is_winner = secondary_earning_maries_pacses*rapport[i] > primary_earning_maries_pacses
+        print("Nombre de gagnants", is_winner.sum())
+        pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_maries_pacses)
+        print("Pourcentage de gagnants", pourcentage_gagnants[i])
 
 
 
     plt.figure()
     x = numpy.linspace(0, 600000, 4)
     plt.plot(x, x, c = '#828282')
-    plt.plot(x, rapport*x, label = "Droite de séparation des foyers fiscaux perdants et gagnants")
+    for i in range(len(eps1_tab)):
+        plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]))
+        plt.annotate(str(pourcentage_gagnants[i])+ " %", xy = (1000000 + 100000*i, 100000), bbox = dict(boxstyle ="round", fc ="0.8"))
+
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
-    plt.annotate(str(pourcentage_gagnants)+ " %", xy = (1000000, 100000), bbox = dict(boxstyle ="round", fc ="0.8"))
+    
     plt.grid()
     plt.axis('equal')  
 
