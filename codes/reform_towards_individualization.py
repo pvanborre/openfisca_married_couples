@@ -3,7 +3,7 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import CubicSpline, PchipInterpolator
 
 import click
 
@@ -261,7 +261,7 @@ class vers_individualisation(Reform):
                 primary_esperance_taux_marginal = foyer_fiscal('primary_esperance_taux_marginal', period)
 
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_1 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                elasticity_1 = 0.75 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
                 # autre solution le sortir de la simulation 
 
@@ -285,7 +285,7 @@ class vers_individualisation(Reform):
                 secondary_esperance_taux_marginal = foyer_fiscal('secondary_esperance_taux_marginal', period)
 
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_2 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                elasticity_2 = 0.25 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
 
                 behavioral = - secondary_earning * density * elasticity_2 * secondary_esperance_taux_marginal 
@@ -507,27 +507,16 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
 
     unique_incomes = numpy.unique(income)
     mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
-    cs = CubicSpline(unique_incomes, mean_values)
+    
+    pchip = PchipInterpolator(unique_incomes, mean_values)
+    integral_pchip = pchip.integrate(min(unique_incomes), max(unique_incomes))
+    print("Integrale hermite interpolation", integral_pchip)
 
-    # first_part = numpy.linspace(min(income), 20000, 5000)
-    # second_part = numpy.linspace(20000, max(income), 1000)
-    # x_continuous = numpy.concatenate((first_part, second_part))
 
     x_continuous = numpy.linspace(min(income), max(income), 1000)
-    output_continuous = numpy.zeros_like(x_continuous)
-
-    n = len(income)       
-    estimated_std = numpy.std(income, ddof=1) # même bandwidth que pour la densité plus haut  
-    bandwidth = 1.06 * estimated_std * n ** (-1/5)
-
-    for i, x in enumerate(x_continuous):
-        # pour chaque point, on place une gaussienne centrée sur lui
-        # puis on somme les contributions de chaque point 
-        output_continuous[i] = numpy.sum(values * gaussian_kernel_plot(x, income, bandwidth))
-
+   
     plt.figure()
-    plt.plot(x_continuous, output_continuous, label=title)
-    plt.plot(x_continuous, cs(x_continuous), label=title)
+    plt.plot(x_continuous, pchip(x_continuous), label='hermite')
     plt.scatter(income, values, label='Discrete Data', color='red')
     plt.xlabel('Income')
     plt.ylabel(title)
@@ -535,17 +524,7 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     plt.show()
     plt.savefig('../outputs/{}_revenue_function.png'.format(title))
 
-    # On utilise la méthode des trapeze pour l'intégrale 
-    # integral = 0.0
-
-    # for i in range(1, len(income)):
-    #     delta_x = income[i] - income[i - 1]
-    #     integral += 0.5 * (values[i] + values[i - 1]) * delta_x
-
-
-    integral, _ = quad(lambda x: numpy.interp(x, x_continuous, output_continuous), min(income), max(income))
-    print("Integral", title, integral)
-    return integral
+    return integral_pchip
 
 
 
