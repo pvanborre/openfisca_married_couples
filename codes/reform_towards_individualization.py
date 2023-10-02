@@ -192,56 +192,23 @@ class vers_individualisation(Reform):
 
         self.add_variable(density_secondary_earnings)
 
-        class primary_esperance_taux_marginal(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "E(ir_taux_marginal/(1 - ir_taux_marginal) | y1 = y10)"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                primary_earning = foyer_fiscal('primary_earning', period)
-                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-
-                output = numpy.zeros_like(primary_earning, dtype=float)
-                for i in range(len(primary_earning)):
-                    diff = numpy.abs(primary_earning - primary_earning[i])
-                    ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
-                    ir_taux_marginal2[diff > 2] = 0
-                    output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
-
-
-                return output*maries_ou_pacses
-
-                
-        self.add_variable(primary_esperance_taux_marginal)
-
-        class secondary_esperance_taux_marginal(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "E(ir_taux_marginal/(1 - ir_taux_marginal) | y2 = y20)"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                secondary_earning = foyer_fiscal('secondary_earning', period)
-                ir_taux_marginal = foyer_fiscal('ir_taux_marginal', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                                
-                output = numpy.zeros_like(secondary_earning, dtype=float)
-                for i in range(len(secondary_earning)):
-                    diff = numpy.abs(secondary_earning - secondary_earning[i])
-                    ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
-                    ir_taux_marginal2[diff > 2] = 0
-                    output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
-
-                return output*maries_ou_pacses
-
-        self.add_variable(secondary_esperance_taux_marginal)
-
        
 
 def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
+
+
+
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 1):
+    output = numpy.zeros_like(earning, dtype=float)
+    for i in range(len(earning)):
+        diff = numpy.abs(earning - earning[i])
+        ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
+        ir_taux_marginal2[diff > borne] = 0
+        output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
+
+    return output*maries_ou_pacses
+
 
 
 def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
@@ -326,7 +293,7 @@ def simulation_reforme(annee = None):
     ancien_irpp = simulation.calculate('irpp', period)
 
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
-
+    ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
 
     primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
     
@@ -336,11 +303,11 @@ def simulation_reforme(annee = None):
 
     cdf_primary_earnings = simulation.calculate('cdf_primary_earnings', period)
     density_primary_earnings = simulation.calculate('density_primary_earnings', period)
-    primary_esperance_taux_marginal = simulation.calculate('primary_esperance_taux_marginal', period)
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     cdf_secondary_earnings = simulation.calculate('cdf_secondary_earnings', period)
     density_secondary_earnings = simulation.calculate('density_secondary_earnings', period)
-    secondary_esperance_taux_marginal = simulation.calculate('secondary_esperance_taux_marginal', period)
-    ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
     eps1 = 0.5
