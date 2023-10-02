@@ -131,71 +131,33 @@ class vers_individualisation(Reform):
         self.add_variable(cdf_secondary_earnings)
 
 
-        class density_primary_earnings(Variable):
-            # autre option : faire la densité plus à la main en regardant le nombre de mecs ayant même valeur autour d'eux a 5 euros près et comparer
-            value_type = float
-            entity = FoyerFiscal
-            label = "density des primary earnings"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                primary_earning = foyer_fiscal('primary_earning', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                primary_earnings_maries_pacses = primary_earning[maries_ou_pacses]
-                
-                # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
-                n = len(primary_earnings_maries_pacses)
-                estimated_std = numpy.std(primary_earnings_maries_pacses, ddof=1)  
-                bandwidth = 1.06 * estimated_std * n ** (-1/5)
-                print("primary bandwidth", bandwidth)
-
-                # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
-                
-                kernel_values = gaussian_kernel((primary_earnings_maries_pacses[:, numpy.newaxis] - primary_earnings_maries_pacses) / bandwidth)
-                density = numpy.zeros_like(primary_earning, dtype=float)
-                density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
-                density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
-
-                print("check de la densite primary", density)
-                #print("autre maniere densite", 'TODO')
-                print("verif somme primary", numpy.sum(density))
-                return density
-
-        self.add_variable(density_primary_earnings)
-
-        class density_secondary_earnings(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "density des secondary earnings"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                secondary_earning = foyer_fiscal('secondary_earning', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                secondary_earnings_maries_pacses = secondary_earning[maries_ou_pacses]
-                
-                # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
-                n = len(secondary_earnings_maries_pacses)
-                estimated_std = numpy.std(secondary_earnings_maries_pacses, ddof=1)  
-                bandwidth = 1.06 * estimated_std * n ** (-1/5)
-                print("secondary bandwidth", bandwidth)
-
-                # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
-                kernel_values = gaussian_kernel((secondary_earnings_maries_pacses[:, numpy.newaxis] - secondary_earnings_maries_pacses) / bandwidth)
-                density = numpy.zeros_like(secondary_earning, dtype=float)
-                density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
-                density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
-
-                print("check de la densite secondary", density)
-                print("verif somme secondary", numpy.sum(density))
-                return density
-
-        self.add_variable(density_secondary_earnings)
+        
 
        
 
 def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
+
+
+def density_earnings(earning, maries_ou_pacses):
+    earnings_maries_pacses = earning[maries_ou_pacses]
+    
+    # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
+    n = len(earnings_maries_pacses)
+    estimated_std = numpy.std(earnings_maries_pacses, ddof=1)  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+    print("bandwidth", bandwidth)
+
+    # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
+    kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
+    density = numpy.zeros_like(earning, dtype=float)
+    density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+    density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
+
+    print("check de la densite", density)
+    # TODO plot here
+    return density
+
 
 
 
@@ -302,10 +264,10 @@ def simulation_reforme(annee = None):
     
 
     cdf_primary_earnings = simulation.calculate('cdf_primary_earnings', period)
-    density_primary_earnings = simulation.calculate('density_primary_earnings', period)
+    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses)
     primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     cdf_secondary_earnings = simulation.calculate('cdf_secondary_earnings', period)
-    density_secondary_earnings = simulation.calculate('density_secondary_earnings', period)
+    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses)
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
