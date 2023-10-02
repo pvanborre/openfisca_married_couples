@@ -238,65 +238,7 @@ class vers_individualisation(Reform):
 
         self.add_variable(secondary_esperance_taux_marginal)
 
-        
-        # class irpp(Variable):
-        #     value_type = float
-        #     entity = FoyerFiscal
-        #     label = "Impot sur le revenu réformé"
-        #     definition_period = YEAR
-
-        #     def formula(foyer_fiscal, period, parameters):
-
-        #         iai = foyer_fiscal('iai', period)
-        #         credits_impot = foyer_fiscal('credits_impot', period)
-        #         acomptes_ir = foyer_fiscal('acomptes_ir', period)
-        #         contribution_exceptionnelle_hauts_revenus = foyer_fiscal('contribution_exceptionnelle_hauts_revenus', period)
-        #         P = parameters(period).impot_revenu.calcul_impot_revenu.recouvrement
-
-        #         pre_result = iai - credits_impot - acomptes_ir + contribution_exceptionnelle_hauts_revenus
-
-                
-        #         primary_earning_maries_pacses = foyer_fiscal('primary_earning', period) 
-        #         secondary_earning_maries_pacses = foyer_fiscal('secondary_earning', period) 
-        #         primary_revenue_function = foyer_fiscal('primary_revenue_function', period)
-        #         secondary_revenue_function = foyer_fiscal('secondary_revenue_function', period)
-
-        #         print("primary_revenue_function", primary_revenue_function)
-        #         print("its sum", numpy.sum(primary_revenue_function))
-        #         print("secondary_revenue_function", secondary_revenue_function)
-        #         print("its sum", numpy.sum(secondary_revenue_function))
-        #         print("new rapport", numpy.sum(primary_revenue_function)/numpy.sum(secondary_revenue_function))
-
-        #         tau_1 = 0.1 # comment bien choisir tau_1 ????
-        #         tau_2 = - tau_1 * numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) 
-        #         # cette déf de tau_2 assure qu'on est à budget de l'Etat constant 
-        #         # car avant on avait SUM(IRPP) et désormais on a SUM(IRPP) + tau_1 SUM(revenu_declarant_principal) + tau_2 SUM(revenu_conjoint)
-        #         # on égalise les deux termes et on trouve l'expression demandée 
-
-        #         print("tau_2 est", numpy.sum(primary_earning_maries_pacses)/numpy.sum(secondary_earning_maries_pacses) , "fois plus élevé que tau_1 en valeur absolue") 
-
-        #         return (
-        #             (iai > P.seuil) * (
-        #                 (pre_result < P.min)
-        #                 * (pre_result > 0)
-        #                 * iai
-        #                 * 0
-        #                 + ((pre_result <= 0) + (pre_result >= P.min))
-        #                 * (- pre_result)
-        #                 )
-        #             + (iai <= P.seuil) * (
-        #                 (pre_result < 0)
-        #                 * (-pre_result)
-        #                 + (pre_result >= 0)
-        #                 * 0
-        #                 * iai
-        #                 )
-        #             + tau_1 * primary_earning_maries_pacses/12 
-        #             + tau_2 * secondary_earning_maries_pacses/12 
-        #             )
-
-        # self.replace_variable(irpp)
-
+       
 
 def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
@@ -381,11 +323,7 @@ def simulation_reforme(annee = None):
                 simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
     
 
-
-
-    # total_taxes = simulation.calculate('irpp', period)
-    # print(total_taxes)
-
+    ancien_irpp = simulation.calculate('irpp', period)
 
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
 
@@ -412,9 +350,9 @@ def simulation_reforme(annee = None):
     primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
     secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
 
-    graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, period)
+    graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, ancien_irpp, period)
 
-def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, period):
+def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, maries_ou_pacses, ancien_irpp, period):
 
     # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
     # parmi les couples mariés ou pacsés, en janvier de l'année considérée
@@ -440,6 +378,8 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, pri
     primary_revenue_function = primary_revenue_function[condition]
     secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
     secondary_revenue_function = secondary_revenue_function[condition]
+    ancien_irpp = ancien_irpp[maries_ou_pacses]
+    ancien_irpp = ancien_irpp[condition]
 
     print("primary_revenue_function", primary_revenue_function)
     print("its sum", numpy.sum(primary_revenue_function))
@@ -458,6 +398,12 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, pri
     # serait facile à ajouter ici mais dans la def de tau2 dans la réforme serait plus compliqué car il n'existe pas de poids dans la simulation 
     rapport_sommes = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
     print("rapport avec sommes", rapport_sommes)
+
+    tau_1 = 0.1 # comment bien choisir tau_1 ????
+    tau_2 = - tau_1 * rapport
+    
+    nouvel_irpp = -ancien_irpp + tau_1 * primary_earning_maries_pacses/12 + tau_2 * secondary_earning_maries_pacses/12 
+    print("IR après réforme", nouvel_irpp)
 
     # nombre de gagnants
     is_winner = secondary_earning_maries_pacses*rapport > primary_earning_maries_pacses
