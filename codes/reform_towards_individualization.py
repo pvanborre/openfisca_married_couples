@@ -261,7 +261,7 @@ class vers_individualisation(Reform):
                 primary_esperance_taux_marginal = foyer_fiscal('primary_esperance_taux_marginal', period)
 
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_1 = 0.75 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                elasticity_1 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
                 # autre solution le sortir de la simulation 
 
@@ -285,7 +285,7 @@ class vers_individualisation(Reform):
                 secondary_esperance_taux_marginal = foyer_fiscal('secondary_esperance_taux_marginal', period)
 
                 maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_2 = 0.25 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
+                elasticity_2 = 0.5 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
                 # maybe in the section change/add parameters of the system
 
                 behavioral = - secondary_earning * density * elasticity_2 * secondary_esperance_taux_marginal 
@@ -502,8 +502,8 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     values = values[sorted_indices]
 
     # on retire les valeurs les plus élevées car pas très bien renseignées dans l'ERFS + pousse à l'erreur la methode des trapezes
-    values = values[income < 200000]
-    income = income[income < 200000]
+    # values = values[income < 200000]
+    # income = income[income < 200000]
 
     unique_incomes = numpy.unique(income)
     mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
