@@ -244,75 +244,7 @@ class vers_individualisation(Reform):
 
         self.add_variable(secondary_esperance_taux_marginal)
 
-        class primary_elasticity(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "primary earner elasticity"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                # on néglige le terme en T''
-                primary_earning = foyer_fiscal('primary_earning', period)
-                secondary_earning = foyer_fiscal('secondary_earning', period)
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                total_earning = primary_earning + secondary_earning
-                total_earning[total_earning == 0] = 0.01
-                eps1 = 0.75
-                eps2 = 0.25 # TODO : pass this elasticity as a parameter see OpenFisca documentation to know how to do this
-                # maybe in the section change/add parameters of the system
-                # autre solution le sortir de la simulation 
-                # vraie forumule en lemma 4 mais je ne sais pas obtenir T'' : peut etre plot T' et obtenir sa dérivée
-                return maries_ou_pacses*(eps1*primary_earning + eps2*secondary_earning)/total_earning
-
-                
-        self.add_variable(primary_elasticity)
-
-
-
-        class primary_revenue_function(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "overall tax revenue when the marginal tax rate for primary earners is slightly increased"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                primary_earning = foyer_fiscal('primary_earning', period)
-                cdf = foyer_fiscal('cdf_primary_earnings', period)
-                density = foyer_fiscal('density_primary_earnings', period)
-                primary_esperance_taux_marginal = foyer_fiscal('primary_esperance_taux_marginal', period)
-
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_1 = foyer_fiscal('primary_elasticity', period)
-
-                behavioral = - primary_earning * density * elasticity_1 * primary_esperance_taux_marginal  
-                mechanical = 1 - cdf
-                return (behavioral + mechanical) * maries_ou_pacses
-
-        self.add_variable(primary_revenue_function)
-
-
-        class secondary_revenue_function(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "overall tax revenue when the marginal tax rate for secondary earners is slightly decreased (or increased ?)"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                secondary_earning = foyer_fiscal('secondary_earning', period)
-                cdf = foyer_fiscal('cdf_secondary_earnings', period)
-                density = foyer_fiscal('density_secondary_earnings', period)
-                secondary_esperance_taux_marginal = foyer_fiscal('secondary_esperance_taux_marginal', period)
-
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                elasticity_2 = foyer_fiscal('primary_elasticity', period)
-
-                behavioral = - secondary_earning * density * elasticity_2 * secondary_esperance_taux_marginal 
-                mechanical = 1 - cdf
-                return (behavioral + mechanical) * maries_ou_pacses
-
-        self.add_variable(secondary_revenue_function)
-
-
+        
         # class irpp(Variable):
         #     value_type = float
         #     entity = FoyerFiscal
@@ -375,6 +307,27 @@ class vers_individualisation(Reform):
 def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
 
+
+
+def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
+    total_earning = primary_earning + secondary_earning
+    total_earning[total_earning == 0] = 0.01
+
+    # vraie forumule en lemma 4 mais je ne sais pas obtenir T'' : peut etre plot T' et obtenir sa dérivée
+    return maries_ou_pacses*(eps1*primary_earning + eps2*secondary_earning)/total_earning
+
+
+def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
+
+    behavioral = - earning * density * elasticity * esperance_taux_marginal  
+    mechanical = 1 - cdf
+    return (behavioral + mechanical) * maries_ou_pacses
+
+
+
+
+
+
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
 def simulation_reforme(annee = None):
@@ -419,20 +372,33 @@ def simulation_reforme(annee = None):
 
 
 
-    total_taxes = simulation.calculate('irpp', period)
-    print(total_taxes)
+    # total_taxes = simulation.calculate('irpp', period)
+    # print(total_taxes)
 
 
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
 
+
     primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
-    primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
-    print("revenu du déclarant principal", primary_earning_maries_pacses)
+    
 
     secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
-    secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
-    print("revenu du conjoint", secondary_earning_maries_pacses)
+    
 
+    cdf_primary_earnings = simulation.calculate('cdf_primary_earnings', period)
+    density_primary_earnings = simulation.calculate('density_primary_earnings', period)
+    primary_esperance_taux_marginal = simulation.calculate('primary_esperance_taux_marginal', period)
+    cdf_secondary_earnings = simulation.calculate('cdf_secondary_earnings', period)
+    density_secondary_earnings = simulation.calculate('density_secondary_earnings', period)
+    secondary_esperance_taux_marginal = simulation.calculate('secondary_esperance_taux_marginal', period)
+
+    eps1 = 0.5
+    eps2 = 0.5
+    primary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2)
+    
+    primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
+    secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
+    
     #simulation.tracer.print_computation_log()
 
         
@@ -440,6 +406,11 @@ def simulation_reforme(annee = None):
     ########### Reproduction graphe 14 ##################
     # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, parmi les couples mariés ou pacsés, en janvier de l'année considérée
     #####################################################
+
+    primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
+    print("revenu du déclarant principal", primary_earning_maries_pacses)
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
+    print("revenu du conjoint", secondary_earning_maries_pacses)
 
     # Statistiques descriptives
     nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
@@ -487,11 +458,11 @@ def simulation_reforme(annee = None):
 
     #### Graphe 14 V2
 
-    primary_revenue_function = simulation.calculate('primary_revenue_function', period)
+    #primary_revenue_function = simulation.calculate('primary_revenue_function', period)
     primary_revenue_function = primary_revenue_function[maries_ou_pacses]
     primary_revenue_function = primary_revenue_function[condition]
 
-    secondary_revenue_function = simulation.calculate('secondary_revenue_function', period)
+    #secondary_revenue_function = simulation.calculate('secondary_revenue_function', period)
     secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
     secondary_revenue_function = secondary_revenue_function[condition]
     
