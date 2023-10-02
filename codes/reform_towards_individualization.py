@@ -99,7 +99,7 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
     plt.figure()
     plt.scatter(earning[earning >= 0], cdf[earning >= 0], s = 10)
     plt.xlabel('Revenu annuel')
-    plt.title("Cumulative distribution function of {type} earnings, en janvier {annee}".format(type = title, annee = period))
+    plt.title("{type} earnings cumulative distribution function - january {annee}".format(type = title, annee = period))
     plt.show()
     plt.savefig('../outputs/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
 
@@ -131,7 +131,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     plt.figure()
     plt.scatter(earning[earning >= 0], density[earning >= 0], s = 10)
     plt.xlabel('Revenu annuel')
-    plt.title("Probability density function of {type} earnings, en janvier {annee}".format(type = title, annee = period))
+    plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
     plt.show()
     plt.savefig('../outputs/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
 
@@ -140,13 +140,13 @@ def density_earnings(earning, maries_ou_pacses, period, title):
 
 
 
-def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 1):
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 0.05):
     output = numpy.zeros_like(earning, dtype=float)
     for i in range(len(earning)):
         diff = numpy.abs(earning - earning[i])
         ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
         ir_taux_marginal2[diff > borne] = 0
-        output[i] = numpy.mean(ir_taux_marginal2 / (1 - ir_taux_marginal2))
+        output[i] = numpy.sum(ir_taux_marginal2 / (1 - ir_taux_marginal2))/numpy.sum(diff <= borne)
 
     return output*maries_ou_pacses
 
@@ -169,13 +169,13 @@ def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal)*(eps1*primary_earning + eps2*secondary_earning)
-    return maries_ou_pacses*eps1*1/denominateur
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    return maries_ou_pacses * eps1 * 1/denominateur
 
 def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal)*(eps1*primary_earning + eps2*secondary_earning)
-    return maries_ou_pacses*eps2*1/denominateur
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    return maries_ou_pacses * eps2 * 1/denominateur
 
 
 def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -232,30 +232,28 @@ def simulation_reforme(annee = None):
     
 
     ancien_irpp = simulation.calculate('irpp', period)
-
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
     ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
-
     primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
-    
-
     secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
     
 
     cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
-    
+
     cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
-    eps1 = 0.5
-    eps2 = 0.5
+    eps1 = 0.75
+    eps2 = 0.25
+
     primary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
-    secondary_elasticity_maries_pacses = primary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
+    secondary_elasticity_maries_pacses = secondary_elasticity(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative_simulation)
+    
     primary_revenue_function = revenue_function(primary_earning_maries_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
     secondary_revenue_function = revenue_function(secondary_earning_maries_pacses, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
 
@@ -349,11 +347,9 @@ def graphe14(primary_earning_maries_pacses, secondary_earning_maries_pacses, pri
 
 def tracer_et_integrer_revenue_fonctions(income, values, title):
 
-    # on trie les inputs
     sorted_indices = numpy.argsort(income)
     income = income[sorted_indices]
     values = values[sorted_indices]
-
 
     unique_incomes = numpy.unique(income) # on a besoin du unique pour l'interpolation 
     mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
