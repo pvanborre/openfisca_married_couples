@@ -13,7 +13,7 @@ def plot_results(results):
     plt.grid()
 
     plt.show()
-    plt.savefig('../outputs/graphe_15_.png')
+    plt.savefig('../outputs/15/graphe_15_.png')
 
 if __name__ == "__main__":
     import sys

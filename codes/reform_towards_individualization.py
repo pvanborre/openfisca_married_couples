@@ -101,7 +101,7 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
     plt.xlabel('Revenu annuel')
     plt.title("{type} earnings cumulative distribution function - january {annee}".format(type = title, annee = period))
     plt.show()
-    plt.savefig('../outputs/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
+    plt.savefig('../outputs/B17/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
 
     return cdf
 
@@ -133,7 +133,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     plt.xlabel('Revenu annuel')
     plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
     plt.show()
-    plt.savefig('../outputs/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
+    plt.savefig('../outputs/B14/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
 
     return density
 
@@ -306,8 +306,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         secondary_revenue_function = secondary_revenue_function[condition]
 
 
-        primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary')
-        secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary')
+        primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary', period)
+        secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary', period)
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
@@ -351,7 +351,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/graphe_14_{}.png'.format(period))
+    plt.savefig('../outputs/14/graphe_14_{annee}.png'.format(annee = period))
+
 
 
 
@@ -360,7 +361,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     
 
 
-def tracer_et_integrer_revenue_fonctions(income, values, title):
+def tracer_et_integrer_revenue_fonctions(income, values, title, period):
 
     sorted_indices = numpy.argsort(income)
     income = income[sorted_indices]
@@ -383,7 +384,7 @@ def tracer_et_integrer_revenue_fonctions(income, values, title):
     plt.ylabel(title)
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/{}_revenue_function.png'.format(title))
+    plt.savefig('../outputs/revenue_function/{title}_revenue_function_{annee}.png'.format(title = title, annee = period))
 
     return integral_pchip
 

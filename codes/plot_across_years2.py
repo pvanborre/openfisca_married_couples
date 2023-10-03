@@ -33,7 +33,7 @@ def main():
     
     # Display or save the plot
     plt.show()
-    plt.savefig('../outputs/graphe_15.png')
+    plt.savefig('../outputs/15/graphe_15.png')
 
 if __name__ == "__main__":
     main()
