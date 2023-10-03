@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from scipy.interpolate import CubicSpline, PchipInterpolator
 
+import sys
+
 import click
 
 from openfisca_core.simulation_builder import SimulationBuilder
@@ -15,6 +17,10 @@ from openfisca_france.model.base import *
 
 
 pandas.options.display.max_columns = None
+
+def redirect_print_to_file(filename):
+    sys.stdout = open(filename, 'a')
+redirect_print_to_file('output.txt')
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -453,3 +459,6 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 
 simulation_reforme()
+
+sys.stdout.close()
+sys.stdout = sys.__stdout__
