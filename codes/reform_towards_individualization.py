@@ -322,7 +322,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         is_winner = secondary_earning_maries_pacses*rapport[i] > primary_earning_maries_pacses
         pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_maries_pacses)
         print("Scenario", i)
-        print("Pourcentage de gagnants pour ce scenario", pourcentage_gagnants[i])
+        print("Pourcentage de gagnants", pourcentage_gagnants[i])
     
 
 
@@ -356,8 +356,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     plt.show()
     plt.savefig('../outputs/14/graphe_14_{annee}.png'.format(annee = period))
 
+    
 
-    print('Pourcentage de gagnants ', pourcentage_gagnants)
 
     
 
