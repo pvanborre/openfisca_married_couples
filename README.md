@@ -337,8 +337,5 @@ python without_reform.py -y YEAR
 
 If you want to run all codes in a single command you could do this :
 ```sh
-for i in $(seq 2005 2019);
-do
-    python reform_towards_individualization.py -y $i
-done
+bash graphe15.sh
 ``` 

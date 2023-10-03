@@ -8,7 +8,7 @@ from openfisca_france import FranceTaxBenefitSystem
 
 pandas.options.display.max_columns = None
 
-tax_benefit_system = FranceTaxBenefitSystem()
+
 
 
 @click.command()
@@ -27,6 +27,7 @@ def simulate_sans_reforme(annee = None):
     ########### Simulation ##############################
     #####################################################
 
+    tax_benefit_system = FranceTaxBenefitSystem()
     simulation = initialiser_simulation(tax_benefit_system, data_persons)
     period = str(annee)
 

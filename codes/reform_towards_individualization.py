@@ -2,6 +2,10 @@
 import numpy
 import pandas
 import matplotlib.pyplot as plt
+from scipy.integrate import quad
+from scipy.interpolate import CubicSpline, PchipInterpolator
+
+import sys
 
 import click
 
@@ -13,7 +17,10 @@ from openfisca_france.model.base import *
 
 
 pandas.options.display.max_columns = None
-#annee_simulation = 2009
+
+def redirect_print_to_file(filename):
+    sys.stdout = open(filename, 'a')
+redirect_print_to_file('output.txt')
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -85,59 +92,108 @@ class vers_individualisation(Reform):
         self.add_variable(secondary_earning)
 
 
-        class irpp(Variable):
-            value_type = float
-            entity = FoyerFiscal
-            label = "Impot sur le revenu réformé"
-            definition_period = YEAR
 
-            def formula(foyer_fiscal, period, parameters):
+def cdf_earnings(earning, maries_ou_pacses, period, title):
+    earnings_maries_pacses = earning[maries_ou_pacses]
+    counts = numpy.array([numpy.sum(earnings_maries_pacses <= y2) for y2 in earnings_maries_pacses])
 
-                iai = foyer_fiscal('iai', period)
-                credits_impot = foyer_fiscal('credits_impot', period)
-                acomptes_ir = foyer_fiscal('acomptes_ir', period)
-                contribution_exceptionnelle_hauts_revenus = foyer_fiscal('contribution_exceptionnelle_hauts_revenus', period)
-                P = parameters(period).impot_revenu.calcul_impot_revenu.recouvrement
+    cdf = numpy.zeros_like(earning, dtype=float)
+    cdf[maries_ou_pacses] = counts/len(earnings_maries_pacses)
+    print("check de la cdf", cdf)
 
-                pre_result = iai - credits_impot - acomptes_ir + contribution_exceptionnelle_hauts_revenus
+    # plot here figure B17 cumulative distribution function of gross income
+    plt.figure()
+    plt.scatter(earning[earning >= 0], cdf[earning >= 0], s = 10)
+    plt.xlabel('Revenu annuel')
+    plt.title("{type} earnings cumulative distribution function - january {annee}".format(type = title, annee = period))
+    plt.show()
+    plt.savefig('../outputs/B17/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
 
-                
-                primary_earning_maries_pacses = foyer_fiscal('primary_earning', period) 
-                secondary_earning_maries_pacses = foyer_fiscal('secondary_earning', period) 
-                
+    return cdf
 
-                tau_1 = 0.1 # comment bien choisir tau_1 ????
-                tau_2 = - tau_1 * sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses) 
-                # cette déf de tau_2 assure qu'on est à budget de l'Etat constant 
-                # car avant on avait SUM(IRPP) et désormais on a SUM(IRPP) + tau_1 SUM(revenu_declarant_principal) + tau_2 SUM(revenu_conjoint)
-                # on égalise les deux termes et on trouve l'expression demandée 
 
-                print("tau_2 est", sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses) , "fois plus élevé que tau_1 en valeur absolue") 
 
-                return (
-                    (iai > P.seuil) * (
-                        (pre_result < P.min)
-                        * (pre_result > 0)
-                        * iai
-                        * 0
-                        + ((pre_result <= 0) + (pre_result >= P.min))
-                        * (- pre_result)
-                        )
-                    + (iai <= P.seuil) * (
-                        (pre_result < 0)
-                        * (-pre_result)
-                        + (pre_result >= 0)
-                        * 0
-                        * iai
-                        )
-                    + tau_1 * primary_earning_maries_pacses/12 
-                    + tau_2 * secondary_earning_maries_pacses/12 
-                    )
+def gaussian_kernel(x):
+    return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
 
-        self.replace_variable(irpp)
+def density_earnings(earning, maries_ou_pacses, period, title):
+    earnings_maries_pacses = earning[maries_ou_pacses]
+    
+    # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
+    n = len(earnings_maries_pacses)
+    estimated_std = numpy.std(earnings_maries_pacses, ddof=1)  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+    print("bandwidth", bandwidth)
 
-tax_benefit_system = FranceTaxBenefitSystem()
-tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+    # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
+    kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
+    density = numpy.zeros_like(earning, dtype=float)
+    density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+    density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
+
+    print("check de la densite", density)
+
+    # plot here figure B14 probability density function 
+    plt.figure()
+    plt.scatter(earning[earning >= 0], density[earning >= 0], s = 10)
+    plt.xlabel('Revenu annuel')
+    plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
+    plt.show()
+    plt.savefig('../outputs/B14/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
+
+    return density
+
+
+
+
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 0.05):
+    output = numpy.zeros_like(earning, dtype=float)
+    for i in range(len(earning)):
+        diff = numpy.abs(earning - earning[i])
+        ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
+        ir_taux_marginal2[diff > borne] = 0
+        output[i] = numpy.sum(ir_taux_marginal2 / (1 - ir_taux_marginal2))/numpy.sum(diff <= borne)
+
+    return output*maries_ou_pacses
+
+
+
+def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
+    revenu = primary_earning + secondary_earning
+
+    sorted_indices = numpy.argsort(revenu)
+    earning_sorted = revenu[sorted_indices]
+    ir_marginal_sorted = ir_taux_marginal[sorted_indices]
+
+    unique_incomes = numpy.unique(earning_sorted) #unique nécessaire car sinon divisions par 0 dans le gradient
+    mean_values = [numpy.mean(ir_marginal_sorted[earning_sorted == i]) for i in unique_incomes]
+    tax_two_sorted = numpy.gradient(mean_values, unique_incomes)
+    tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
+
+    original_indices = numpy.argsort(sorted_indices)
+    return tax_two_original[original_indices]
+
+def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
+    # formule en lemma 4 
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    return maries_ou_pacses * eps1 * 1/denominateur
+
+def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
+    # formule en lemma 4 
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    return maries_ou_pacses * eps2 * 1/denominateur
+
+
+def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
+
+    behavioral = - earning * density * elasticity * esperance_taux_marginal  
+    mechanical = 1 - cdf
+    return (behavioral + mechanical) * maries_ou_pacses
+
+
+
+
+
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
@@ -154,11 +210,14 @@ def simulation_reforme(annee = None):
     ########### Simulation ##############################
     #####################################################
 
+    tax_benefit_system = FranceTaxBenefitSystem()
+    tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+
 
 
 
     simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-    simulation.trace = True #utile pour voir toutes les étapes de la simulation
+    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
 
     period = str(annee)
 
@@ -178,64 +237,122 @@ def simulation_reforme(annee = None):
                 simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
     
 
-
-
-    total_taxes = simulation.calculate('irpp', period)
-    print(total_taxes)
-
-
+    ancien_irpp = simulation.calculate('irpp', period)
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
-
+    ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
     primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
-    primary_earning_maries_pacses = primary_earning_maries_pacses[maries_ou_pacses]
-    print("revenu du déclarant principal", primary_earning_maries_pacses)
-
     secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
-    secondary_earning_maries_pacses = secondary_earning_maries_pacses[maries_ou_pacses]
-    print("revenu du conjoint", secondary_earning_maries_pacses)
+    
 
-    #simulation.tracer.print_computation_log()
+    cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
 
+    cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    
+    tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
+
+    graphe14(primary_earning = primary_earning_maries_pacses, 
+             secondary_earning = secondary_earning_maries_pacses,
+             maries_ou_pacses = maries_ou_pacses, 
+             ancien_irpp = ancien_irpp, 
+             ir_taux_marginal = ir_taux_marginal,
+             tax_two_derivative_simulation = tax_two_derivative_simulation,
+             cdf_primary_earnings = cdf_primary_earnings,
+             cdf_secondary_earnings = cdf_secondary_earnings,
+             density_primary_earnings = density_primary_earnings,
+             density_secondary_earnings = density_secondary_earnings,
+             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+             period = period)
+    
+def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
+ 
+    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
+    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
+
+    eps1_tab = [0.25, 0.5, 0.75]
+    eps2_tab = [0.75, 0.5, 0.25]
+    rapport = [0.0]*len(eps1_tab)
+    pourcentage_gagnants = [0.0]*len(eps1_tab)
+
+    for i in range(len(eps1_tab)):
+        primary_elasticity_maries_pacses = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
+        secondary_elasticity_maries_pacses = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
         
-    #####################################################
-    ########### Reproduction graphe 14 ##################
-    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, parmi les couples mariés ou pacsés, en janvier de l'année considérée
-    #####################################################
+        primary_revenue_function = revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
+        secondary_revenue_function = revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
 
-    # Statistiques descriptives
-    nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
-    print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
-    print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
+        if i == 0:
+            primary_earning_maries_pacses = primary_earning[maries_ou_pacses]
+            print("revenu du déclarant principal", primary_earning_maries_pacses)
+            secondary_earning_maries_pacses = secondary_earning[maries_ou_pacses]
+            print("revenu du conjoint", secondary_earning_maries_pacses)
+
+            # Statistiques descriptives
+            nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
+            print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
+            print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
 
 
-    # on enlève les outliers
-    condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
-    primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
-    secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
-    print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
+            # on enlève les outliers
+            condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
+            primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
+            secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
+            print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
 
-    # TODO question (j'aimerais bien ici ajouter les poids wprm ici)
-    # serait facile à ajouter ici mais dans la def de tau2 dans la réforme serait plus compliqué car il n'existe pas de poids dans la simulation 
-    rapport = sum(primary_earning_maries_pacses)/sum(secondary_earning_maries_pacses)
-    print("rapport", rapport)
+            ancien_irpp = ancien_irpp[maries_ou_pacses]
+            ancien_irpp = ancien_irpp[condition]
 
-    # nombre de gagnants
-    is_winner = secondary_earning_maries_pacses*rapport > primary_earning_maries_pacses
-    print("Nombre de gagnants", is_winner.sum())
-    pourcentage_gagnants = round(100*is_winner.sum()/len(primary_earning_maries_pacses))
-    print("Pourcentage de gagnants", pourcentage_gagnants)
+        primary_revenue_function = primary_revenue_function[maries_ou_pacses]
+        primary_revenue_function = primary_revenue_function[condition]
+        secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
+        secondary_revenue_function = secondary_revenue_function[condition]
+
+
+        primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary', period)
+        secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary', period)
+        rapport[i] = primary_integral/secondary_integral
+        print('rapport integrales scenario ', i, " ", rapport[i])
+
+
+        tau_1 = 0.1 # comment bien choisir tau_1 ????
+        tau_2 = - tau_1 * rapport[i]
+        
+        nouvel_irpp = -ancien_irpp + tau_1 * primary_earning_maries_pacses/12 + tau_2 * secondary_earning_maries_pacses/12 
+        print("IR après réforme scenario ", i, " ", nouvel_irpp)
+
+        # nombre de gagnants
+        is_winner = secondary_earning_maries_pacses*rapport[i] > primary_earning_maries_pacses
+        pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_maries_pacses)
+        print("Scenario", i)
+        print("Pourcentage de gagnants", pourcentage_gagnants[i])
+    
+
 
 
 
     plt.figure()
     x = numpy.linspace(0, 600000, 4)
-    plt.plot(x, x, label = "1e bissectrice x -> x")
-    plt.plot(x, rapport*x, label = "Droite de séparation des foyers fiscaux perdants et gagnants")
+    plt.plot(x, x, c = '#828282')
+
+    green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
+    for i in range(len(eps1_tab)):
+        color = green_shades[i]
+        plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (600000 + 200000*i, 100000), bbox = dict(boxstyle ="round", fc = color))
+
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
-    plt.annotate(str(pourcentage_gagnants)+ " %", xy = (1000000, 100000), bbox = dict(boxstyle ="round", fc ="0.8"))
+    eps = 10
+    plt.xlim(-eps, max(secondary_earning_maries_pacses)) 
+    plt.ylim(-eps, max(primary_earning_maries_pacses)) 
+
     plt.grid()
-    plt.axis('equal')  
+    plt.axis('equal') 
+
 
     plt.xlabel('Revenu annuel du secondary earner du foyer fiscal')
     plt.ylabel('Revenu annuel du primary earner du foyer fiscal')
@@ -243,12 +360,46 @@ def simulation_reforme(annee = None):
 
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/graphe_14_{}.png'.format(period))
+    plt.savefig('../outputs/14/graphe_14_{annee}.png'.format(annee = period))
+
+    
 
 
+    
+
+    
 
 
+def tracer_et_integrer_revenue_fonctions(income, values, title, period):
 
+    sorted_indices = numpy.argsort(income)
+    income = income[sorted_indices]
+    values = values[sorted_indices]
+
+    unique_incomes = numpy.unique(income) # on a besoin du unique pour l'interpolation 
+    mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
+    
+    pchip = PchipInterpolator(unique_incomes, mean_values)
+    integral_pchip = pchip.integrate(min(unique_incomes), max(unique_incomes))
+    print("Integrale hermite interpolation", integral_pchip)
+
+
+    x_continuous = numpy.linspace(min(income), max(income), 1000)
+   
+    plt.figure()
+    plt.plot(x_continuous, pchip(x_continuous), label='hermite')
+    plt.scatter(income, values, label='Discrete Data', color='red')
+    plt.xlabel('Income')
+    plt.ylabel(title)
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/revenue_function/{title}_revenue_function_{annee}.png'.format(title = title, annee = period))
+
+    return integral_pchip
+
+
+# TODO : plot cumulative distribution function (figure b21 et 22)
+# TODO : plot esperance T'/(1-T') (figure b23 et 24)
 
 
 def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entite, id_entite_join, role_entite, nom_role_0, nom_role_1, nom_role_2):
@@ -308,3 +459,6 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 
 simulation_reforme()
+
+sys.stdout.close()
+sys.stdout = sys.__stdout__
