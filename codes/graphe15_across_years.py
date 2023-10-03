@@ -14,7 +14,7 @@ for line in matching_lines:
 
 print("Percentages found:", percentages)
 
-start = 2018
+start = 2005
 end = 2020
 years = list(range(start, end))  
 
