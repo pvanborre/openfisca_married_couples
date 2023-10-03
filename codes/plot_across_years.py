@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 def plot_results(results):
-    years = list(range(2005, 2020))  
+    years = list(range(2018, 2020))  
 
     numeric_results = [float(result) for result in results]
 

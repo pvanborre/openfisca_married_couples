@@ -1,12 +1,9 @@
 #!/bin/bash
-
-
 percentages=()
-
-for i in $(seq 2005 2019); do
+for i in $(seq 2018 2019); do
     result=$(python reform_towards_individualization.py -y $i)
     
-    if [[ $result =~ Pourcentage\ de\ gagnants\ ([0-9]+) ]]; then
+    if [[ $result =~ Pourcentage\ de\ gagnants\ (.+) ]]; then
         percentage="${BASH_REMATCH[1]}"  
         percentages+=("$percentage")
     else
