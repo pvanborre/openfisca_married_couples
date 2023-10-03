@@ -18,9 +18,9 @@ from openfisca_france.model.base import *
 
 pandas.options.display.max_columns = None
 
-def redirect_print_to_file(filename):
-    sys.stdout = open(filename, 'a')
-redirect_print_to_file('output.txt')
+# def redirect_print_to_file(filename):
+#     sys.stdout = open(filename, 'a')
+# redirect_print_to_file('output.txt')
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -125,12 +125,25 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     bandwidth = 1.06 * estimated_std * n ** (-1/5)
     print("bandwidth", bandwidth)
 
-    # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
-    kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
     density = numpy.zeros_like(earning, dtype=float)
-    density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
-    density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
 
+    # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
+    # ce code vectorisé marche bien sauf pour 3 années où j'ai une erreur de mémoire
+    #if period not in ['2010', '2011', '2012']:
+    kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
+    density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+    print("densite vecto", density)
+    #else:
+    density = numpy.zeros_like(earning, dtype=float)
+    for i in range(len(density)):
+        if maries_ou_pacses[i]:
+            for j in range(len(earnings_maries_pacses)):
+                density[i] += gaussian_kernel((earnings_maries_pacses[j] - earnings_maries_pacses[i]) / bandwidth)
+            density[i] = 1 /(n*bandwidth) * density[i]
+    print("densite non vecto", density)
+
+    
+    density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
     print("check de la densite", density)
 
     # plot here figure B14 probability density function 
@@ -201,8 +214,9 @@ def simulation_reforme(annee = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
+    print('lecture se passe bien')
     data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
-
+    print('fusion se passe bien')
     print("Table des personnes")
     print(data_persons, "\n\n\n\n\n")
 
@@ -460,5 +474,5 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 simulation_reforme()
 
-sys.stdout.close()
-sys.stdout = sys.__stdout__
+# sys.stdout.close()
+# sys.stdout = sys.__stdout__
