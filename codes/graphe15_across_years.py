@@ -16,7 +16,9 @@ print("Percentages found:", percentages)
 
 start = 2005
 end = 2020
-years = list(range(start, end))  
+years = list(range(2005,2010))
+for i in range(2013, 2020):
+    years.append(i)
 
 
 plt.figure()
