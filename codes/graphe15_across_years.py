@@ -6,25 +6,27 @@ with open('output.txt', 'r') as file:
 search_pattern = "Pourcentage de gagnants"
 matching_lines = [line for line in lines if search_pattern in line]
 
-percentages = []
+nombre_scenarios = 3
+percentages = [[] for _ in range(nombre_scenarios)]
+
 for line in matching_lines:
     parts = line.split()
-    percentage = parts[-1]
-    percentages.append(float(percentage))
+    annee = int(parts[-3])
+    scenario = int(parts[-2])
+    percentage = float(parts[-1])
+    percentages[scenario].append([annee,percentage])
+
+for i in range(nombre_scenarios):
+    percentages[i].sort(key=lambda lst:lst[0]) # on trie sur les années
 
 print("Percentages found:", percentages)
 
-start = 2005
-end = 2019
-years = list(range(start,end+1))
-
-# TODO : mieux de stocker resultat extraction sous forme de dictionnaire annee : pourcentage
-# comme cela si on saute une année cela est plus robuste 
 
 plt.figure()
-plt.plot(years, percentages[0:len(percentages):3], marker='o', linestyle='-')
-plt.plot(years, percentages[1:len(percentages):3], marker='o', linestyle='-')
-plt.plot(years, percentages[2:len(percentages):3], marker='o', linestyle='-')
+
+for i in range(nombre_scenarios):
+    plt.plot([inner[0] for inner in percentages[i]], [inner[1] for inner in percentages[i]], marker='o', linestyle='-')
+
 plt.xlabel('Annees')
 plt.ylabel('Pourcentage de gagnants')
 plt.title('Pourcentage de gagnants à une réforme vers \n l\'individualisation de l\'impot au cours du temps')
