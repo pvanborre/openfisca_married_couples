@@ -4,6 +4,7 @@ import pandas
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from scipy.interpolate import CubicSpline, PchipInterpolator
+from scipy.signal import convolve
 
 import sys
 
@@ -21,6 +22,7 @@ pandas.options.display.max_columns = None
 def redirect_print_to_file(filename):
     sys.stdout = open(filename, 'a')
 redirect_print_to_file('output.txt')
+# TODO : changer le nom de output.txt en output_graphe_15.txt sinon trop risqué
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -461,6 +463,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
+    #plt.axis("equal")
+
     eps = 5000
     plt.xlim(-eps, max(secondary_earning_maries_pacses)) 
     plt.ylim(-eps, max(primary_earning_maries_pacses)) 
@@ -491,26 +495,39 @@ def tracer_et_integrer_revenue_fonctions(income, values, title, period):
     income = income[sorted_indices]
     values = values[sorted_indices]
 
-    unique_incomes = numpy.unique(income) # on a besoin du unique pour l'interpolation 
-    mean_values = [numpy.mean(values[income == i]) for i in unique_incomes]
+    # le but ici est de convoler nos points pas juste avec une gaussienne
+    # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
     
-    pchip = PchipInterpolator(unique_incomes, mean_values)
-    integral_pchip = pchip.integrate(min(unique_incomes), max(unique_incomes))
-    print("Integrale hermite interpolation", integral_pchip)
+    sigma = 1.0  
+    kernel_size = int(6 * sigma) * 2 + 1
+    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
 
-
-    x_continuous = numpy.linspace(min(income), max(income), 1000)
    
+    dirac_delta = numpy.zeros_like(x_kernel)
+    dirac_delta[len(x_kernel) // 3] = 0.3
+
+    
+    combined_kernel = gaussian_kernel + dirac_delta
+    combined_kernel /= numpy.sum(combined_kernel)
+
+    smoothed_y = convolve(values, combined_kernel, mode='same')
+
+    
     plt.figure()
-    plt.plot(x_continuous, pchip(x_continuous), label='hermite')
     plt.scatter(income, values, label='Discrete Data', color='red')
-    plt.xlabel('Income')
-    plt.ylabel(title)
+    plt.plot(income, smoothed_y, label='Smoothed Data')
     plt.legend()
     plt.show()
     plt.savefig('../outputs/revenue_function/{title}_revenue_function_{annee}.png'.format(title = title, annee = period))
 
-    return integral_pchip
+    
+    integral_trap = numpy.trapz(smoothed_y, income)
+    print("Integral of smoothed_y:", integral_trap)
+
+    return integral_trap
+
+
 
 
 # TODO : plot cumulative distribution function (figure b21 et 22)
