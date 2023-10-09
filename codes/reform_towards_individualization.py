@@ -205,6 +205,40 @@ def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_p
 
 
 
+def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
+    revenu = primary_earning + secondary_earning
+    revenu[revenu == 0] = 0.0001 # sinon division lève une erreur 
+    revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles 
+    
+
+    part_primary = primary_earning[maries_ou_pacses]/revenu * 100 
+
+    revenu_sorted = numpy.sort(revenu)
+
+    deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
+
+    decile_numbers = numpy.digitize(revenu, deciles) 
+
+    
+    decile_means = []
+    for i in range(1, 11):
+        mask = (decile_numbers == i)
+        decile_part_primary = part_primary[mask]
+        moyenne_part_primary = numpy.mean(decile_part_primary)
+        decile_means.append(moyenne_part_primary)
+        
+    decile_means = numpy.array(decile_means)
+    
+    plt.figure()
+    plt.scatter(numpy.arange(1,11), decile_means, s = 10)
+    plt.xlabel('Gross income decile')
+    plt.ylabel('Percent')
+    plt.title("Median share of primary earner - {annee}".format(annee = period))
+    plt.show()
+    plt.savefig('../outputs/17/graphe_17_{annee}.png'.format(annee = period))
+
+    
+
 
 
 
@@ -281,6 +315,11 @@ def simulation_reforme(annee = None):
              primary_esperance_taux_marginal = primary_esperance_taux_marginal,
              secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
              period = period)
+    
+    graph17(primary_earning = primary_earning_maries_pacses, 
+            secondary_earning = secondary_earning_maries_pacses, 
+            maries_ou_pacses = maries_ou_pacses,
+            period = period)
     
 def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
  
@@ -360,12 +399,12 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
-    eps = 10
+    eps = 5000
     plt.xlim(-eps, max(secondary_earning_maries_pacses)) 
     plt.ylim(-eps, max(primary_earning_maries_pacses)) 
 
     plt.grid()
-    plt.axis('equal') 
+    
 
 
     plt.xlabel('Revenu annuel du secondary earner du foyer fiscal')
