@@ -214,9 +214,9 @@ def simulation_reforme(annee = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
-    print('lecture se passe bien')
+    
     data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
-    print('fusion se passe bien')
+    
     print("Table des personnes")
     print(data_persons, "\n\n\n\n\n")
 
@@ -342,7 +342,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         is_winner = secondary_earning_maries_pacses*rapport[i] > primary_earning_maries_pacses
         pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_maries_pacses)
         print("Scenario", i)
-        print("Pourcentage de gagnants", pourcentage_gagnants[i])
+        print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
     
 
 
