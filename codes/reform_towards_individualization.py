@@ -125,12 +125,25 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     bandwidth = 1.06 * estimated_std * n ** (-1/5)
     print("bandwidth", bandwidth)
 
-    # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
-    kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
     density = numpy.zeros_like(earning, dtype=float)
-    density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
-    density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
 
+    # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
+    
+
+    if period not in ['2010', '2011', '2012']:
+        # ce code vectorisé marche bien sauf pour ces 3 années où j'ai une memory error
+        kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
+        density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+
+    else:
+        # pour les 3 années concernées, on revient à un code avec une boucle for 
+        for i in range(len(earning)):
+            if maries_ou_pacses[i]:
+                kernel_values = gaussian_kernel((earnings_maries_pacses - earning[i]) / bandwidth)
+                density[i] = numpy.mean(kernel_values) * 1/bandwidth
+
+    
+    density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
     print("check de la densite", density)
 
     # plot here figure B14 probability density function 
@@ -201,8 +214,9 @@ def simulation_reforme(annee = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
+    
     data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
-
+    
     print("Table des personnes")
     print(data_persons, "\n\n\n\n\n")
 
@@ -328,7 +342,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         is_winner = secondary_earning_maries_pacses*rapport[i] > primary_earning_maries_pacses
         pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_maries_pacses)
         print("Scenario", i)
-        print("Pourcentage de gagnants", pourcentage_gagnants[i])
+        print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
     
 
 
