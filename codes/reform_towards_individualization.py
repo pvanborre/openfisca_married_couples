@@ -18,9 +18,9 @@ from openfisca_france.model.base import *
 
 pandas.options.display.max_columns = None
 
-# def redirect_print_to_file(filename):
-#     sys.stdout = open(filename, 'a')
-# redirect_print_to_file('output.txt')
+def redirect_print_to_file(filename):
+    sys.stdout = open(filename, 'a')
+redirect_print_to_file('output.txt')
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
@@ -128,19 +128,19 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     density = numpy.zeros_like(earning, dtype=float)
 
     # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
-    # ce code vectorisé marche bien sauf pour 3 années où j'ai une erreur de mémoire
-    #if period not in ['2010', '2011', '2012']:
-    kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
-    density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
-    print("densite vecto", density)
-    #else:
-    density = numpy.zeros_like(earning, dtype=float)
-    for i in range(len(density)):
-        if maries_ou_pacses[i]:
-            for j in range(len(earnings_maries_pacses)):
-                density[i] += gaussian_kernel((earnings_maries_pacses[j] - earnings_maries_pacses[i]) / bandwidth)
-            density[i] = 1 /(n*bandwidth) * density[i]
-    print("densite non vecto", density)
+    
+
+    if period not in ['2010', '2011', '2012']:
+        # ce code vectorisé marche bien sauf pour ces 3 années où j'ai une memory error
+        kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
+        density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+
+    else:
+        # pour les 3 années concernées, on revient à un code avec une boucle for 
+        for i in range(len(earning)):
+            if maries_ou_pacses[i]:
+                kernel_values = gaussian_kernel((earnings_maries_pacses - earning[i]) / bandwidth)
+                density[i] = numpy.mean(kernel_values) * 1/bandwidth
 
     
     density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
@@ -474,5 +474,5 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 simulation_reforme()
 
-# sys.stdout.close()
-# sys.stdout = sys.__stdout__
+sys.stdout.close()
+sys.stdout = sys.__stdout__
