@@ -56,6 +56,25 @@ class vers_individualisation(Reform):
         
         self.add_variable(revenu_individu)
 
+        class revenu_celibataire(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Revenu d'un célibataire"
+            definition_period = YEAR
+
+ 
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                celibataire_ou_divorce = foyer_fiscal('celibataire_ou_divorce', period)
+                veuf = foyer_fiscal('veuf', period)
+
+                return max_(revenu_declarant_principal, revenu_du_conjoint) * (celibataire_ou_divorce | veuf)
+
+        self.add_variable(revenu_celibataire)
+
 
         class primary_earning(Variable):
             value_type = float
@@ -239,6 +258,41 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
 
     
 
+def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, ir_taux_marginal, period):
+
+    revenu = primary_earning + secondary_earning
+        
+    plt.figure()
+    
+    # distinguer singles et couples
+
+    # couples
+    revenu_couples = revenu[maries_ou_pacses]
+    mtr_couples = ir_taux_marginal[maries_ou_pacses]
+    
+    sorted_indices = numpy.argsort(revenu_couples)
+    earning_sorted = revenu_couples[sorted_indices]
+    ir_marginal_sorted = mtr_couples[sorted_indices]
+
+    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "couples")
+    
+    # singles
+    revenu_celib = revenu_celib[~maries_ou_pacses]
+    mtr_celib = ir_taux_marginal[~maries_ou_pacses]
+    
+    sorted_indices = numpy.argsort(revenu_celib)
+    earning_sorted = revenu_celib[sorted_indices]
+    ir_marginal_sorted = mtr_celib[sorted_indices]
+
+    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "singles")
+    
+    
+    plt.xlabel('Gross earnings')
+    plt.ylabel('MTR')
+    plt.title("Effective marginal tax rates - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B15/graphe_B15_{annee}.png'.format(annee = period))
 
 
 
@@ -290,7 +344,7 @@ def simulation_reforme(annee = None):
     ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
     primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
     secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
-    
+    revenu_celib = simulation.calculate('revenu_celibataire', period)
 
     cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
@@ -320,6 +374,14 @@ def simulation_reforme(annee = None):
             secondary_earning = secondary_earning_maries_pacses, 
             maries_ou_pacses = maries_ou_pacses,
             period = period)
+    
+    graphB15(primary_earning = primary_earning_maries_pacses,
+            secondary_earning = secondary_earning_maries_pacses,
+            revenu_celib = revenu_celib, 
+            maries_ou_pacses = maries_ou_pacses,
+            ir_taux_marginal = ir_taux_marginal, 
+            period = period)
+            
     
 def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
  
