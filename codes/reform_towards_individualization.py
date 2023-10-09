@@ -180,13 +180,49 @@ def density_earnings(earning, maries_ou_pacses, period, title):
 
 
 
-def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 0.05):
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period, title, borne = 500):
     output = numpy.zeros_like(earning, dtype=float)
+
     for i in range(len(earning)):
         diff = numpy.abs(earning - earning[i])
         ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
         ir_taux_marginal2[diff > borne] = 0
         output[i] = numpy.sum(ir_taux_marginal2 / (1 - ir_taux_marginal2))/numpy.sum(diff <= borne)
+
+    sorted_indices = numpy.argsort(earning)
+    earning_sorted = earning[sorted_indices]
+    values = ir_taux_marginal/(1-ir_taux_marginal)
+    values_sorted = values[sorted_indices]
+    
+
+
+    diff_indices = numpy.where(numpy.diff(earning_sorted) > borne)[0]
+    y_chunks = numpy.split(values_sorted, diff_indices + 1)
+    y_averaged = numpy.array([numpy.mean(chunk) for chunk in y_chunks])
+    
+
+    new_x = earning_sorted[diff_indices]
+    new_y = y_averaged
+    min_length = min(len(new_x), len(new_y))
+    new_x = new_x[:min_length]
+    new_y = new_y[:min_length]
+    
+
+    # graphes B23 et B24
+    plt.figure()
+    plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#8c564b')
+    plt.scatter(earning[earning >= 0], output[earning >= 0], s = 10, c = '#17becf')
+    # plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#17becf')
+    # plt.scatter(new_x[new_x >= 0], new_y[new_x >= 0], s = 10, c = '#8c564b')
+    plt.xlabel('{type} Earnings'.format(type = title))
+    plt.ylabel("Tm'/(1-Tm')")
+    plt.title("Average marginal tax rates by {type} earnings - january {annee}".format(type = title, annee = period))
+    plt.show()
+    if title == 'primary':
+        plt.savefig('../outputs/B23/graphe_B23_{type}_{annee}.png'.format(type = title, annee = period))
+    else:
+        plt.savefig('../outputs/B24/graphe_B24_{type}_{annee}.png'.format(type = title, annee = period))
+
 
     return output*maries_ou_pacses
 
@@ -350,11 +386,11 @@ def simulation_reforme(annee = None):
 
     cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'primary')
 
     cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'secondary')
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
