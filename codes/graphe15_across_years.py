@@ -15,11 +15,11 @@ for line in matching_lines:
 print("Percentages found:", percentages)
 
 start = 2005
-end = 2020
-years = list(range(2005,2010))
-for i in range(2013, 2020):
-    years.append(i)
+end = 2019
+years = list(range(start,end+1))
 
+# TODO : mieux de stocker resultat extraction sous forme de dictionnaire annee : pourcentage
+# comme cela si on saute une année cela est plus robuste 
 
 plt.figure()
 plt.plot(years, percentages[0:len(percentages):3], marker='o', linestyle='-')
