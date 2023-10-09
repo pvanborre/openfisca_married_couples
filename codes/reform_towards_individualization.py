@@ -19,9 +19,9 @@ from openfisca_france.model.base import *
 
 pandas.options.display.max_columns = None
 
-# def redirect_print_to_file(filename):
-#     sys.stdout = open(filename, 'a')
-# redirect_print_to_file('output.txt')
+def redirect_print_to_file(filename):
+    sys.stdout = open(filename, 'a')
+redirect_print_to_file('output.txt')
 # TODO : changer le nom de output.txt en output_graphe_15.txt sinon trop risqué
 
 
@@ -459,7 +459,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     for i in range(len(eps1_tab)):
         color = green_shades[i]
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
-        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (200000 + 100000*i, 100000), bbox = dict(boxstyle ="round", fc = color))
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (600000 + 200000*i, 100000), bbox = dict(boxstyle ="round", fc = color))
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
@@ -592,5 +592,5 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 simulation_reforme()
 
-# sys.stdout.close()
-# sys.stdout = sys.__stdout__
+sys.stdout.close()
+sys.stdout = sys.__stdout__
