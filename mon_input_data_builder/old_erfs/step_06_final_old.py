@@ -62,7 +62,7 @@ def create_input_data_frame(temporary_store = None, year = None, export_flattene
     else:
         var_menages = [
             'idmen',
-            #'loyer',
+            'loyer',
             'taxe_habitation',
             'wprm',
             ]
