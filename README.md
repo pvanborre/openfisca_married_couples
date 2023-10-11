@@ -323,7 +323,17 @@ docker rm openfisca-container2
 
 ### Before 2005
 
-It is very complicated to get the .h5 data here.
+Same as before, with these 2 commands now (only the second one changed)
+```sh
+bash ./mon_input_data_builder/erfs-fpr.sh
+``` 
+
+Now run 
+```sh
+python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
+``` 
+
+
 
 ### For all years 
 
