@@ -31,11 +31,11 @@ def build_variables_individuelles(temporary_store = None, year = None):
     openfisca_by_erfs_variable = {
         'chomage_i': 'chomage_imposable',
         'pens_alim_recue_i': 'pensions_alimentaires_percues',
-        #'pens_invalidite_i': 'pensions_invalidite',
-        #'rag_i': 'rag',
+        'pens_invalidite_i': 'pensions_invalidite',
+        'rag_i': 'rag',
         'retraites_i': 'retraite_imposable',
-        #'ric_i': 'ric',
-        #'rnc_i': 'rnc',
+        'ric_i': 'ric',
+        'rnc_i': 'rnc',
         'salaires_i': 'salaire_imposable',
         }
 
@@ -48,7 +48,7 @@ def build_variables_individuelles(temporary_store = None, year = None):
         )
 
 
-    #individus['rpns_imposables'] = individus['rag'] + individus['ric'] + individus['rnc']
+    individus['rpns_imposables'] = individus['rag'] + individus['ric'] + individus['rnc']
 
     create_variables_individuelles(individus, year)
     assert 'salaire_de_base' in individus.columns , 'salaire de base not in individus'
@@ -70,7 +70,7 @@ def create_variables_individuelles(individus, year, survey_year = None, revenu_t
     create_date_naissance(individus, age_variable = None, annee_naissance_variable = 'naia', mois_naissance = 'naim',
          year = year)
     # Base pour constituer les familles, foyers, etc.
-    #create_statut_matrimonial(individus)
+    create_statut_matrimonial(individus)
 
     # variable d'activite
     create_activite(individus)
