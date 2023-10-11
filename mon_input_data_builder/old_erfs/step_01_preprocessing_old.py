@@ -93,10 +93,10 @@ def build_merged_dataframes(temporary_store = None, year = None):
     if 'nopers' in eec_individu.columns:
         eec_individu.rename(columns = {'nopers':'noindiv'}, inplace = True)
 
-    print("eec_individu", sorted(eec_individu.columns))
-    print("eec_menage", eec_menage.columns)
-    print("fpr_individu", fpr_individu.columns)
-    print("fpr_menage", fpr_menage.columns)
+    # print("eec_individu", sorted(eec_individu.columns))
+    # print("eec_menage", eec_menage.columns)
+    # print("fpr_individu", fpr_individu.columns)
+    # print("fpr_menage", fpr_menage.columns)
     
 
     # merge EEC and FPR tables
