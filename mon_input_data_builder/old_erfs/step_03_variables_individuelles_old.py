@@ -470,8 +470,11 @@ def create_categorie_non_salarie(individus):
                 },
             inplace = True
             )
+    
 
     individus['cstot'] = individus.cstot.astype('int')
+    individus.replace({'cstot' : {10: 0}}, inplace = True)
+    
     assert set(individus.cstot.unique()) < set([
         0,
         11, 12, 13,
