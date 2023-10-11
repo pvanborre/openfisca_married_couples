@@ -33,7 +33,7 @@ def create_input_data_frame(temporary_store = None, year = None, export_flattene
         'idmen',
         'noindiv',
         'pensions_alimentaires_percues',
-        'pensions_invalidite',
+        #'pensions_invalidite',
         'quifam',
         'quifoy',
         'quimen',
@@ -62,7 +62,7 @@ def create_input_data_frame(temporary_store = None, year = None, export_flattene
     else:
         var_menages = [
             'idmen',
-            'loyer',
+            #'loyer',
             'taxe_habitation',
             'wprm',
             ]
