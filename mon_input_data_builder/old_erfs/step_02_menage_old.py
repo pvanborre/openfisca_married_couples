@@ -33,4 +33,3 @@ def build_variables_menage(temporary_store = None, year = None):
         menages['logement_conventionne'] = False
         menages.loc[menages['statut_occupation_logement'] == 3 ,'logement_conventionne'] = True
         temporary_store['menages_{}'.format(year)] = menages
-
