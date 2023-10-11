@@ -3,6 +3,8 @@ import gc
 import logging
 import numpy as np
 
+
+
 from openfisca_survey_manager.temporary import temporary_store_decorator  # type: ignore
 from openfisca_france_data.erfs.input_data_builder.step_01_pre_processing import (
     create_variable_locataire,
@@ -91,6 +93,12 @@ def build_merged_dataframes(temporary_store = None, year = None):
     if 'nopers' in eec_individu.columns:
         eec_individu.rename(columns = {'nopers':'noindiv'}, inplace = True)
 
+    print("eec_individu", sorted(eec_individu.columns))
+    print("eec_menage", eec_menage.columns)
+    print("fpr_individu", fpr_individu.columns)
+    print("fpr_menage", fpr_menage.columns)
+    
+
     # merge EEC and FPR tables
     individus, menages = merge_tables(fpr_menage, eec_menage, eec_individu, fpr_individu, year)
 
@@ -150,10 +158,10 @@ def merge_tables(fpr_menage = None, eec_menage = None, eec_individu = None, fpr_
     retrai = 'retrai' if year < 2013 else 'ret'  # TODO attention pas les mêmes modalités
     txtppb = 'txtpp' if year < 2004 else 'txtppb' if year < 2013 else 'txtppred'  # TODO attention pas les mêmes modalités
                                                                                 # + pas utilisee (cf step_03 todo_create)
-    acteu = 'act' if year < 2005 else 'acteu' # mêmes modalités (définition a changé)
+    #acteu = 'act' if year < 2005 else 'acteu' # mêmes modalités (définition a changé)
     cstot = 'dcstot' if year < 2002 else 'cstotr' # mêmes modalité (0 = non-réponse)
     var_list = ([
-        acteu,
+        'acteu',
         agepr,
         cohab,
         'contra',
