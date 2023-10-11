@@ -152,7 +152,9 @@ def merge_tables(fpr_menage = None, eec_menage = None, eec_individu = None, fpr_
 
     # establish list of variables, taking into account differences over time
     agepr = 'agepr' if year < 2013 else "ageprm"
+    agepr = agepr if year > 2001 else "agcm"
     cohab = 'cohab' if year < 2013 else "coured"
+    contra = 'contra' if year > 2001 else 'det'
     lien = 'lien' if year < 2013 else 'lienprm'  # TODO attention pas les mêmes modalités
     prosa = 'prosa' if year < 2013 else 'qprcent'  # TODO attention pas les mêmes modalités
     retrai = 'retrai' if year < 2013 else 'ret'  # TODO attention pas les mêmes modalités
@@ -164,7 +166,7 @@ def merge_tables(fpr_menage = None, eec_menage = None, eec_individu = None, fpr_
         'acteu',
         agepr,
         cohab,
-        'contra',
+        contra,
         'forter',
         lien,
         'mrec',
@@ -323,8 +325,11 @@ def check_naia_naim(individus, year):
         "noindiv",
         ].unique()
 
+    nom_variable_age_quinquennal = 'ageq'
+    if year == 2001:
+        nom_variable_age_quinquennal = 'agq'
     for id in bad_noindiv:
-        individus.loc[individus.noindiv == id,'naia'] = year - individus.loc[individus.noindiv == id, 'ageq']
+        individus.loc[individus.noindiv == id,'naia'] = year - individus.loc[individus.noindiv == id, nom_variable_age_quinquennal]
 
     good = ((year >= individus.naia) & (individus.naia > 1890))
     assertion = good.all()
