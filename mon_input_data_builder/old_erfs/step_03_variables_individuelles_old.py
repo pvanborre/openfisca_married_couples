@@ -28,14 +28,18 @@ def build_variables_individuelles(temporary_store = None, year = None):
 
     individus = temporary_store['individus_{}_post_01'.format(year)]
 
+    nom_rag = "bag_i" if year <= 2001 else "rag_i"
+    nom_ric = "bic_i" if year <= 2001 else "ric_i"
+    nom_rnc = "bnc_i" if year <= 2001 else "rnc_i"
+
     openfisca_by_erfs_variable = {
         'chomage_i': 'chomage_imposable',
         'pens_alim_recue_i': 'pensions_alimentaires_percues',
         #'pens_invalidite_i': 'pensions_invalidite',
-        'rag_i': 'rag',
+        nom_rag: 'rag',
         'retraites_i': 'retraite_imposable',
-        'ric_i': 'ric',
-        'rnc_i': 'rnc',
+        nom_ric: 'ric',
+        nom_rnc: 'rnc',
         'salaires_i': 'salaire_imposable',
         }
 
@@ -70,11 +74,11 @@ def create_variables_individuelles(individus, year, survey_year = None, revenu_t
     create_date_naissance(individus, age_variable = None, annee_naissance_variable = 'naia', mois_naissance = 'naim',
          year = year)
     # Base pour constituer les familles, foyers, etc.
-    create_statut_matrimonial(individus)
+    create_statut_matrimonial(individus, year)
 
     # variable d'activite
-    create_activite(individus)
-    create_contrat_de_travail(individus, period = period, salaire_type = revenu_type)
+    create_activite(individus, year)
+    create_contrat_de_travail(individus, period = period, salaire_type = revenu_type, year = year)
     create_categorie_salarie(individus, period = period, survey_year = survey_year)
     create_categorie_non_salarie(individus)
     # inversion des revenus pour retrouver le brut
@@ -107,7 +111,7 @@ def create_variables_individuelles(individus, year, survey_year = None, revenu_t
     return individus
 
 
-def create_activite(individus):
+def create_activite(individus, year):
     """Création de la variable activite.
 
     0 = Actif occupé
@@ -116,7 +120,7 @@ def create_activite(individus):
     3 = Retraité
     4 = Autre inactif
     """
-    create_actrec(individus)
+    create_actrec(individus, year)
 
     individus['activite'] = np.nan
     individus.loc[individus.actrec <= 3, 'activite'] = 0
@@ -130,7 +134,7 @@ def create_activite(individus):
     assert individus.activite.isin(range(5)).all(), message
 
 
-def create_actrec(individus):
+def create_actrec(individus, year):
     """Création de la variables actrec.
 
     acterc pour activité recodée comme preconisé par l'INSEE p84 du guide méthodologique de l'ERFS
@@ -138,6 +142,16 @@ def create_actrec(individus):
     assert "actrec" not in individus.columns
     individus["actrec"] = np.nan
     acteu = 'act' if 'act' in individus else 'acteu'
+
+    if year <= 2001:
+        individus["stc"] = 2 # valide les deux conditions ci dessous car on n'a pas stc (qui sont les deux seuls endroits où stc utilisé)
+        individus["forter"] = 2
+        individus["rstg"] = 1
+        individus["contra"] = individus["det"]
+        individus["titc"] = individus["tit"]
+        individus["mrec"] = individus["reche"]
+
+
     # Attention : Pas de 6, la variable recodée de l'INSEE (voit p84 du guide methodo), ici \
     # la même nomenclature à été adopée
     # 3: contrat a durée déterminée
@@ -320,15 +334,19 @@ def create_categorie_salarie(individus, period, survey_year = None):
        assert individus.encadr.isin(range(1, 3)).all(), \
            "encadr n'est pas toujours dans l'intervalle [1, 2]\n{}".format(individus.encadr.value_counts(dropna = False))
 
+    if survey_year <= 2001:
+        individus["prosa"] = 7
+
     assert individus.prosa.isin(range(0, 10)).all(), \
         "prosa n'est pas toujours dans l'intervalle [0, 9]\n{}".format(individus.prosa.value_counts())
 
-    statut_values = [0, 11, 12, 13, 21, 22, 33, 34, 35, 43, 44, 45, 99]
-    assert individus.statut.isin(statut_values).all(), \
-        "statut n'est pas toujours dans l'ensemble {} des valeurs antendues.\n{}".format(
-            statut_values,
-            individus.statut.value_counts(dropna = False)
-            )
+    if survey_year > 2001:
+        statut_values = [0, 11, 12, 13, 21, 22, 33, 34, 35, 43, 44, 45, 99]
+        assert individus.statut.isin(statut_values).all(), \
+            "statut n'est pas toujours dans l'ensemble {} des valeurs antendues.\n{}".format(
+                statut_values,
+                individus.statut.value_counts(dropna = False)
+                )
 
     if survey_year >= 2013:
         if individus.titc.isnull().any():
@@ -341,10 +359,11 @@ def create_categorie_salarie(individus, period, survey_year = None):
                 individus.titc.value_counts(dropna = False)
                 )
     else:
-        assert individus.titc.isin(range(4)).all(), \
-            "titc n'est pas toujours dans l'ensemble [0, 1, 2, 3] des valeurs antendues.\n{}".format(
-                individus.titc.value_counts(dropna = False)
-                )
+        if survey_year > 2001:
+            assert individus.titc.isin(range(4)).all(), \
+                "titc n'est pas toujours dans l'ensemble [0, 1, 2, 3] des valeurs antendues.\n{}".format(
+                    individus.titc.value_counts(dropna = False)
+                    )
 
     chpub = individus.chpub
     titc = individus.titc
@@ -474,8 +493,9 @@ def create_categorie_non_salarie(individus):
 
     individus['cstot'] = individus.cstot.astype('int')
     individus.replace({'cstot' : {10: 0}}, inplace = True)
+
     
-    assert set(individus.cstot.unique()) < set([
+    assert set(individus.cstot.unique()) <= set([
         0,
         11, 12, 13,
         21, 22, 23,
@@ -513,7 +533,7 @@ def create_categorie_non_salarie(individus):
         ] = 2  
 
 
-def create_contrat_de_travail(individus, period, salaire_type = 'imposable'):
+def create_contrat_de_travail(individus, period, year, salaire_type = 'imposable'):
     """Création de la variable contrat_de_travail et heure_remunerees_volume.
 
     Ses modliatés sont:
@@ -550,6 +570,10 @@ def create_contrat_de_travail(individus, period, salaire_type = 'imposable'):
         period = periods.period(period)
 
     assert salaire_type in ['net', 'imposable']
+
+    if year <= 2001:
+        individus["hhc"] = individus["hh"].apply(lambda x: '0' if x == 'SP' else x)
+        individus["tppred"] = individus["tp"]
 
     if ((individus.hhc.dtype != 'float') & (individus.hhc.dtype != 'float32')):
         individus.loc[individus.hhc == "", "hhc"] = np.nan
@@ -892,6 +916,9 @@ def create_effectif_entreprise(individus, period = None, survey_year = None):
                 individus.effectif_entreprise.value_counts(dropna = False))
 
     else:
+        if survey_year <= 2001:
+            individus["nbsala"] = individus["nse"]
+            
         assert individus.nbsala.isin(list(range(0, 10)) + [99]).all(), \
             "nbsala n'est pas toujours dans l'intervalle [0, 9] ou 99 \n{}".format(
                 individus.nbsala.value_counts(dropna = False))
@@ -927,7 +954,7 @@ def create_revenus_remplacement_bruts(individus):
     individus['retraite_brute'] =  individus.retraite_imposable + individus.csgrstd_i #+ individus.csg_nd_crds_ret_i
 
 
-def create_statut_matrimonial(individus):
+def create_statut_matrimonial(individus, year):
     """
     Création de la variable statut_marital qui prend les valeurs:
       1 - "Marié",
@@ -943,6 +970,9 @@ def create_statut_matrimonial(individus):
       3 - Veuf(ve)
       4 - Divorcé(e)
     """
+    if year <= 2001:
+        individus['matri'] = individus['m']
+
     assert individus.matri.isin(range(5)).all()
 
     individus['statut_marital'] = 2  # célibataire par défaut
