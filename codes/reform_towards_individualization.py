@@ -564,10 +564,11 @@ def simulation_reforme(annee = None):
             ir_taux_marginal = ir_taux_marginal, 
             period = period)
             
+    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
  
 
 
-# TODO : plot cumulative distribution function (figure b21 et 22)
+# TODO : plot cumulative distribution function (figure b21 et  density 22)
 
 
 
@@ -645,6 +646,21 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     plt.show()
     plt.savefig('../outputs/B15/graphe_B15_{annee}.png'.format(annee = period))
 
+
+
+def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
+    cdf_primary = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    cdf_secondary = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+
+    plt.figure()
+    plt.scatter(primary_earning_maries_pacses[primary_earning_maries_pacses > 0], cdf_primary[primary_earning_maries_pacses > 0], s = 10, label = "primary")
+    plt.scatter(secondary_earning_maries_pacses[secondary_earning_maries_pacses > 0], cdf_secondary[secondary_earning_maries_pacses > 0], s = 10, label = "secondary")
+    plt.xlabel('Gross income')
+    plt.ylabel('CDF')
+    plt.title("Cumulative distribution function, primary and secondary earners - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B21/graphe_B21_{annee}.png'.format(annee = period))
 
 
 
