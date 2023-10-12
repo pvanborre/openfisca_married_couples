@@ -82,7 +82,7 @@ class vers_individualisation(Reform):
             definition_period = YEAR
 
  
-            def formula(foyer_fiscal, period, parameters):
+            def formula(foyer_fiscal, period):
                 revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
                 revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
                 revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
