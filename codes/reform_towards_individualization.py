@@ -768,25 +768,33 @@ def graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     cdf = numpy.zeros_like(earnings_maries_pacses, dtype=float)
     cdf = counts/len(earnings_maries_pacses)
 
-    # sorted_indices = numpy.argsort(earnings_maries_pacses)
-    # earning_sorted = earnings_maries_pacses[sorted_indices]
-    # cdf_sorted = cdf[sorted_indices]
+    cdf = cdf[earnings_maries_pacses > 0]
+    earnings_maries_pacses = earnings_maries_pacses[earnings_maries_pacses > 0]
+    
+
+    sorted_indices = numpy.argsort(earnings_maries_pacses)
+    earning_sorted = earnings_maries_pacses[sorted_indices]
+    cdf_sorted = cdf[sorted_indices]
 
     plt.figure()
-    plt.scatter(earnings_maries_pacses[earnings_maries_pacses > 0], cdf[earnings_maries_pacses > 0], label = "couples")
+    plt.plot(earning_sorted, cdf_sorted, label = "couples")
 
     # singles
     revenu_celib = revenu_celib[~maries_ou_pacses]
     counts = numpy.array([numpy.sum(revenu_celib <= y2) for y2 in revenu_celib])
     cdf_celib = numpy.zeros(len(revenu_celib), dtype=float)
     cdf_celib = counts/len(revenu_celib)
+
+    cdf_celib = cdf_celib[revenu_celib > 0]
+    revenu_celib = revenu_celib[revenu_celib > 0]
     
-    # sorted_indices = numpy.argsort(revenu_celib)
-    # earning_celib_sorted = revenu_celib[sorted_indices]
-    # cdf_celib_sorted = cdf_celib[sorted_indices]
+    
+    sorted_indices = numpy.argsort(revenu_celib)
+    earning_celib_sorted = revenu_celib[sorted_indices]
+    cdf_celib_sorted = cdf_celib[sorted_indices]
 
 
-    plt.scatter(revenu_celib[revenu_celib > 0], cdf_celib[revenu_celib > 0], label = "singles")    
+    plt.plot(earning_celib_sorted, cdf_celib_sorted, label = "singles")    
     plt.xlabel('Gross income')
     plt.ylabel('CDF')
     plt.title("Cumulative distribution function - {annee}".format(annee = period))
