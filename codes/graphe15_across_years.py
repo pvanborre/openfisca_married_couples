@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-with open('output.txt', 'r') as file:
+with open('output_graphe_15.txt', 'r') as file:
     lines = file.readlines()
 
 search_pattern = "Pourcentage de gagnants"

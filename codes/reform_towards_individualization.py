@@ -1,4 +1,3 @@
-
 import numpy
 import pandas
 import matplotlib.pyplot as plt
@@ -7,7 +6,6 @@ from scipy.interpolate import CubicSpline, PchipInterpolator
 from scipy.signal import convolve
 
 import sys
-
 import click
 
 from openfisca_core.simulation_builder import SimulationBuilder
@@ -22,8 +20,8 @@ pandas.options.display.max_columns = None
 
 def redirect_print_to_file(filename):
     sys.stdout = open(filename, 'a')
-redirect_print_to_file('output.txt')
-# TODO : changer le nom de output.txt en output_graphe_15.txt sinon trop risqué
+redirect_print_to_file('output_graphe_15.txt')
+
 
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
