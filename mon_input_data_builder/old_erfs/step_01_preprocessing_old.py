@@ -156,31 +156,35 @@ def merge_tables(fpr_menage = None, eec_menage = None, eec_individu = None, fpr_
     cohab = 'cohab' if year < 2013 else "coured"
     contra = 'contra' if year > 2001 else 'det'
     lien = 'lien' if year < 2013 else 'lienprm'  # TODO attention pas les mêmes modalités
+    lien = lien if year > 2001 else 'lprm'
     prosa = 'prosa' if year < 2013 else 'qprcent'  # TODO attention pas les mêmes modalités
     retrai = 'retrai' if year < 2013 else 'ret'  # TODO attention pas les mêmes modalités
     txtppb = 'txtpp' if year < 2004 else 'txtppb' if year < 2013 else 'txtppred'  # TODO attention pas les mêmes modalités
                                                                                 # + pas utilisee (cf step_03 todo_create)
     #acteu = 'act' if year < 2005 else 'acteu' # mêmes modalités (définition a changé)
     cstot = 'dcstot' if year < 2002 else 'cstotr' # mêmes modalité (0 = non-réponse)
+    mrec = 'mrec' if year > 2001 else 'reche'
+    titc = 'titc' if year > 2001 else 'tit'
+
     var_list = ([
         'acteu',
         agepr,
         cohab,
         contra,
-        'forter',
         lien,
-        'mrec',
+        mrec,
         'naia',
-        'noicon',
-        'noimer',
-        prosa,
         #retrai,
-        'rstg',
         'statut',
-        'stc',
-        'titc',
-        txtppb,
+        titc
         ]
+         + (['forter'] if year > 2001 else [])
+         + (['noicon'] if year > 2001 else [])
+         + (['noimer'] if year > 2001 else [])
+         + ([prosa] if year > 2001 else [])
+         + (['rstg'] if year > 2001 else [])
+         + (['stc'] if year > 2001 else [])
+         + ([txtppb] if year > 2001 else [])
          + (["noiper"] if "noiper" in individus.columns else [])
          + (["encadr"] if "encadr" in individus.columns else [])
          + ([retrai] if retrai in individus.columns else []) #n'existe pas avant 2004
@@ -240,6 +244,7 @@ def merge_tables(fpr_menage = None, eec_menage = None, eec_individu = None, fpr_
         create_variable_locataire(menages)
 
         lprm = "lpr" if year < 2013 else "lprm"
+        lprm = lprm if year > 2001 else "lprm"
 
         try:
             menages = menages.merge(
