@@ -18,9 +18,7 @@ from openfisca_france.model.base import *
 
 pandas.options.display.max_columns = None
 
-def redirect_print_to_file(filename):
-    sys.stdout = open(filename, 'a')
-redirect_print_to_file('output_graphe_15.txt')
+
 
 
 
@@ -128,6 +126,61 @@ class vers_individualisation(Reform):
         self.add_variable(secondary_earning)
 
 
+
+def initialiser_simulation(tax_benefit_system, data_persons):
+
+    sb = SimulationBuilder()
+    sb.create_entities(tax_benefit_system)
+
+    # numéro des entités : variables idmen (menage), idfoy (foyer fiscal), idfam (famille)
+    # rôles au sein de ces entités : quimen, quifoy et quifam 
+
+    # déclarer les individus
+    sb.declare_person_entity('individu', data_persons.noindiv)
+
+    # déclarer les menages
+    construire_entite(data_persons, sb, nom_entite = "menage", nom_entite_pluriel = "menages", id_entite = "idmen", id_entite_join = "idmen_original",
+                   role_entite = "quimen", nom_role_0 = "personne_de_reference", nom_role_1 = "conjoint", nom_role_2 = "enfant")
+    
+    # déclarer les foyers fiscaux
+    construire_entite(data_persons, sb, nom_entite = "foyer_fiscal", nom_entite_pluriel = "foyers fiscaux", id_entite = "idfoy", id_entite_join = "idfoy",
+                   role_entite = "quifoy", nom_role_0 = "declarant_principal", nom_role_1 = "conjoint", nom_role_2 = "personne_a_charge")
+    
+    # déclarer les familles
+    construire_entite(data_persons, sb, nom_entite = "famille", nom_entite_pluriel = "familles", id_entite = "idfam", id_entite_join = "idfam",
+                   role_entite = "quifam", nom_role_0 = "demandeur", nom_role_1 = "conjoint", nom_role_2 = "enfant")
+
+    simulation = sb.build(tax_benefit_system)
+    return simulation
+
+
+
+
+def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entite, id_entite_join, role_entite, nom_role_0, nom_role_1, nom_role_2):
+
+    # il faut bien mettre le bon nombre d'entites avec le .unique()
+    # sinon Openfisca croit qu'il y a autant d'entites que d'individus  
+    instance = sb.declare_entity(nom_entite, data_persons[id_entite].unique())
+
+    print("nombre de " + nom_entite_pluriel, instance.count)
+    print("rôles acceptés par OpenFisca pour les " + nom_entite_pluriel, instance.entity.flattened_roles)
+
+
+    # join_with_persons accepte comme argument roles un tableau de str, on fait donc les recodages nécéssaires
+    data_persons[role_entite] = numpy.select(
+        [data_persons[role_entite] == 0, data_persons[role_entite] == 1, data_persons[role_entite] == 2],
+        [nom_role_0, nom_role_1, nom_role_2],
+        default="anomalie"  
+    )
+
+    # On associe chaque personne individuelle à son entité:
+    sb.join_with_persons(instance, data_persons[id_entite_join], data_persons[role_entite])
+
+    # on vérifie que les rôles sont bien conformes aux rôles attendus 
+    print("rôles de chacun dans son " + nom_entite, instance.members_role)
+    assert("anomalie" not in instance.members_role)
+
+    print("\n\n\n\n\n")
 
 
 
@@ -278,166 +331,48 @@ def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_p
     return (behavioral + mechanical) * maries_ou_pacses
 
 
-
-def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
-    revenu = primary_earning + secondary_earning
-    revenu[revenu == 0] = 0.0001 # sinon division lève une erreur 
-    revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles 
     
 
-    part_primary = primary_earning[maries_ou_pacses]/revenu * 100 
 
-    revenu_sorted = numpy.sort(revenu)
+def tracer_et_integrer_revenue_fonctions(income, values, title, period):
 
-    deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
+    sorted_indices = numpy.argsort(income)
+    income = income[sorted_indices]
+    values = values[sorted_indices]
 
-    decile_numbers = numpy.digitize(revenu, deciles) 
+    # le but ici est de convoler nos points pas juste avec une gaussienne
+    # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
+    
+    sigma = 1.0  
+    kernel_size = int(6 * sigma) * 2 + 1
+    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+
+   
+    dirac_delta = numpy.zeros_like(x_kernel)
+    dirac_delta[len(x_kernel) // 3] = 0.3
 
     
-    decile_means = []
-    for i in range(1, 11):
-        mask = (decile_numbers == i)
-        decile_part_primary = part_primary[mask]
-        moyenne_part_primary = numpy.mean(decile_part_primary)
-        decile_means.append(moyenne_part_primary)
-        
-    decile_means = numpy.array(decile_means)
+    combined_kernel = gaussian_kernel + dirac_delta
+    combined_kernel /= numpy.sum(combined_kernel)
+
+    smoothed_y = convolve(values, combined_kernel, mode='same')
+
     
     plt.figure()
-    plt.scatter(numpy.arange(1,11), decile_means, s = 10)
-    plt.xlabel('Gross income decile')
-    plt.ylabel('Percent')
-    plt.title("Median share of primary earner - {annee}".format(annee = period))
-    plt.show()
-    plt.savefig('../outputs/17/graphe_17_{annee}.png'.format(annee = period))
-
-    
-
-def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, ir_taux_marginal, period):
-
-    revenu = primary_earning + secondary_earning
-        
-    plt.figure()
-    
-    # distinguer singles et couples
-
-    # couples
-    revenu_couples = revenu[maries_ou_pacses]
-    mtr_couples = ir_taux_marginal[maries_ou_pacses]
-    
-    sorted_indices = numpy.argsort(revenu_couples)
-    earning_sorted = revenu_couples[sorted_indices]
-    ir_marginal_sorted = mtr_couples[sorted_indices]
-
-    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "couples")
-    
-    # singles
-    revenu_celib = revenu_celib[~maries_ou_pacses]
-    mtr_celib = ir_taux_marginal[~maries_ou_pacses]
-    
-    sorted_indices = numpy.argsort(revenu_celib)
-    earning_sorted = revenu_celib[sorted_indices]
-    ir_marginal_sorted = mtr_celib[sorted_indices]
-
-    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "singles")
-    
-    
-    plt.xlabel('Gross earnings')
-    plt.ylabel('MTR')
-    plt.title("Effective marginal tax rates - {annee}".format(annee = period))
+    plt.scatter(income, values, label='Discrete Data', color='red')
+    plt.plot(income, smoothed_y, label='Smoothed Data')
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/B15/graphe_B15_{annee}.png'.format(annee = period))
+    plt.savefig('../outputs/revenue_function/{title}_revenue_function_{annee}.png'.format(title = title, annee = period))
 
-
-
-@click.command()
-@click.option('-y', '--annee', default = None, type = int, required = True)
-def simulation_reforme(annee = None):
-    filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
-    data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
-    data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
     
-    data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
-    
-    print("Table des personnes")
-    print(data_persons, "\n\n\n\n\n")
+    integral_trap = numpy.trapz(smoothed_y, income)
+    print("Integral of smoothed_y:", integral_trap)
 
-    #####################################################
-    ########### Simulation ##############################
-    #####################################################
-
-    tax_benefit_system = FranceTaxBenefitSystem()
-    tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+    return integral_trap
 
 
-
-
-    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
-
-    period = str(annee)
-
-    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
-
-    for ma_variable in data_persons.columns.tolist():
-        # variables pouvant entrer dans la simulation 
-        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
-                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
-                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
-                            "idmen_x", "idfoy_x", "idfam_x"]:
-            # variables définies au niveau de l'individu
-            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
-                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
-            # variables définies au niveau du ménage
-            else:
-                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
-    
-
-    ancien_irpp = simulation.calculate('irpp', period)
-    maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
-    ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
-    primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
-    secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
-    revenu_celib = simulation.calculate('revenu_celibataire', period)
-
-    cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'primary')
-
-    cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'secondary')
-    
-    tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
-
-    graphe14(primary_earning = primary_earning_maries_pacses, 
-             secondary_earning = secondary_earning_maries_pacses,
-             maries_ou_pacses = maries_ou_pacses, 
-             ancien_irpp = ancien_irpp, 
-             ir_taux_marginal = ir_taux_marginal,
-             tax_two_derivative_simulation = tax_two_derivative_simulation,
-             cdf_primary_earnings = cdf_primary_earnings,
-             cdf_secondary_earnings = cdf_secondary_earnings,
-             density_primary_earnings = density_primary_earnings,
-             density_secondary_earnings = density_secondary_earnings,
-             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-             period = period)
-    
-    graph17(primary_earning = primary_earning_maries_pacses, 
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses,
-            period = period)
-    
-    graphB15(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses,
-            revenu_celib = revenu_celib, 
-            maries_ou_pacses = maries_ou_pacses,
-            ir_taux_marginal = ir_taux_marginal, 
-            period = period)
-            
-    
 def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
  
     # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
@@ -539,109 +474,183 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
     
 
+
+
+@click.command()
+@click.option('-y', '--annee', default = None, type = int, required = True)
+def simulation_reforme(annee = None):
+    filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
+    data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
+    data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
+    
+    data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
+    
+    print("Table des personnes")
+    print(data_persons, "\n\n\n\n\n")
+
+    #####################################################
+    ########### Simulation ##############################
+    #####################################################
+
+    tax_benefit_system = FranceTaxBenefitSystem()
+    tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+
+
+
+
+    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
+    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
+
+    period = str(annee)
+
+    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
+
+    for ma_variable in data_persons.columns.tolist():
+        # variables pouvant entrer dans la simulation 
+        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
+                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
+                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
+                            "idmen_x", "idfoy_x", "idfam_x"]:
+            # variables définies au niveau de l'individu
+            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
+                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
+            # variables définies au niveau du ménage
+            else:
+                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
     
 
+    ancien_irpp = simulation.calculate('irpp', period)
+    maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
+    ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
+    primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
+    secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
+    revenu_celib = simulation.calculate('revenu_celibataire', period)
 
-def tracer_et_integrer_revenue_fonctions(income, values, title, period):
+    cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'primary')
 
-    sorted_indices = numpy.argsort(income)
-    income = income[sorted_indices]
-    values = values[sorted_indices]
-
-    # le but ici est de convoler nos points pas juste avec une gaussienne
-    # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
+    cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'secondary')
     
-    sigma = 1.0  
-    kernel_size = int(6 * sigma) * 2 + 1
-    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
-    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+    tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
-   
-    dirac_delta = numpy.zeros_like(x_kernel)
-    dirac_delta[len(x_kernel) // 3] = 0.3
-
+    graphe14(primary_earning = primary_earning_maries_pacses, 
+             secondary_earning = secondary_earning_maries_pacses,
+             maries_ou_pacses = maries_ou_pacses, 
+             ancien_irpp = ancien_irpp, 
+             ir_taux_marginal = ir_taux_marginal,
+             tax_two_derivative_simulation = tax_two_derivative_simulation,
+             cdf_primary_earnings = cdf_primary_earnings,
+             cdf_secondary_earnings = cdf_secondary_earnings,
+             density_primary_earnings = density_primary_earnings,
+             density_secondary_earnings = density_secondary_earnings,
+             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+             period = period)
     
-    combined_kernel = gaussian_kernel + dirac_delta
-    combined_kernel /= numpy.sum(combined_kernel)
-
-    smoothed_y = convolve(values, combined_kernel, mode='same')
-
+    graph17(primary_earning = primary_earning_maries_pacses, 
+            secondary_earning = secondary_earning_maries_pacses, 
+            maries_ou_pacses = maries_ou_pacses,
+            period = period)
     
-    plt.figure()
-    plt.scatter(income, values, label='Discrete Data', color='red')
-    plt.plot(income, smoothed_y, label='Smoothed Data')
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/revenue_function/{title}_revenue_function_{annee}.png'.format(title = title, annee = period))
-
-    
-    integral_trap = numpy.trapz(smoothed_y, income)
-    print("Integral of smoothed_y:", integral_trap)
-
-    return integral_trap
-
-
+    graphB15(primary_earning = primary_earning_maries_pacses,
+            secondary_earning = secondary_earning_maries_pacses,
+            revenu_celib = revenu_celib, 
+            maries_ou_pacses = maries_ou_pacses,
+            ir_taux_marginal = ir_taux_marginal, 
+            period = period)
+            
+ 
 
 
 # TODO : plot cumulative distribution function (figure b21 et 22)
-# TODO : plot esperance T'/(1-T') (figure b23 et 24)
-
-
-def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entite, id_entite_join, role_entite, nom_role_0, nom_role_1, nom_role_2):
-
-    # il faut bien mettre le bon nombre d'entites avec le .unique()
-    # sinon Openfisca croit qu'il y a autant d'entites que d'individus  
-    instance = sb.declare_entity(nom_entite, data_persons[id_entite].unique())
-
-    print("nombre de " + nom_entite_pluriel, instance.count)
-    print("rôles acceptés par OpenFisca pour les " + nom_entite_pluriel, instance.entity.flattened_roles)
-
-
-    # join_with_persons accepte comme argument roles un tableau de str, on fait donc les recodages nécéssaires
-    data_persons[role_entite] = numpy.select(
-        [data_persons[role_entite] == 0, data_persons[role_entite] == 1, data_persons[role_entite] == 2],
-        [nom_role_0, nom_role_1, nom_role_2],
-        default="anomalie"  
-    )
-
-    # On associe chaque personne individuelle à son entité:
-    sb.join_with_persons(instance, data_persons[id_entite_join], data_persons[role_entite])
-
-    # on vérifie que les rôles sont bien conformes aux rôles attendus 
-    print("rôles de chacun dans son " + nom_entite, instance.members_role)
-    assert("anomalie" not in instance.members_role)
-
-    print("\n\n\n\n\n")
 
 
 
+#################################################################################################
+########### Graphes de vérification de la robustesse des résultats ##############################
+#################################################################################################
 
-def initialiser_simulation(tax_benefit_system, data_persons):
-
-    sb = SimulationBuilder()
-    sb.create_entities(tax_benefit_system)
-
-    # numéro des entités : variables idmen (menage), idfoy (foyer fiscal), idfam (famille)
-    # rôles au sein de ces entités : quimen, quifoy et quifam 
-
-    # déclarer les individus
-    sb.declare_person_entity('individu', data_persons.noindiv)
-
-    # déclarer les menages
-    construire_entite(data_persons, sb, nom_entite = "menage", nom_entite_pluriel = "menages", id_entite = "idmen", id_entite_join = "idmen_original",
-                   role_entite = "quimen", nom_role_0 = "personne_de_reference", nom_role_1 = "conjoint", nom_role_2 = "enfant")
+def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
+    revenu = primary_earning + secondary_earning
+    revenu[revenu == 0] = 0.0001 # sinon division lève une erreur 
+    revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles 
     
-    # déclarer les foyers fiscaux
-    construire_entite(data_persons, sb, nom_entite = "foyer_fiscal", nom_entite_pluriel = "foyers fiscaux", id_entite = "idfoy", id_entite_join = "idfoy",
-                   role_entite = "quifoy", nom_role_0 = "declarant_principal", nom_role_1 = "conjoint", nom_role_2 = "personne_a_charge")
+
+    part_primary = primary_earning[maries_ou_pacses]/revenu * 100 
+
+    revenu_sorted = numpy.sort(revenu)
+
+    deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
+
+    decile_numbers = numpy.digitize(revenu, deciles) 
+
     
-    # déclarer les familles
-    construire_entite(data_persons, sb, nom_entite = "famille", nom_entite_pluriel = "familles", id_entite = "idfam", id_entite_join = "idfam",
-                   role_entite = "quifam", nom_role_0 = "demandeur", nom_role_1 = "conjoint", nom_role_2 = "enfant")
+    decile_means = []
+    for i in range(1, 11):
+        mask = (decile_numbers == i)
+        decile_part_primary = part_primary[mask]
+        moyenne_part_primary = numpy.mean(decile_part_primary)
+        decile_means.append(moyenne_part_primary)
+        
+    decile_means = numpy.array(decile_means)
+    
+    plt.figure()
+    plt.scatter(numpy.arange(1,11), decile_means, s = 10)
+    plt.xlabel('Gross income decile')
+    plt.ylabel('Percent')
+    plt.title("Median share of primary earner - {annee}".format(annee = period))
+    plt.show()
+    plt.savefig('../outputs/17/graphe_17_{annee}.png'.format(annee = period))
 
-    simulation = sb.build(tax_benefit_system)
-    return simulation
+    
 
+def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, ir_taux_marginal, period):
+
+    revenu = primary_earning + secondary_earning
+        
+    plt.figure()
+    
+    # distinguer singles et couples
+
+    # couples
+    revenu_couples = revenu[maries_ou_pacses]
+    mtr_couples = ir_taux_marginal[maries_ou_pacses]
+    
+    sorted_indices = numpy.argsort(revenu_couples)
+    earning_sorted = revenu_couples[sorted_indices]
+    ir_marginal_sorted = mtr_couples[sorted_indices]
+
+    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "couples")
+    
+    # singles
+    revenu_celib = revenu_celib[~maries_ou_pacses]
+    mtr_celib = ir_taux_marginal[~maries_ou_pacses]
+    
+    sorted_indices = numpy.argsort(revenu_celib)
+    earning_sorted = revenu_celib[sorted_indices]
+    ir_marginal_sorted = mtr_celib[sorted_indices]
+
+    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "singles")
+    
+    
+    plt.xlabel('Gross earnings')
+    plt.ylabel('MTR')
+    plt.title("Effective marginal tax rates - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B15/graphe_B15_{annee}.png'.format(annee = period))
+
+
+
+
+
+def redirect_print_to_file(filename):
+    sys.stdout = open(filename, 'a')
+    
+redirect_print_to_file('output_graphe_15.txt')
 
 simulation_reforme()
 
