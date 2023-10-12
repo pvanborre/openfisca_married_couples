@@ -566,10 +566,7 @@ def simulation_reforme(annee = None):
             period = period)
             
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
- 
-
-
-# TODO : plot cumulative distribution function (figure b21 et  density 22)
+    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
 
 
@@ -678,6 +675,33 @@ def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     plt.savefig('../outputs/B21/graphe_B21_{annee}.png'.format(annee = period))
 
 
+def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
+    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+
+    density_primary_earnings = density_primary_earnings[primary_earning_maries_pacses > 0]
+    primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
+
+    primary_sorted_indices = numpy.argsort(primary_earning_maries_pacses)
+    primary_earning_sorted = primary_earning_maries_pacses[primary_sorted_indices]
+    primary_density_sorted = density_primary_earnings[primary_sorted_indices]
+
+    density_secondary_earnings = density_secondary_earnings[secondary_earning_maries_pacses > 0]
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[secondary_earning_maries_pacses > 0]
+
+    secondary_sorted_indices = numpy.argsort(secondary_earning_maries_pacses)
+    secondary_earning_sorted = secondary_earning_maries_pacses[secondary_sorted_indices]
+    secondary_density_sorted = density_secondary_earnings[secondary_sorted_indices]
+
+    plt.figure()
+    plt.plot(primary_earning_sorted, primary_density_sorted, label = 'primary')
+    plt.plot(secondary_earning_sorted, secondary_density_sorted, label = 'secondary')
+    plt.xlabel('Gross income')
+    plt.ylabel('PDF')
+    plt.title("Probability density function, primary and secondary earners - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B22/graphe_B22_{annee}.png'.format(annee = period))
 
 
 def redirect_print_to_file(filename):
