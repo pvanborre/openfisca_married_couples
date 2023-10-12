@@ -10,7 +10,7 @@ fi
 touch "output_graphe_15.txt"
 echo "output_graphe_15.txt has been created."
 
-for i in $(seq 2005 2019);
+for i in $(seq 2002 2019);
 do
     python reform_towards_individualization.py -y $i
 done

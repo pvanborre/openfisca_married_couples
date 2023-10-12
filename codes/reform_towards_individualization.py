@@ -278,7 +278,9 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period,
     new_y = new_y[:min_length]
     
 
-    # graphes B23 et B24
+    # graphes B23 et B24 : l'esperance ne s'affiche pas bien sur ce graphe 
+    # peut etre pour chaque abscisse prendre les y qu'il y a et faire la moyenne voulue 
+    # TODO quelque chose d'important à changer ici 
     plt.figure()
     plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#8c564b')
     plt.scatter(earning[earning >= 0], output[earning >= 0], s = 10, c = '#17becf')
