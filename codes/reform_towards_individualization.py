@@ -193,6 +193,7 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
     print("check de la cdf", cdf)
 
     # plot here figure B17 cumulative distribution function of gross income
+    # TODO pour faire le vrai b17 il faut séparer single earner couples et dual earner couples + sortir B17 de cette function faire une function à part
     plt.figure()
     plt.scatter(earning[earning >= 0], cdf[earning >= 0], s = 10)
     plt.xlabel('Revenu annuel')
@@ -652,9 +653,23 @@ def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     cdf_primary = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     cdf_secondary = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
 
+    cdf_primary = cdf_primary[primary_earning_maries_pacses > 0]
+    primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
+
+    primary_sorted_indices = numpy.argsort(primary_earning_maries_pacses)
+    primary_earning_sorted = primary_earning_maries_pacses[primary_sorted_indices]
+    primary_cdf_sorted = cdf_primary[primary_sorted_indices]
+
+    cdf_secondary = cdf_secondary[secondary_earning_maries_pacses > 0]
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[secondary_earning_maries_pacses > 0]
+
+    secondary_sorted_indices = numpy.argsort(secondary_earning_maries_pacses)
+    secondary_earning_sorted = secondary_earning_maries_pacses[secondary_sorted_indices]
+    secondary_cdf_sorted = cdf_secondary[secondary_sorted_indices]
+
     plt.figure()
-    plt.scatter(primary_earning_maries_pacses[primary_earning_maries_pacses > 0], cdf_primary[primary_earning_maries_pacses > 0], s = 10, label = "primary")
-    plt.scatter(secondary_earning_maries_pacses[secondary_earning_maries_pacses > 0], cdf_secondary[secondary_earning_maries_pacses > 0], s = 10, label = "secondary")
+    plt.plot(primary_earning_sorted, primary_cdf_sorted, label = 'primary')
+    plt.plot(secondary_earning_sorted, secondary_cdf_sorted, label = 'secondary')
     plt.xlabel('Gross income')
     plt.ylabel('CDF')
     plt.title("Cumulative distribution function, primary and secondary earners - {annee}".format(annee = period))
