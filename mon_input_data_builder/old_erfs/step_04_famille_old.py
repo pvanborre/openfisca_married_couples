@@ -172,6 +172,9 @@ def complete_indivi(indivi, year):
     # before 2013, lien ==6 inclut enfants en nourrice sans lien de parenté
     # en 2014 lienprm == 6 inclut tous les "sans lien de parenté". On va dire que c'est équivalent
 
+    if year <= 2001:
+        indivi['lien'] = indivi['lprm']
+
     try:
         selection_enfant_en_nourrice = (indivi.lien == 6) & (indivi.agepf < 16)
     except Exception:
@@ -238,7 +241,7 @@ def famille_2(base, year = None):
     assert year is not None
     log.info(" [2] On cherche les enfants ayant père et/ou mère comme personne de référence et conjoint")
 
-    if year < 2013:
+    if (year < 2013 and year > 2001):
         lpr = "lpr"
     else:
         lpr = "lprm"
@@ -279,22 +282,26 @@ def famille_2(base, year = None):
     cohab = 'cohab' if year < 2013 else "coured"
     couple = couple[(couple[cohab] == 1) & (couple[lpr] >= 3)].copy()
     # l'identifiant famille est lié au noi de le plus bas
-    couple['noifam'] = np.minimum(
-        (100 * couple.ident + couple.noi).astype(int),
-        (100 * couple.ident + couple.noicon).astype(int)
-        )
+    if year > 2001:
+        couple['noifam'] = np.minimum(
+            (100 * couple.ident + couple.noi).astype(int),
+            (100 * couple.ident + couple.noicon).astype(int)
+            )
+    else:
+        couple["noifam"] = (100 * couple.ident + couple.noi).astype(int)
 
     # Recherche la présence de polyandes/polygames
-    noindiv_conjoint = (100 * base.ident + base.noicon).astype(int)
-    conjoints = base.loc[
-        base.noindiv.isin(noindiv_conjoint),
-        ['noindiv', 'ident', 'noi', lpr, 'noicon']
-        ]
-    if conjoints.noindiv.duplicated().sum() > 0:
-        log.info("Nombre de personnes polyandres/polygames: {}".format(
-            conjoints.duplicated().sum()
-        ))
-    del noindiv_conjoint
+    if year > 2001: # avant on a pas le noicon numéro du conjoint... (uniquement identifiant du chef de famille...)
+        noindiv_conjoint = (100 * base.ident + base.noicon).astype(int)
+        conjoints = base.loc[
+            base.noindiv.isin(noindiv_conjoint),
+            ['noindiv', 'ident', 'noi', lpr, 'noicon']
+            ]
+        if conjoints.noindiv.duplicated().sum() > 0:
+            log.info("Nombre de personnes polyandres/polygames: {}".format(
+                conjoints.duplicated().sum()
+            ))
+        del noindiv_conjoint
 
     couple['famille'] = 20
     for series_name in ['famille', 'noifam']:
@@ -303,8 +310,9 @@ def famille_2(base, year = None):
         except Exception:
             assert_dtype(couple[series_name], "int64")
 
-    log.debug("Nombre de personnes vivant en couple sans être personne de référence ou conjoint: {} dont {} sans conjoints dans la base".format(
-        len(couple), len(couple.loc[~((100 * couple.ident + couple.noicon).astype(int).isin(base.noindiv))])))
+    if year > 2001:
+        log.debug("Nombre de personnes vivant en couple sans être personne de référence ou conjoint: {} dont {} sans conjoints dans la base".format(
+            len(couple), len(couple.loc[~((100 * couple.ident + couple.noicon).astype(int).isin(base.noindiv))])))
 
     famille = pd.concat([famille, couple])
     control_04(famille, base)
@@ -313,7 +321,7 @@ def famille_2(base, year = None):
 
 def famille_3(base = None, famille = None, kind = 'erfs_fpr', year = None):
 
-    if year < 2013:
+    if (year < 2013 and year > 2001):
         lpr = "lpr"
     else:
         lpr = "lprm"
@@ -328,9 +336,10 @@ def famille_3(base = None, famille = None, kind = 'erfs_fpr', year = None):
     seul1 = base[~(base.noindiv.isin(famille.noindiv.values))].copy()
     cohab = 'cohab' if year < 2013 else "coured"
 
+    sexe = 'sexe' if year > 2001 else 's'
     seul1 = seul1[
         (seul1[lpr].isin([3, 4,5,6])) & ((seul1.jeune_non_eligible_rsa & seul1.smic55) | seul1.jeune_eligible_rsa) & (seul1[cohab] == 1) &
-        (seul1.sexe == 2)].copy()
+        (seul1[sexe] == 2)].copy()
 
     log.debug("Il y a {} personnes seules de catégorie 1".format(len(seul1.index)))
 
@@ -378,6 +387,10 @@ def famille_3(base = None, famille = None, kind = 'erfs_fpr', year = None):
 
     log.info(" [3.4] personnes seules de catégorie 4")
     seul4 = subset_base(base, famille)
+
+    if year <= 2001:
+        seul4['noimer'] = 0
+
     assert seul4.noimer.notnull().all()
     if kind == 'erfs_fpr':
         seul4 = seul4[
@@ -415,6 +428,10 @@ def famille_3(base = None, famille = None, kind = 'erfs_fpr', year = None):
     log.info(" [4.1] enfant avec mère")
 
     avec_mere = subset_base(base, famille)
+
+    if year <= 2001:
+        avec_mere['noimer'] = 1 # TODO important check validité de noifam dans ce contexte (cf quelques lignes plus bas)
+
     avec_mere = avec_mere[
         (avec_mere[lpr].isin([4,5,6])) &
         (avec_mere.jeune_non_eligible_rsa | avec_mere.moins_de_15_ans_inclus) &
@@ -453,6 +470,10 @@ def famille_3(base = None, famille = None, kind = 'erfs_fpr', year = None):
     famille = famille[~(famille.noindiv.isin(mere.noindiv.values))].copy()  # Avoid duplication in famille
 
     # On retrouve les conjoints des mères
+
+    if year <= 2001:
+        mere['noicon'] = 1
+
     assert mere.noicon.notnull().all()
     conjoint_mere_id = mere.loc[mere.noicon > 0, ['ident', 'noicon', 'noifam']].copy()
     conjoint_mere_id['noindiv'] = (100 * conjoint_mere_id.ident + conjoint_mere_id.noicon).astype(int)
@@ -688,6 +709,11 @@ def famille_5(base = None, famille = None, kind = 'erfs_fpr', year = None):
         famille = famille[famille["noindiv"] != 1501024703]
     else :
         pass # no such issue detected on other years
+    
+    # test_duplicated_noindiv = famille.noindiv.duplicated()
+    # print(test_duplicated_noindiv[test_duplicated_noindiv])
+    # TODO réel problem sur les identifiants a corriger ici --> je ne vais pas les inventer malheureusement....
+
     assert not famille.noindiv.duplicated().any()
     control_04(famille, base)
     return base, famille
