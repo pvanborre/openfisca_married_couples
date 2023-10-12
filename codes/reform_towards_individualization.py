@@ -200,6 +200,7 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
     plt.title("{type} earnings cumulative distribution function - january {annee}".format(type = title, annee = period))
     plt.show()
     plt.savefig('../outputs/B17/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
+    plt.close()
 
     return cdf
 
@@ -245,6 +246,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
     plt.show()
     plt.savefig('../outputs/B14/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
+    plt.close()
 
     return density
 
@@ -293,8 +295,10 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period,
     plt.show()
     if title == 'primary':
         plt.savefig('../outputs/B23/graphe_B23_{type}_{annee}.png'.format(type = title, annee = period))
+        plt.close()
     else:
         plt.savefig('../outputs/B24/graphe_B24_{type}_{annee}.png'.format(type = title, annee = period))
+        plt.close()
 
 
     return output*maries_ou_pacses
@@ -471,6 +475,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     plt.legend()
     plt.show()
     plt.savefig('../outputs/14/graphe_14_{annee}.png'.format(annee = period))
+    plt.close()
 
     
 
@@ -567,6 +572,7 @@ def simulation_reforme(annee = None):
             
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
 
 
 
@@ -605,6 +611,7 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
     plt.title("Median share of primary earner - {annee}".format(annee = period))
     plt.show()
     plt.savefig('../outputs/17/graphe_17_{annee}.png'.format(annee = period))
+    plt.close()
 
     
 
@@ -643,6 +650,7 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B15/graphe_B15_{annee}.png'.format(annee = period))
+    plt.close()
 
 
 
@@ -673,6 +681,7 @@ def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B21/graphe_B21_{annee}.png'.format(annee = period))
+    plt.close()
 
 
 def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
@@ -702,6 +711,50 @@ def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B22/graphe_B22_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_marginal, tax_two_derivative, period):
+
+    # we take these elasticities for the graph B16 scenario
+    eps1 = 0.25
+    eps2 = 0.75
+
+    primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    secondary_elasticity_simu = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+
+    revenu = primary_earning + secondary_earning     
+    revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles  
+    primary_elasticity_simu = primary_elasticity_simu[maries_ou_pacses]
+    secondary_elasticity_simu = secondary_elasticity_simu[maries_ou_pacses]
+
+    revenu_sorted = numpy.sort(revenu)
+    deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
+    decile_numbers = numpy.digitize(revenu, deciles) 
+
+    
+    decile_primary = []
+    decile_secondary = []
+
+    for i in range(1, 11):
+        mask = (decile_numbers == i)
+        decile_primary.append(numpy.mean(primary_elasticity_simu[mask]))
+        decile_secondary.append(numpy.mean(secondary_elasticity_simu[mask]))
+        
+    decile_primary = numpy.array(decile_primary)
+    decile_secondary = numpy.array(decile_secondary)
+    
+    plt.figure()
+    plt.plot(numpy.arange(1,11), decile_primary, label = "primary")
+    plt.plot(numpy.arange(1,11), decile_secondary, label = "secondary")
+    plt.xlabel('Gross income (deciles)')
+    plt.ylabel('Average elasticity')
+    plt.title("Average elasticities of couples - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B16/graphe_B16_{annee}.png'.format(annee = period))
+    # TODO : investiguer un comportement un peu étonnant sur le 1er décile 
+    plt.close()
 
 
 def redirect_print_to_file(filename):
