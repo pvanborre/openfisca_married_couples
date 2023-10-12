@@ -250,7 +250,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
 
 
 
-def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period, title, borne = 500):
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period, title, borne = 0.05):
     output = numpy.zeros_like(earning, dtype=float)
 
     for i in range(len(earning)):
