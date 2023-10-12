@@ -331,7 +331,7 @@ def check_naia_naim(individus, year):
         ].unique()
 
     nom_variable_age_quinquennal = 'ageq'
-    if year == 2001:
+    if year <= 2001:
         nom_variable_age_quinquennal = 'agq'
     for id in bad_noindiv:
         individus.loc[individus.noindiv == id,'naia'] = year - individus.loc[individus.noindiv == id, nom_variable_age_quinquennal]
