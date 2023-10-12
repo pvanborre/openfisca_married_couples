@@ -12,6 +12,7 @@ import click
 
 from openfisca_core.simulation_builder import SimulationBuilder
 from openfisca_core.reforms import Reform
+from openfisca_core import periods
 
 from openfisca_france import FranceTaxBenefitSystem
 from openfisca_france.model.base import *
@@ -35,9 +36,24 @@ redirect_print_to_file('output.txt')
 # remarque : ces variables y1 et y2 n'ont de sens que si le couple est marié ou pacsés, dans le cas contraire je choisis que y1 = y2 = 0
 # on définit tau_2 = - tau_1 * sum(y1)/sum(y2) où la somme porte sur tous les couples mariés, afin de s'assurer un budget constant pour l'Etat 
 
+
+# tout d'abord on update la valeur de quelques paramètres (étaient null et des formules demandaient leurs valeurs, qu'on met donc à 0)
+def modify_parameters(parameters):
+    reform_period = periods.period("2003")
+    parameters.impot_revenu.calcul_reductions_impots.divers.intemp.max.update(period = reform_period, value = 0)
+    parameters.impot_revenu.calcul_reductions_impots.divers.intemp.pac.update(period = reform_period, value = 0)
+    parameters.impot_revenu.calcul_reductions_impots.divers.interets_emprunt_reprise_societe.plafond.update(period = reform_period, value = 0)
+    parameters.impot_revenu.calcul_reductions_impots.divers.interets_emprunt_reprise_societe.taux.update(period = reform_period, value = 0)
+    return parameters
+
+
+
 class vers_individualisation(Reform):
     name = "on code la réforme nouvel impot = ancien impot + tau_1 revenu_1 + tau_2 revenu_2"
     def apply(self):
+
+        # on applique la modification des paramètres pour l'année 2003
+        self.modify_parameters(modifier_function = modify_parameters)
 
         class revenu_individu(Variable):
             value_type = float
@@ -57,6 +73,7 @@ class vers_individualisation(Reform):
                 return traitements_salaires_pensions_rentes + rev_cat_rvcm/2 + rev_cat_rfon/2 + rev_cat_rpns/2 + rev_cat_pv/2
         
         self.add_variable(revenu_individu)
+
 
         class revenu_celibataire(Variable):
             value_type = float
@@ -111,6 +128,8 @@ class vers_individualisation(Reform):
                 return min_(revenu_declarant_principal, revenu_du_conjoint) * maries_ou_pacses
 
         self.add_variable(secondary_earning)
+
+
 
 
 
