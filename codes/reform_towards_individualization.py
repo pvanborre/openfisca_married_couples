@@ -673,8 +673,8 @@ def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     secondary_cdf_sorted = cdf_secondary[secondary_sorted_indices]
 
     plt.figure()
-    plt.plot(primary_earning_sorted, primary_cdf_sorted, label = 'primary')
-    plt.plot(secondary_earning_sorted, secondary_cdf_sorted, label = 'secondary')
+    plt.plot(primary_earning_sorted[primary_earning_sorted < 400000], primary_cdf_sorted[primary_earning_sorted < 400000], label = 'primary')
+    plt.plot(secondary_earning_sorted[secondary_earning_sorted < 400000], secondary_cdf_sorted[secondary_earning_sorted < 400000], label = 'secondary')
     plt.xlabel('Gross income')
     plt.ylabel('CDF')
     plt.title("Cumulative distribution function, primary and secondary earners - {annee}".format(annee = period))
@@ -703,8 +703,8 @@ def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     secondary_density_sorted = density_secondary_earnings[secondary_sorted_indices]
 
     plt.figure()
-    plt.plot(primary_earning_sorted, primary_density_sorted, label = 'primary')
-    plt.plot(secondary_earning_sorted, secondary_density_sorted, label = 'secondary')
+    plt.plot(primary_earning_sorted[primary_earning_sorted < 400000], primary_density_sorted[primary_earning_sorted < 400000], label = 'primary')
+    plt.plot(secondary_earning_sorted[secondary_earning_sorted < 400000], secondary_density_sorted[secondary_earning_sorted < 400000], label = 'secondary')
     plt.xlabel('Gross income')
     plt.ylabel('PDF')
     plt.title("Probability density function, primary and secondary earners - {annee}".format(annee = period))
