@@ -753,7 +753,7 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B16/graphe_B16_{annee}.png'.format(annee = period))
-    # TODO : investiguer un comportement un peu étonnant sur le 1er décile 
+    # TODO : ce graphe ne va pas du tout a investiguer (on devrait être beaucoup plus proches de 0.25 et 0.75) 
     plt.close()
 
 
