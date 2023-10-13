@@ -239,15 +239,6 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
     print("check de la densite", density)
 
-    # plot here figure B14 probability density function 
-    plt.figure()
-    plt.scatter(earning[earning >= 0], density[earning >= 0], s = 10)
-    plt.xlabel('Revenu annuel')
-    plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
-    plt.show()
-    plt.savefig('../outputs/B14/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
-    plt.close()
-
     return density
 
 
@@ -574,7 +565,7 @@ def simulation_reforme(annee = None):
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
     graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-
+    graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -805,6 +796,70 @@ def graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
 
 
 
+def graphB14(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, period):
+
+    # couples 
+    earning = primary_earning + secondary_earning
+    earnings_maries_pacses = earning[maries_ou_pacses]
+
+    n = len(earnings_maries_pacses)
+    estimated_std = numpy.std(earnings_maries_pacses, ddof=1)  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+    print("bandwidth", bandwidth)
+
+    density_couple = numpy.zeros_like(earnings_maries_pacses, dtype=float)
+
+    for i in range(len(earnings_maries_pacses)):
+        kernel_values = gaussian_kernel((earnings_maries_pacses - earnings_maries_pacses[i]) / bandwidth)
+        density_couple[i] = numpy.mean(kernel_values) * 1/bandwidth
+
+    density_couple /= numpy.sum(density_couple)
+
+    density_couple = density_couple[earnings_maries_pacses > 0]
+    earnings_maries_pacses = earnings_maries_pacses[earnings_maries_pacses > 0]
+    
+    sorted_indices = numpy.argsort(earnings_maries_pacses)
+    earning_sorted = earnings_maries_pacses[sorted_indices]
+    density_couple_sorted = density_couple[sorted_indices]
+
+    plt.figure()
+    plt.plot(earning_sorted[earning_sorted < 500000], density_couple_sorted[earning_sorted < 500000], label = "couples")
+
+
+    # singles 
+    revenu_celib = revenu_celib[~maries_ou_pacses]
+
+    # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
+    n = len(revenu_celib)
+    estimated_std = numpy.std(revenu_celib, ddof=1)  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+    print("bandwidth", bandwidth)
+
+    density_celib = numpy.zeros_like(revenu_celib, dtype=float)
+
+    for i in range(len(revenu_celib)):
+        kernel_values = gaussian_kernel((revenu_celib - revenu_celib[i]) / bandwidth)
+        density_celib[i] = numpy.mean(kernel_values) * 1/bandwidth
+
+    density_celib /= numpy.sum(density_celib) 
+
+    density_celib = density_celib[revenu_celib > 0]
+    revenu_celib = revenu_celib[revenu_celib > 0]
+    
+    
+    sorted_indices = numpy.argsort(revenu_celib)
+    earning_celib_sorted = revenu_celib[sorted_indices]
+    density_celib_sorted = density_celib[sorted_indices]
+
+
+    plt.plot(earning_celib_sorted[earning_celib_sorted < 500000], density_celib_sorted[earning_celib_sorted < 500000], label = "singles")    
+    plt.xlabel('Gross income')
+    plt.ylabel('PDF')
+    plt.title("Probability density function - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B14/graphe_B14_{annee}.png'.format(annee = period))
+    plt.close()
 
 
 def redirect_print_to_file(filename):
