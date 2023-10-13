@@ -623,14 +623,27 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     earning_sorted = revenu_couples[sorted_indices]
     ir_marginal_sorted = mtr_couples[sorted_indices]
 
+    
     earnings_v2 = numpy.linspace(0, 100000, 10000)
+    midpoints = (earnings_v2[:-1] + earnings_v2[1:]) / 2
+
     result = []
-    for i in range(1, len(earnings_v2)-1):
-        mask = earning_sorted[earning_sorted >= (earnings_v2[i]+earnings_v2[i-1])/2 & earning_sorted < (earnings_v2[i]+earnings_v2[i+1])/2]
-        result.append(numpy.mean(ir_marginal_sorted[mask]))
+
+    for i in range(len(midpoints)):
+        lower_bound = midpoints[i] - (earnings_v2[1] - earnings_v2[0]) / 2
+        upper_bound = midpoints[i] + (earnings_v2[1] - earnings_v2[0]) / 2
+
+        mask = (earning_sorted >= lower_bound) & (earning_sorted < upper_bound)
+
+        if numpy.any(mask):
+            result.append(numpy.mean(ir_marginal_sorted[mask]))
+        else:
+            result.append(0.0)
+
+    result = numpy.array(result)
 
     plt.figure()
-    plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "couples")
+    plt.plot(earnings_v2[:-1], result, label = "couples")
     
     # singles
     revenu_celib = revenu_celib[~maries_ou_pacses]
@@ -643,7 +656,7 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     earning_sorted = revenu_celib[sorted_indices]
     ir_marginal_sorted = mtr_celib[sorted_indices]
 
-    plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "singles")
+    #plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "singles")
     
     
     plt.xlabel('Gross earnings')
