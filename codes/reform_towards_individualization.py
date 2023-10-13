@@ -777,7 +777,7 @@ def graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     cdf_sorted = cdf[sorted_indices]
 
     plt.figure()
-    plt.plot(earning_sorted, cdf_sorted, label = "couples")
+    plt.plot(earning_sorted[earning_sorted < 500000], cdf_sorted[earning_sorted < 500000], label = "couples")
 
     # singles
     revenu_celib = revenu_celib[~maries_ou_pacses]
@@ -794,7 +794,7 @@ def graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     cdf_celib_sorted = cdf_celib[sorted_indices]
 
 
-    plt.plot(earning_celib_sorted, cdf_celib_sorted, label = "singles")    
+    plt.plot(earning_celib_sorted[earning_celib_sorted < 500000], cdf_celib_sorted[earning_celib_sorted < 500000], label = "singles")    
     plt.xlabel('Gross income')
     plt.ylabel('CDF')
     plt.title("Cumulative distribution function - {annee}".format(annee = period))
