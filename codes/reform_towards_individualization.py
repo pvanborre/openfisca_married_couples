@@ -193,12 +193,14 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
     print("check de la cdf", cdf)
 
     # plot here figure B17 cumulative distribution function of gross income
+    # TODO pour faire le vrai b17 il faut séparer single earner couples et dual earner couples + sortir B17 de cette function faire une function à part
     plt.figure()
     plt.scatter(earning[earning >= 0], cdf[earning >= 0], s = 10)
     plt.xlabel('Revenu annuel')
     plt.title("{type} earnings cumulative distribution function - january {annee}".format(type = title, annee = period))
     plt.show()
     plt.savefig('../outputs/B17/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
+    plt.close()
 
     return cdf
 
@@ -244,6 +246,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
     plt.show()
     plt.savefig('../outputs/B14/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
+    plt.close()
 
     return density
 
@@ -292,8 +295,10 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period,
     plt.show()
     if title == 'primary':
         plt.savefig('../outputs/B23/graphe_B23_{type}_{annee}.png'.format(type = title, annee = period))
+        plt.close()
     else:
         plt.savefig('../outputs/B24/graphe_B24_{type}_{annee}.png'.format(type = title, annee = period))
+        plt.close()
 
 
     return output*maries_ou_pacses
@@ -470,6 +475,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     plt.legend()
     plt.show()
     plt.savefig('../outputs/14/graphe_14_{annee}.png'.format(annee = period))
+    plt.close()
 
     
 
@@ -564,11 +570,10 @@ def simulation_reforme(annee = None):
             ir_taux_marginal = ir_taux_marginal, 
             period = period)
             
- 
-
-
-# TODO : plot cumulative distribution function (figure b21 et 22)
-
+    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+    graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
 
 
 #################################################################################################
@@ -606,6 +611,7 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
     plt.title("Median share of primary earner - {annee}".format(annee = period))
     plt.show()
     plt.savefig('../outputs/17/graphe_17_{annee}.png'.format(annee = period))
+    plt.close()
 
     
 
@@ -644,6 +650,158 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B15/graphe_B15_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+
+def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
+    cdf_primary = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    cdf_secondary = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+
+    cdf_primary = cdf_primary[primary_earning_maries_pacses > 0]
+    primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
+
+    primary_sorted_indices = numpy.argsort(primary_earning_maries_pacses)
+    primary_earning_sorted = primary_earning_maries_pacses[primary_sorted_indices]
+    primary_cdf_sorted = cdf_primary[primary_sorted_indices]
+
+    cdf_secondary = cdf_secondary[secondary_earning_maries_pacses > 0]
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[secondary_earning_maries_pacses > 0]
+
+    secondary_sorted_indices = numpy.argsort(secondary_earning_maries_pacses)
+    secondary_earning_sorted = secondary_earning_maries_pacses[secondary_sorted_indices]
+    secondary_cdf_sorted = cdf_secondary[secondary_sorted_indices]
+
+    plt.figure()
+    plt.plot(primary_earning_sorted[primary_earning_sorted < 400000], primary_cdf_sorted[primary_earning_sorted < 400000], label = 'primary')
+    plt.plot(secondary_earning_sorted[secondary_earning_sorted < 400000], secondary_cdf_sorted[secondary_earning_sorted < 400000], label = 'secondary')
+    plt.xlabel('Gross income')
+    plt.ylabel('CDF')
+    plt.title("Cumulative distribution function, primary and secondary earners - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B21/graphe_B21_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
+    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
+    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+
+    density_primary_earnings = density_primary_earnings[primary_earning_maries_pacses > 0]
+    primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
+
+    primary_sorted_indices = numpy.argsort(primary_earning_maries_pacses)
+    primary_earning_sorted = primary_earning_maries_pacses[primary_sorted_indices]
+    primary_density_sorted = density_primary_earnings[primary_sorted_indices]
+
+    density_secondary_earnings = density_secondary_earnings[secondary_earning_maries_pacses > 0]
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[secondary_earning_maries_pacses > 0]
+
+    secondary_sorted_indices = numpy.argsort(secondary_earning_maries_pacses)
+    secondary_earning_sorted = secondary_earning_maries_pacses[secondary_sorted_indices]
+    secondary_density_sorted = density_secondary_earnings[secondary_sorted_indices]
+
+    plt.figure()
+    plt.plot(primary_earning_sorted[primary_earning_sorted < 400000], primary_density_sorted[primary_earning_sorted < 400000], label = 'primary')
+    plt.plot(secondary_earning_sorted[secondary_earning_sorted < 400000], secondary_density_sorted[secondary_earning_sorted < 400000], label = 'secondary')
+    plt.xlabel('Gross income')
+    plt.ylabel('PDF')
+    plt.title("Probability density function, primary and secondary earners - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B22/graphe_B22_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_marginal, tax_two_derivative, period):
+
+    # we take these elasticities for the graph B16 scenario
+    eps1 = 0.25
+    eps2 = 0.75
+
+    primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    secondary_elasticity_simu = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+
+    revenu = primary_earning + secondary_earning     
+    revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles  
+    primary_elasticity_simu = primary_elasticity_simu[maries_ou_pacses]
+    secondary_elasticity_simu = secondary_elasticity_simu[maries_ou_pacses]
+
+    revenu_sorted = numpy.sort(revenu)
+    deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
+    decile_numbers = numpy.digitize(revenu, deciles) 
+
+    
+    decile_primary = []
+    decile_secondary = []
+
+    for i in range(1, 11):
+        mask = (decile_numbers == i)
+        decile_primary.append(numpy.mean(primary_elasticity_simu[mask]))
+        decile_secondary.append(numpy.mean(secondary_elasticity_simu[mask]))
+        
+    decile_primary = numpy.array(decile_primary)
+    decile_secondary = numpy.array(decile_secondary)
+    
+    plt.figure()
+    plt.plot(numpy.arange(1,11), decile_primary, label = "primary")
+    plt.plot(numpy.arange(1,11), decile_secondary, label = "secondary")
+    plt.xlabel('Gross income (deciles)')
+    plt.ylabel('Average elasticity')
+    plt.title("Average elasticities of couples - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B16/graphe_B16_{annee}.png'.format(annee = period))
+    # TODO : ce graphe ne va pas du tout a investiguer (on devrait être beaucoup plus proches de 0.25 et 0.75) 
+    plt.close()
+
+
+
+def graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, period):
+
+    # couples 
+    earning = primary_earning + secondary_earning
+    earnings_maries_pacses = earning[maries_ou_pacses]
+    counts = numpy.array([numpy.sum(earnings_maries_pacses <= y2) for y2 in earnings_maries_pacses])
+
+    cdf = numpy.zeros_like(earnings_maries_pacses, dtype=float)
+    cdf = counts/len(earnings_maries_pacses)
+
+    cdf = cdf[earnings_maries_pacses > 0]
+    earnings_maries_pacses = earnings_maries_pacses[earnings_maries_pacses > 0]
+    
+
+    sorted_indices = numpy.argsort(earnings_maries_pacses)
+    earning_sorted = earnings_maries_pacses[sorted_indices]
+    cdf_sorted = cdf[sorted_indices]
+
+    plt.figure()
+    plt.plot(earning_sorted[earning_sorted < 500000], cdf_sorted[earning_sorted < 500000], label = "couples")
+
+    # singles
+    revenu_celib = revenu_celib[~maries_ou_pacses]
+    counts = numpy.array([numpy.sum(revenu_celib <= y2) for y2 in revenu_celib])
+    cdf_celib = numpy.zeros(len(revenu_celib), dtype=float)
+    cdf_celib = counts/len(revenu_celib)
+
+    cdf_celib = cdf_celib[revenu_celib > 0]
+    revenu_celib = revenu_celib[revenu_celib > 0]
+    
+    
+    sorted_indices = numpy.argsort(revenu_celib)
+    earning_celib_sorted = revenu_celib[sorted_indices]
+    cdf_celib_sorted = cdf_celib[sorted_indices]
+
+
+    plt.plot(earning_celib_sorted[earning_celib_sorted < 500000], cdf_celib_sorted[earning_celib_sorted < 500000], label = "singles")    
+    plt.xlabel('Gross income')
+    plt.ylabel('CDF')
+    plt.title("Cumulative distribution function - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B13/graphe_B13_{annee}.png'.format(annee = period))
+    plt.close()
 
 
 
