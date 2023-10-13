@@ -234,7 +234,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
 
 
 
-def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period, title, borne = 0.05):
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 0.05):
     output = numpy.zeros_like(earning, dtype=float)
 
     for i in range(len(earning)):
@@ -478,11 +478,11 @@ def simulation_reforme(annee = None):
 
     cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'primary')
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
 
     cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'secondary')
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
@@ -518,8 +518,9 @@ def simulation_reforme(annee = None):
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, period, 'primary')
-    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, period, 'secondary')
+    ma_borne = 500
+    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
 #################################################################################################
@@ -947,24 +948,26 @@ def graphB18(primary_earning, secondary_earning, maries_ou_pacses, period):
     plt.savefig('../outputs/B18/graphe_B18_{annee}.png'.format(annee = period))
     plt.close()
 
-def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, period, nom):
+def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, nom):
 
     earning = earning[maries_ou_pacses]
     ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
+    output = output[maries_ou_pacses]
 
     ir_taux_marginal = ir_taux_marginal[earning > 0]
+    output = output[earning > 0]
     earning = earning[earning > 0]
 
     sorted_indices = numpy.argsort(earning)
     earning_sorted = earning[sorted_indices]
     values = ir_taux_marginal/(1-ir_taux_marginal)
     values_sorted = values[sorted_indices]
+    output_sorted = output[sorted_indices]
 
     sigma = 20.0  
     kernel_size = int(6 * sigma) * 2 + 1
     x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
     gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    # gaussian_kernel /= numpy.sum(gaussian_kernel)
 
     dirac_delta = numpy.zeros_like(x_kernel)
     dirac_delta[2*(len(x_kernel)//3):] = 0.5
@@ -976,6 +979,7 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, period, nom):
 
     plt.figure()
     plt.scatter(earning_sorted, values_sorted, label='Discrete Data')
+    plt.scatter(earning_sorted, output_sorted, label = 'calcul a la main sur fenetre')
     plt.plot(earning_sorted, smoothed_y, label='Smoothed Data')
 
     plt.xlabel('{nom} Earnings'.format(nom = nom))
