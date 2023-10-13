@@ -283,7 +283,7 @@ def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_p
     
 
 
-def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, primary_function, secondary_function, period):
+def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, primary_function, secondary_function):
 
     # on enleve les outliers 
     threshold = 3
@@ -328,21 +328,8 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
     print("Integral of smoothed_y secondary", integral_trap_secondary)
 
-    plt.figure()
 
-    plt.scatter(primary_income, primary_function, label = 'Primary - Discrete Data')
-    plt.plot(primary_income, smoothed_y_primary, label = 'Primary - Smoothed Data')
-
-    plt.scatter(secondary_income, secondary_function, label = 'Secondary - Discrete Data')
-    plt.plot(secondary_income, smoothed_y_secondary, label = 'Secondary - Smoothed Data')
-
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/13/graphe_13_{annee}.png'.format(annee = period))
-    plt.close()
-    
-
-    return integral_trap_primary, integral_trap_secondary
+    return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
 
 def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
@@ -354,6 +341,9 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     eps2_tab = [0.75, 0.5, 0.25]
     rapport = [0.0]*len(eps1_tab)
     pourcentage_gagnants = [0.0]*len(eps1_tab)
+
+    # TODO ici faire subplots pour revenue functions sinon illisible
+    plt.figure()
 
     for i in range(len(eps1_tab)):
         primary_elasticity_maries_pacses = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
@@ -387,14 +377,13 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         primary_revenue_function = primary_revenue_function[condition]
         secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
         secondary_revenue_function = secondary_revenue_function[condition]
-
-        # TODO : les 3*2 plots de revenue function sur le meme graphe 
-        integrals = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, period)
-        primary_integral = integrals[0]
-        secondary_integral = integrals[1]
+ 
+        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
+        plt.plot(primary_income, smoothed_y_primary, label = 'primary scenario {i}'.format(i=i))
+        plt.plot(secondary_income, smoothed_y_secondary, label = 'secondary scenario {i}'.format(i=i))
 
         tau_1 = 0.1 # comment bien choisir tau_1 ????
         tau_2 = - tau_1 * rapport[i]
@@ -408,8 +397,15 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         print("Scenario", i)
         print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
     
+    
+    plt.xlabel('Gross income')
+    plt.ylabel('R function')
+    plt.title("Reforms of the system - {}".format(period))
 
-
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/13/graphe_13_{annee}.png'.format(annee = period))
+    plt.close()
 
 
     plt.figure()
