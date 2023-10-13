@@ -239,15 +239,6 @@ def density_earnings(earning, maries_ou_pacses, period, title):
     density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
     print("check de la densite", density)
 
-    # plot here figure B14 probability density function 
-    plt.figure()
-    plt.scatter(earning[earning >= 0], density[earning >= 0], s = 10)
-    plt.xlabel('Revenu annuel')
-    plt.title("{type} earnings probability density function - january {annee}".format(type = title, annee = period))
-    plt.show()
-    plt.savefig('../outputs/B14/graphe_B14_{type}_{annee}.png'.format(type = title, annee = period))
-    plt.close()
-
     return density
 
 
