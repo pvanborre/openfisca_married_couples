@@ -342,8 +342,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     rapport = [0.0]*len(eps1_tab)
     pourcentage_gagnants = [0.0]*len(eps1_tab)
 
-    # TODO ici faire subplots pour revenue functions sinon illisible
-    plt.figure()
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     for i in range(len(eps1_tab)):
         primary_elasticity_maries_pacses = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
@@ -382,8 +381,15 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
-        plt.plot(primary_income, smoothed_y_primary, label = 'primary scenario {i}'.format(i=i))
-        plt.plot(secondary_income, smoothed_y_secondary, label = 'secondary scenario {i}'.format(i=i))
+        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary scenario {i}'.format(i=i))
+        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary scenario {i}'.format(i=i))
+        
+        axes[i].legend()
+
+
+        axes[i].set_xlabel('Gross income')
+        axes[i].set_ylabel('R function')
+        axes[i].set_title('Scenario {}'.format(i))
 
         tau_1 = 0.1 # comment bien choisir tau_1 ????
         tau_2 = - tau_1 * rapport[i]
@@ -398,11 +404,9 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
     
     
-    plt.xlabel('Gross income')
-    plt.ylabel('R function')
-    plt.title("Reforms of the system - {}".format(period))
 
-    plt.legend()
+
+    plt.tight_layout()  
     plt.show()
     plt.savefig('../outputs/13/graphe_13_{annee}.png'.format(annee = period))
     plt.close()
