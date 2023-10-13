@@ -623,27 +623,20 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     earning_sorted = revenu_couples[sorted_indices]
     ir_marginal_sorted = mtr_couples[sorted_indices]
 
-    
-    earnings_v2 = numpy.linspace(0, 100000, 10000)
-    midpoints = (earnings_v2[:-1] + earnings_v2[1:]) / 2
+    sigma = 3.0  
+    kernel_size = int(6 * sigma) * 2 + 1
+    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+    gaussian_kernel /= numpy.sum(gaussian_kernel)
 
-    result = []
-
-    for i in range(len(midpoints)):
-        lower_bound = midpoints[i] - (earnings_v2[1] - earnings_v2[0]) / 2
-        upper_bound = midpoints[i] + (earnings_v2[1] - earnings_v2[0]) / 2
-
-        mask = (earning_sorted >= lower_bound) & (earning_sorted < upper_bound)
-
-        if numpy.any(mask):
-            result.append(numpy.mean(ir_marginal_sorted[mask]))
-        else:
-            result.append(0.0)
-
-    result = numpy.array(result)
+    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
 
     plt.figure()
-    plt.plot(earnings_v2[:-1], result, label = "couples")
+    plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - couples')
+    plt.plot(earning_sorted, smoothed_y, label='Smoothed Data - couples')
+
+    
+
     
     # singles
     revenu_celib = revenu_celib[~maries_ou_pacses]
@@ -656,8 +649,13 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     earning_sorted = revenu_celib[sorted_indices]
     ir_marginal_sorted = mtr_celib[sorted_indices]
 
-    #plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "singles")
+    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+
+    plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - singles')
+    plt.plot(earning_sorted, smoothed_y, label='Smoothed Data - singles')
+
     
+
     
     plt.xlabel('Gross earnings')
     plt.ylabel('MTR')
