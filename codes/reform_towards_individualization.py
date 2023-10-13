@@ -583,9 +583,14 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     kernel_size = int(6 * sigma) * 2 + 1
     x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
     gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    gaussian_kernel /= numpy.sum(gaussian_kernel)
+    
+    dirac_delta = numpy.zeros_like(x_kernel)
+    dirac_delta[(len(x_kernel)//3):] = 0.5
 
-    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+    combined_kernel = gaussian_kernel + dirac_delta
+    combined_kernel /= numpy.sum(combined_kernel)
+
+    smoothed_y = convolve(ir_marginal_sorted, combined_kernel, mode='same')
 
     plt.figure()
     plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - couples')
@@ -605,7 +610,7 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     earning_sorted = revenu_celib[sorted_indices]
     ir_marginal_sorted = mtr_celib[sorted_indices]
 
-    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+    smoothed_y = convolve(ir_marginal_sorted, combined_kernel, mode='same')
 
     plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - singles')
     plt.plot(earning_sorted, smoothed_y, label='Smoothed Data - singles')
