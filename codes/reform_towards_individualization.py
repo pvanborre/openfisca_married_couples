@@ -550,7 +550,9 @@ def simulation_reforme(annee = None):
     graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
     graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+    
     graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
@@ -923,6 +925,65 @@ def graphB17(primary_earning, secondary_earning, maries_ou_pacses, period):
 
 
 
+def graphB18(primary_earning, secondary_earning, maries_ou_pacses, period):
+
+    primary_earning = primary_earning[maries_ou_pacses]
+    secondary_earning = secondary_earning[maries_ou_pacses]
+    revenu = primary_earning + secondary_earning
+
+    dual_earner_earning = revenu[secondary_earning > 0]
+    single_earner_earning = revenu[secondary_earning == 0]
+
+    # dual earner couples 
+    n = len(dual_earner_earning)
+    estimated_std = numpy.std(dual_earner_earning, ddof=1)  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+
+    density_dual = numpy.zeros_like(dual_earner_earning, dtype=float)
+
+    for i in range(len(dual_earner_earning)):
+        kernel_values = gaussian_kernel((dual_earner_earning - dual_earner_earning[i]) / bandwidth)
+        density_dual[i] = numpy.mean(kernel_values) * 1/bandwidth
+
+    density_dual /= numpy.sum(density_dual)
+
+    sorted_indices = numpy.argsort(dual_earner_earning)
+    earning_sorted = dual_earner_earning[sorted_indices]
+    pdf_sorted = density_dual[sorted_indices]
+
+    plt.figure()
+    plt.plot(earning_sorted[earning_sorted < 200000], pdf_sorted[earning_sorted < 200000], label = "Dual Earner Couples")
+
+    # single earner couples 
+    n = len(single_earner_earning)
+    estimated_std = numpy.std(single_earner_earning, ddof=1)  
+    bandwidth = 1.06 * estimated_std * n ** (-1/5)
+
+    density_single = numpy.zeros_like(single_earner_earning, dtype=float)
+
+    for i in range(len(single_earner_earning)):
+        kernel_values = gaussian_kernel((single_earner_earning - single_earner_earning[i]) / bandwidth)
+        density_single[i] = numpy.mean(kernel_values) * 1/bandwidth
+
+    density_single /= numpy.sum(density_single)
+
+    density_single = density_single[single_earner_earning > 0]
+    single_earner_earning = single_earner_earning[single_earner_earning > 0]
+
+    sorted_indices = numpy.argsort(single_earner_earning)
+    earning_sorted = single_earner_earning[sorted_indices]
+    pdf_sorted = density_single[sorted_indices]
+
+    plt.plot(earning_sorted[earning_sorted < 200000], pdf_sorted[earning_sorted < 200000], label = "Single Earner Couples")
+
+
+    plt.xlabel('Gross income')
+    plt.ylabel('PDF')
+    plt.title("Probability distribution function, \n single earner and dual earner couples - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B18/graphe_B18_{annee}.png'.format(annee = period))
+    plt.close()
 
 
 
