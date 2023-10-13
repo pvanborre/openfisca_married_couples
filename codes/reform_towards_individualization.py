@@ -964,9 +964,15 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, period, nom):
     kernel_size = int(6 * sigma) * 2 + 1
     x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
     gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    gaussian_kernel /= numpy.sum(gaussian_kernel)
+    # gaussian_kernel /= numpy.sum(gaussian_kernel)
 
-    smoothed_y = convolve(values_sorted, gaussian_kernel, mode='same')
+    dirac_delta = numpy.zeros_like(x_kernel)
+    dirac_delta[2*(len(x_kernel)//3):] = 0.5
+
+    combined_kernel = gaussian_kernel + dirac_delta
+    combined_kernel /= numpy.sum(combined_kernel)
+
+    smoothed_y = convolve(values_sorted, combined_kernel, mode='same')
 
     plt.figure()
     plt.scatter(earning_sorted, values_sorted, label='Discrete Data')
