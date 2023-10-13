@@ -192,16 +192,6 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
     cdf[maries_ou_pacses] = counts/len(earnings_maries_pacses)
     print("check de la cdf", cdf)
 
-    # plot here figure B17 cumulative distribution function of gross income
-    # TODO pour faire le vrai b17 il faut séparer single earner couples et dual earner couples + sortir B17 de cette function faire une function à part
-    plt.figure()
-    plt.scatter(earning[earning >= 0], cdf[earning >= 0], s = 10)
-    plt.xlabel('Revenu annuel')
-    plt.title("{type} earnings cumulative distribution function - january {annee}".format(type = title, annee = period))
-    plt.show()
-    plt.savefig('../outputs/B17/graphe_B17_{type}_{annee}.png'.format(type = title, annee = period))
-    plt.close()
-
     return cdf
 
 
@@ -560,6 +550,7 @@ def simulation_reforme(annee = None):
     graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
     graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+    graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
@@ -882,6 +873,57 @@ def graphB14(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     plt.show()
     plt.savefig('../outputs/B14/graphe_B14_{annee}.png'.format(annee = period))
     plt.close()
+
+
+def graphB17(primary_earning, secondary_earning, maries_ou_pacses, period):
+
+    primary_earning = primary_earning[maries_ou_pacses]
+    secondary_earning = secondary_earning[maries_ou_pacses]
+    revenu = primary_earning + secondary_earning
+
+    dual_earner_earning = revenu[secondary_earning > 0]
+    single_earner_earning = revenu[secondary_earning == 0]
+
+    # dual earner couples 
+    counts = numpy.array([numpy.sum(dual_earner_earning <= y2) for y2 in dual_earner_earning])
+    cdf = numpy.zeros_like(dual_earner_earning, dtype=float)
+    cdf = counts/len(dual_earner_earning)
+
+    sorted_indices = numpy.argsort(dual_earner_earning)
+    earning_sorted = dual_earner_earning[sorted_indices]
+    cdf_sorted = cdf[sorted_indices]
+
+    plt.figure()
+    plt.plot(earning_sorted[earning_sorted < 500000], cdf_sorted[earning_sorted < 500000], label = "Dual Earner Couples")
+
+    # single earner couples 
+    counts = numpy.array([numpy.sum(single_earner_earning <= y2) for y2 in single_earner_earning])
+    cdf = numpy.zeros_like(single_earner_earning, dtype=float)
+    cdf = counts/len(single_earner_earning)
+
+    cdf = cdf[single_earner_earning > 0]
+    single_earner_earning = single_earner_earning[single_earner_earning > 0]
+
+    sorted_indices = numpy.argsort(single_earner_earning)
+    earning_sorted = single_earner_earning[sorted_indices]
+    cdf_sorted = cdf[sorted_indices]
+
+    plt.plot(earning_sorted[earning_sorted < 500000], cdf_sorted[earning_sorted < 500000], label = "Single Earner Couples")
+
+
+    plt.xlabel('Gross income')
+    plt.ylabel('CDF')
+    plt.title("Cumulative distribution function, \n single earner and dual earner couples - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/B17/graphe_B17_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+
+
+
+
 
 
 def redirect_print_to_file(filename):
