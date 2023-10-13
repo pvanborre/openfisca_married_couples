@@ -243,45 +243,6 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period,
         ir_taux_marginal2[diff > borne] = 0
         output[i] = numpy.sum(ir_taux_marginal2 / (1 - ir_taux_marginal2))/numpy.sum(diff <= borne)
 
-    sorted_indices = numpy.argsort(earning)
-    earning_sorted = earning[sorted_indices]
-    values = ir_taux_marginal/(1-ir_taux_marginal)
-    values_sorted = values[sorted_indices]
-    
-
-
-    diff_indices = numpy.where(numpy.diff(earning_sorted) > borne)[0]
-    y_chunks = numpy.split(values_sorted, diff_indices + 1)
-    y_averaged = numpy.array([numpy.mean(chunk) for chunk in y_chunks])
-    
-
-    new_x = earning_sorted[diff_indices]
-    new_y = y_averaged
-    min_length = min(len(new_x), len(new_y))
-    new_x = new_x[:min_length]
-    new_y = new_y[:min_length]
-    
-
-    # graphes B23 et B24 : l'esperance ne s'affiche pas bien sur ce graphe 
-    # peut etre pour chaque abscisse prendre les y qu'il y a et faire la moyenne voulue 
-    # TODO quelque chose d'important à changer ici 
-    plt.figure()
-    plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#8c564b')
-    plt.scatter(earning[earning >= 0], output[earning >= 0], s = 10, c = '#17becf')
-    # plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#17becf')
-    # plt.scatter(new_x[new_x >= 0], new_y[new_x >= 0], s = 10, c = '#8c564b')
-    plt.xlabel('{type} Earnings'.format(type = title))
-    plt.ylabel("Tm'/(1-Tm')")
-    plt.title("Average marginal tax rates by {type} earnings - january {annee}".format(type = title, annee = period))
-    plt.show()
-    if title == 'primary':
-        plt.savefig('../outputs/B23/graphe_B23_{type}_{annee}.png'.format(type = title, annee = period))
-        plt.close()
-    else:
-        plt.savefig('../outputs/B24/graphe_B24_{type}_{annee}.png'.format(type = title, annee = period))
-        plt.close()
-
-
     return output*maries_ou_pacses
 
 
@@ -985,6 +946,34 @@ def graphB18(primary_earning, secondary_earning, maries_ou_pacses, period):
     plt.savefig('../outputs/B18/graphe_B18_{annee}.png'.format(annee = period))
     plt.close()
 
+def graphB23(primary_earning maries_ou_pacses, period):
+    
+    sorted_indices = numpy.argsort(earning)
+    earning_sorted = earning[sorted_indices]
+    values = ir_taux_marginal/(1-ir_taux_marginal)
+    values_sorted = values[sorted_indices]
+    
+
+
+
+    # graphes B23 et B24 : l'esperance ne s'affiche pas bien sur ce graphe 
+    # peut etre pour chaque abscisse prendre les y qu'il y a et faire la moyenne voulue 
+    # TODO quelque chose d'important à changer ici 
+
+    plt.figure()
+    plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#8c564b')
+    plt.scatter(earning[earning >= 0], output[earning >= 0], s = 10, c = '#17becf')
+
+    plt.xlabel('{type} Earnings'.format(type = title))
+    plt.ylabel("Tm'/(1-Tm')")
+    plt.title("Average marginal tax rates by {type} earnings - january {annee}".format(type = title, annee = period))
+    plt.show()
+    if title == 'primary':
+        plt.savefig('../outputs/B23/graphe_B23_{annee}.png'.format(type = title, annee = period))
+        plt.close()
+    else:
+        plt.savefig('../outputs/B24/graphe_B24_{annee}.png'.format(type = title, annee = period))
+        plt.close()
 
 
 def redirect_print_to_file(filename):
