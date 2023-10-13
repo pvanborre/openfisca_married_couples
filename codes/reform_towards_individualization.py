@@ -615,10 +615,19 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
 
     mtr_couples = mtr_couples[revenu_couples > 0]
     revenu_couples = revenu_couples[revenu_couples > 0]
+
+    # en fait du aux enfants pour un revenu plus élevé le taux d'imposition peut etre plus grand
+    # pour avoir une courbe globalement croissante il faut moyenner à un revenu donné
     
     sorted_indices = numpy.argsort(revenu_couples)
     earning_sorted = revenu_couples[sorted_indices]
     ir_marginal_sorted = mtr_couples[sorted_indices]
+
+    earnings_v2 = numpy.linspace(0, 100000, 10000)
+    result = []
+    for i in range(1, len(earnings_v2)-1):
+        mask = earning_sorted[earning_sorted >= (earnings_v2[i]+earnings_v2[i-1])/2 & earning_sorted < (earnings_v2[i]+earnings_v2[i+1])/2]
+        result.append(numpy.mean(ir_marginal_sorted[mask]))
 
     plt.figure()
     plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "couples")
