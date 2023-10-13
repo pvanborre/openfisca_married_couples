@@ -554,18 +554,18 @@ def simulation_reforme(annee = None):
             maries_ou_pacses = maries_ou_pacses,
             period = period)
     
-    graphB15(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses,
-            revenu_celib = revenu_celib, 
-            maries_ou_pacses = maries_ou_pacses,
-            ir_taux_marginal = ir_taux_marginal, 
-            period = period)
-            
-    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+          
     graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
     graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    
+    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+
+    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    
+
+
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -608,32 +608,54 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
 
 def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, ir_taux_marginal, period):
 
-    revenu = primary_earning + secondary_earning
-        
-    plt.figure()
-    
-    # distinguer singles et couples
-
     # couples
+    revenu = primary_earning + secondary_earning
     revenu_couples = revenu[maries_ou_pacses]
     mtr_couples = ir_taux_marginal[maries_ou_pacses]
+
+    mtr_couples = mtr_couples[revenu_couples > 0]
+    revenu_couples = revenu_couples[revenu_couples > 0]
+
+    # en fait du aux enfants pour un revenu plus élevé le taux d'imposition peut etre plus grand
+    # pour avoir une courbe globalement croissante il faut moyenner à un revenu donné
     
     sorted_indices = numpy.argsort(revenu_couples)
     earning_sorted = revenu_couples[sorted_indices]
     ir_marginal_sorted = mtr_couples[sorted_indices]
 
-    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "couples")
+    sigma = 3.0  
+    kernel_size = int(6 * sigma) * 2 + 1
+    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+    gaussian_kernel /= numpy.sum(gaussian_kernel)
+
+    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+
+    plt.figure()
+    plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - couples')
+    plt.plot(earning_sorted, smoothed_y, label='Smoothed Data - couples')
+
+    
+
     
     # singles
     revenu_celib = revenu_celib[~maries_ou_pacses]
     mtr_celib = ir_taux_marginal[~maries_ou_pacses]
+
+    mtr_celib = mtr_celib[revenu_celib > 0]
+    revenu_celib = revenu_celib[revenu_celib > 0]
     
     sorted_indices = numpy.argsort(revenu_celib)
     earning_sorted = revenu_celib[sorted_indices]
     ir_marginal_sorted = mtr_celib[sorted_indices]
 
-    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "singles")
+    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+
+    plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - singles')
+    plt.plot(earning_sorted, smoothed_y, label='Smoothed Data - singles')
+
     
+
     
     plt.xlabel('Gross earnings')
     plt.ylabel('MTR')
