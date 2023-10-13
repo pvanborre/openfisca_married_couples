@@ -234,7 +234,7 @@ def density_earnings(earning, maries_ou_pacses, period, title):
 
 
 
-def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period, title, borne = 0.05):
+def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 0.05):
     output = numpy.zeros_like(earning, dtype=float)
 
     for i in range(len(earning)):
@@ -242,45 +242,6 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, period,
         ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
         ir_taux_marginal2[diff > borne] = 0
         output[i] = numpy.sum(ir_taux_marginal2 / (1 - ir_taux_marginal2))/numpy.sum(diff <= borne)
-
-    sorted_indices = numpy.argsort(earning)
-    earning_sorted = earning[sorted_indices]
-    values = ir_taux_marginal/(1-ir_taux_marginal)
-    values_sorted = values[sorted_indices]
-    
-
-
-    diff_indices = numpy.where(numpy.diff(earning_sorted) > borne)[0]
-    y_chunks = numpy.split(values_sorted, diff_indices + 1)
-    y_averaged = numpy.array([numpy.mean(chunk) for chunk in y_chunks])
-    
-
-    new_x = earning_sorted[diff_indices]
-    new_y = y_averaged
-    min_length = min(len(new_x), len(new_y))
-    new_x = new_x[:min_length]
-    new_y = new_y[:min_length]
-    
-
-    # graphes B23 et B24 : l'esperance ne s'affiche pas bien sur ce graphe 
-    # peut etre pour chaque abscisse prendre les y qu'il y a et faire la moyenne voulue 
-    # TODO quelque chose d'important à changer ici 
-    plt.figure()
-    plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#8c564b')
-    plt.scatter(earning[earning >= 0], output[earning >= 0], s = 10, c = '#17becf')
-    # plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#17becf')
-    # plt.scatter(new_x[new_x >= 0], new_y[new_x >= 0], s = 10, c = '#8c564b')
-    plt.xlabel('{type} Earnings'.format(type = title))
-    plt.ylabel("Tm'/(1-Tm')")
-    plt.title("Average marginal tax rates by {type} earnings - january {annee}".format(type = title, annee = period))
-    plt.show()
-    if title == 'primary':
-        plt.savefig('../outputs/B23/graphe_B23_{type}_{annee}.png'.format(type = title, annee = period))
-        plt.close()
-    else:
-        plt.savefig('../outputs/B24/graphe_B24_{type}_{annee}.png'.format(type = title, annee = period))
-        plt.close()
-
 
     return output*maries_ou_pacses
 
@@ -517,11 +478,11 @@ def simulation_reforme(annee = None):
 
     cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
     density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'primary')
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
 
     cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period, 'secondary')
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
     tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
 
@@ -557,7 +518,9 @@ def simulation_reforme(annee = None):
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-
+    ma_borne = 500
+    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
 #################################################################################################
@@ -620,9 +583,14 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     kernel_size = int(6 * sigma) * 2 + 1
     x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
     gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    gaussian_kernel /= numpy.sum(gaussian_kernel)
+    
+    dirac_delta = numpy.zeros_like(x_kernel)
+    dirac_delta[(len(x_kernel)//3):] = 0.5
 
-    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+    combined_kernel = gaussian_kernel + dirac_delta
+    combined_kernel /= numpy.sum(combined_kernel)
+
+    smoothed_y = convolve(ir_marginal_sorted, combined_kernel, mode='same')
 
     plt.figure()
     plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - couples')
@@ -642,7 +610,7 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
     earning_sorted = revenu_celib[sorted_indices]
     ir_marginal_sorted = mtr_celib[sorted_indices]
 
-    smoothed_y = convolve(ir_marginal_sorted, gaussian_kernel, mode='same')
+    smoothed_y = convolve(ir_marginal_sorted, combined_kernel, mode='same')
 
     plt.scatter(earning_sorted, ir_marginal_sorted, label='Discrete Data - singles')
     plt.plot(earning_sorted, smoothed_y, label='Smoothed Data - singles')
@@ -983,6 +951,50 @@ def graphB18(primary_earning, secondary_earning, maries_ou_pacses, period):
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B18/graphe_B18_{annee}.png'.format(annee = period))
+    plt.close()
+
+def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, nom):
+
+    earning = earning[maries_ou_pacses]
+    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
+    output = output[maries_ou_pacses]
+
+    ir_taux_marginal = ir_taux_marginal[earning > 0]
+    output = output[earning > 0]
+    earning = earning[earning > 0]
+
+    sorted_indices = numpy.argsort(earning)
+    earning_sorted = earning[sorted_indices]
+    values = ir_taux_marginal/(1-ir_taux_marginal)
+    values_sorted = values[sorted_indices]
+    output_sorted = output[sorted_indices]
+
+    sigma = 20.0  
+    kernel_size = int(6 * sigma) * 2 + 1
+    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+
+    dirac_delta = numpy.zeros_like(x_kernel)
+    dirac_delta[2*(len(x_kernel)//3):] = 0.5
+
+    combined_kernel = gaussian_kernel + dirac_delta
+    combined_kernel /= numpy.sum(combined_kernel)
+
+    smoothed_y = convolve(values_sorted, combined_kernel, mode='same')
+
+    plt.figure()
+    plt.scatter(earning_sorted, values_sorted, label='Discrete Data')
+    plt.scatter(earning_sorted, output_sorted, label = 'calcul a la main sur fenetre')
+    plt.plot(earning_sorted, smoothed_y, label='Smoothed Data')
+
+    plt.xlabel('{nom} Earnings'.format(nom = nom))
+    plt.ylabel("Tm'/(1-Tm')")
+    plt.title("Average marginal tax rates by {nom} earnings - january {annee}".format(annee = period, nom = nom))
+    plt.show()
+    if nom == 'primary':
+        plt.savefig('../outputs/B23/graphe_B23_{annee}.png'.format(annee = period))
+    else:
+        plt.savefig('../outputs/B24/graphe_B24_{annee}.png'.format(annee = period))
     plt.close()
 
 
