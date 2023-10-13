@@ -283,11 +283,28 @@ def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_p
     
 
 
-def tracer_et_integrer_revenue_fonctions(income, values, title, period):
+def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, primary_function, secondary_function):
 
-    sorted_indices = numpy.argsort(income)
-    income = income[sorted_indices]
-    values = values[sorted_indices]
+    # on enleve les outliers 
+    threshold = 3
+
+    z_scores = (primary_function - numpy.mean(primary_function)) / numpy.std(primary_function)
+    primary_income = primary_income[abs(z_scores) <= threshold]
+    primary_function = primary_function[abs(z_scores) <= threshold]
+
+    z_scores = (secondary_function - numpy.mean(secondary_function)) / numpy.std(secondary_function)
+    secondary_income = secondary_income[abs(z_scores) <= threshold]
+    secondary_function = secondary_function[abs(z_scores) <= threshold]
+
+
+
+    sorted_indices = numpy.argsort(primary_income)
+    primary_income = primary_income[sorted_indices]
+    primary_function = primary_function[sorted_indices]
+
+    sorted_indices_s = numpy.argsort(secondary_income)
+    secondary_income = secondary_income[sorted_indices_s]
+    secondary_function = secondary_function[sorted_indices_s]
 
     # le but ici est de convoler nos points pas juste avec une gaussienne
     # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
@@ -296,30 +313,23 @@ def tracer_et_integrer_revenue_fonctions(income, values, title, period):
     kernel_size = int(6 * sigma) * 2 + 1
     x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
     gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-
-   
+    
     dirac_delta = numpy.zeros_like(x_kernel)
     dirac_delta[len(x_kernel) // 3] = 0.3
 
-    
     combined_kernel = gaussian_kernel + dirac_delta
     combined_kernel /= numpy.sum(combined_kernel)
 
-    smoothed_y = convolve(values, combined_kernel, mode='same')
+    smoothed_y_primary = convolve(primary_function, combined_kernel, mode='same')
+    integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
+    print("Integral of smoothed_y primary", integral_trap_primary)
 
-    
-    plt.figure()
-    plt.scatter(income, values, label='Discrete Data', color='red')
-    plt.plot(income, smoothed_y, label='Smoothed Data')
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/revenue_function/{title}_revenue_function_{annee}.png'.format(title = title, annee = period))
+    smoothed_y_secondary = convolve(secondary_function, combined_kernel, mode='same')
+    integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
+    print("Integral of smoothed_y secondary", integral_trap_secondary)
 
-    
-    integral_trap = numpy.trapz(smoothed_y, income)
-    print("Integral of smoothed_y:", integral_trap)
 
-    return integral_trap
+    return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
 
 def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
@@ -331,6 +341,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     eps2_tab = [0.75, 0.5, 0.25]
     rapport = [0.0]*len(eps1_tab)
     pourcentage_gagnants = [0.0]*len(eps1_tab)
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     for i in range(len(eps1_tab)):
         primary_elasticity_maries_pacses = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
@@ -364,13 +376,20 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         primary_revenue_function = primary_revenue_function[condition]
         secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
         secondary_revenue_function = secondary_revenue_function[condition]
-
-
-        primary_integral = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, primary_revenue_function, 'primary', period)
-        secondary_integral = tracer_et_integrer_revenue_fonctions(secondary_earning_maries_pacses, secondary_revenue_function, 'secondary', period)
+ 
+        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
+        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary scenario {i}'.format(i=i))
+        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary scenario {i}'.format(i=i))
+        
+        axes[i].legend()
+
+
+        axes[i].set_xlabel('Gross income')
+        axes[i].set_ylabel('R function')
+        axes[i].set_title('Scenario {}'.format(i))
 
         tau_1 = 0.1 # comment bien choisir tau_1 ????
         tau_2 = - tau_1 * rapport[i]
@@ -384,8 +403,13 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         print("Scenario", i)
         print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
     
+    
 
 
+    plt.tight_layout()  
+    plt.show()
+    plt.savefig('../outputs/13/graphe_13_{annee}.png'.format(annee = period))
+    plt.close()
 
 
     plt.figure()
