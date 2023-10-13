@@ -518,7 +518,8 @@ def simulation_reforme(annee = None):
     graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-
+    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, period, 'primary')
+    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, period, 'secondary')
 
 
 #################################################################################################
@@ -946,34 +947,41 @@ def graphB18(primary_earning, secondary_earning, maries_ou_pacses, period):
     plt.savefig('../outputs/B18/graphe_B18_{annee}.png'.format(annee = period))
     plt.close()
 
-def graphB23(primary_earning maries_ou_pacses, period):
-    
+def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, period, nom):
+
+    earning = earning[maries_ou_pacses]
+    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
+
+    ir_taux_marginal = ir_taux_marginal[earning > 0]
+    earning = earning[earning > 0]
+
     sorted_indices = numpy.argsort(earning)
     earning_sorted = earning[sorted_indices]
     values = ir_taux_marginal/(1-ir_taux_marginal)
     values_sorted = values[sorted_indices]
-    
 
+    sigma = 20.0  
+    kernel_size = int(6 * sigma) * 2 + 1
+    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+    gaussian_kernel /= numpy.sum(gaussian_kernel)
 
-
-    # graphes B23 et B24 : l'esperance ne s'affiche pas bien sur ce graphe 
-    # peut etre pour chaque abscisse prendre les y qu'il y a et faire la moyenne voulue 
-    # TODO quelque chose d'important à changer ici 
+    smoothed_y = convolve(values_sorted, gaussian_kernel, mode='same')
 
     plt.figure()
-    plt.scatter(earning[earning >= 0], values[earning >= 0], s = 10, c = '#8c564b')
-    plt.scatter(earning[earning >= 0], output[earning >= 0], s = 10, c = '#17becf')
+    plt.scatter(earning_sorted, values_sorted, label='Discrete Data')
+    plt.plot(earning_sorted, smoothed_y, label='Smoothed Data')
 
-    plt.xlabel('{type} Earnings'.format(type = title))
+    plt.xlabel('{nom} Earnings'.format(nom = nom))
     plt.ylabel("Tm'/(1-Tm')")
-    plt.title("Average marginal tax rates by {type} earnings - january {annee}".format(type = title, annee = period))
+    plt.title("Average marginal tax rates by {nom} earnings - january {annee}".format(annee = period, nom = nom))
     plt.show()
-    if title == 'primary':
-        plt.savefig('../outputs/B23/graphe_B23_{annee}.png'.format(type = title, annee = period))
-        plt.close()
+    if nom == 'primary':
+        plt.savefig('../outputs/B23/graphe_B23_{annee}.png'.format(annee = period))
     else:
-        plt.savefig('../outputs/B24/graphe_B24_{annee}.png'.format(type = title, annee = period))
-        plt.close()
+        plt.savefig('../outputs/B24/graphe_B24_{annee}.png'.format(annee = period))
+    plt.close()
+
 
 
 def redirect_print_to_file(filename):
