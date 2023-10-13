@@ -554,18 +554,18 @@ def simulation_reforme(annee = None):
             maries_ou_pacses = maries_ou_pacses,
             period = period)
     
-    graphB15(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses,
-            revenu_celib = revenu_celib, 
-            maries_ou_pacses = maries_ou_pacses,
-            ir_taux_marginal = ir_taux_marginal, 
-            period = period)
-            
-    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+          
     graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
     graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    
+    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+
+    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    
+
+
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -608,31 +608,33 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
 
 def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, ir_taux_marginal, period):
 
-    revenu = primary_earning + secondary_earning
-        
-    plt.figure()
-    
-    # distinguer singles et couples
-
     # couples
+    revenu = primary_earning + secondary_earning
     revenu_couples = revenu[maries_ou_pacses]
     mtr_couples = ir_taux_marginal[maries_ou_pacses]
+
+    mtr_couples = mtr_couples[revenu_couples > 0]
+    revenu_couples = revenu_couples[revenu_couples > 0]
     
     sorted_indices = numpy.argsort(revenu_couples)
     earning_sorted = revenu_couples[sorted_indices]
     ir_marginal_sorted = mtr_couples[sorted_indices]
 
-    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "couples")
+    plt.figure()
+    plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "couples")
     
     # singles
     revenu_celib = revenu_celib[~maries_ou_pacses]
     mtr_celib = ir_taux_marginal[~maries_ou_pacses]
+
+    mtr_celib = mtr_celib[revenu_celib > 0]
+    revenu_celib = revenu_celib[revenu_celib > 0]
     
     sorted_indices = numpy.argsort(revenu_celib)
     earning_sorted = revenu_celib[sorted_indices]
     ir_marginal_sorted = mtr_celib[sorted_indices]
 
-    plt.scatter(earning_sorted, ir_marginal_sorted, s = 10, label = "singles")
+    plt.scatter(earning_sorted[earning_sorted < 100000], ir_marginal_sorted[earning_sorted < 100000], label = "singles")
     
     
     plt.xlabel('Gross earnings')
