@@ -260,19 +260,31 @@ def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
     tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
 
     original_indices = numpy.argsort(sorted_indices)
+
+    period = 2018 # attention ligne à retirer, ici juste pour un test 
+    plt.scatter(revenu, tax_two_original[original_indices], label='Discrete Data')
+    plt.xlabel('Gross earnings')
+    plt.ylabel('T two')
+    plt.title("Effective marginal marginal tax rates - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/tax_two/graphe_tax_two_{annee}.png'.format(annee = period))
+    plt.close()
+
+
     return tax_two_original[original_indices]
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    #denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
-    denominateur = 1
-    
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    # denominateur = 1
+
     return maries_ou_pacses * eps1 * 1/denominateur
 
 def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
-    denominateur = 1
+    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    # denominateur = 1
     return maries_ou_pacses * eps2 * 1/denominateur
 
 
