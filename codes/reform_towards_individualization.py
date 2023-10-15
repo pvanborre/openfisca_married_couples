@@ -266,6 +266,7 @@ def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps
     # formule en lemma 4 
     #denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
     denominateur = 1
+    
     return maries_ou_pacses * eps1 * 1/denominateur
 
 def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
