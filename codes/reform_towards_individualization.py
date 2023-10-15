@@ -264,12 +264,14 @@ def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    #denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    denominateur = 1
     return maries_ou_pacses * eps1 * 1/denominateur
 
 def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    denominateur = 1
     return maries_ou_pacses * eps2 * 1/denominateur
 
 
@@ -420,7 +422,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     for i in range(len(eps1_tab)):
         color = green_shades[i]
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
-        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (600000 + 200000*i, 100000), bbox = dict(boxstyle ="round", fc = color))
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 50000*i, 500000), bbox = dict(boxstyle ="round", fc = color))
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
@@ -1015,6 +1017,7 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
     plt.ylabel("Tm'/(1-Tm')")
     plt.title("Average marginal tax rates by {nom} earnings - january {annee}".format(annee = period, nom = nom))
     plt.show()
+    plt.legend()
     if nom == 'primary':
         plt.savefig('../outputs/B23/graphe_B23_{annee}.png'.format(annee = period))
     else:
