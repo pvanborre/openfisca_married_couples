@@ -441,7 +441,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     for i in range(len(eps1_tab)):
         color = green_shades[i]
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
-        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 50000*i, 500000), bbox = dict(boxstyle ="round", fc = color))
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 100000*i, 300000), bbox = dict(boxstyle ="round", fc = color))
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
@@ -455,9 +455,9 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     
 
 
-    plt.xlabel('Revenu annuel du secondary earner du foyer fiscal')
-    plt.ylabel('Revenu annuel du primary earner du foyer fiscal')
-    plt.title("Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, \n parmi les couples mariés ou pacsés français, en janvier {}".format(period))
+    plt.xlabel('Secondary earner')
+    plt.ylabel('Primary earner')
+    plt.title("Reform towards individual taxation: Political economy - {}".format(period))
 
     plt.legend()
     plt.show()
