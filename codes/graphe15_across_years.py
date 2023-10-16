@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy
 
 with open('output_graphe_15.txt', 'r') as file:
     lines = file.readlines()
@@ -28,6 +29,7 @@ for i in range(nombre_scenarios):
     plt.plot([inner[0] for inner in percentages[i]], [inner[1] for inner in percentages[i]], marker='o', linestyle='-')
 
 #plt.xlabel('Annees')
+plt.xticks(numpy.arange(2002, 2019+1, 2))
 plt.ylabel('Winners (%)')
 plt.title('Reform towards individual taxation: Share of winners over time')
 plt.grid()
