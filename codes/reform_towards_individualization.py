@@ -245,32 +245,53 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne =
 
     return output*maries_ou_pacses
 
+def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period):
+    K = 30
 
-
-def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
+    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
     revenu = primary_earning + secondary_earning
+    revenu = revenu[maries_ou_pacses]
 
     sorted_indices = numpy.argsort(revenu)
-    earning_sorted = revenu[sorted_indices]
-    ir_marginal_sorted = ir_taux_marginal[sorted_indices]
+    revenu = revenu[sorted_indices]
+    ir_taux_marginal = ir_taux_marginal[sorted_indices]
 
-    unique_incomes = numpy.unique(earning_sorted) #unique nécessaire car sinon divisions par 0 dans le gradient
-    mean_values = [numpy.mean(ir_marginal_sorted[earning_sorted == i]) for i in unique_incomes]
-    tax_two_sorted = numpy.gradient(mean_values, unique_incomes)
-    tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
 
-    original_indices = numpy.argsort(sorted_indices)
-    return tax_two_original[original_indices]
+    ir_taux_marginal_mean = numpy.convolve(ir_taux_marginal, numpy.ones(2 * K + 1) / (2 * K + 1), mode='same')
+    max_value = numpy.max(ir_taux_marginal[-K:])
+    ir_taux_marginal_mean[-K:] = max_value
+
+    #plt.scatter(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Discrete Data')
+    plt.plot(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Continuous Data')
+    plt.xlabel('Gross earnings')
+    plt.ylabel('Average marginal tax rate')
+    plt.title("Average marginal tax rates - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/tax_one/graphe_tax_one_{annee}.png'.format(annee = period))
+    plt.close()
+
+    return revenu, ir_taux_marginal_mean
+
+    
+
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    denominateur = 1
+
     return maries_ou_pacses * eps1 * 1/denominateur
 
 def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    denominateur = 1
     return maries_ou_pacses * eps2 * 1/denominateur
+
+def primary_elasticity_B16(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
+    # lemma 2 formula 
+    return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / (primary_earning + secondary_earning)
 
 
 def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -420,7 +441,7 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     for i in range(len(eps1_tab)):
         color = green_shades[i]
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
-        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (600000 + 200000*i, 100000), bbox = dict(boxstyle ="round", fc = color))
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 100000*i, 300000), bbox = dict(boxstyle ="round", fc = color))
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
@@ -434,9 +455,9 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     
 
 
-    plt.xlabel('Revenu annuel du secondary earner du foyer fiscal')
-    plt.ylabel('Revenu annuel du primary earner du foyer fiscal')
-    plt.title("Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, \n parmi les couples mariés ou pacsés français, en janvier {}".format(period))
+    plt.xlabel('Secondary earner')
+    plt.ylabel('Primary earner')
+    plt.title("Reform towards individual taxation: Political economy - {}".format(period))
 
     plt.legend()
     plt.show()
@@ -508,7 +529,8 @@ def simulation_reforme(annee = None):
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
-    tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
+    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
+    tax_two_derivative_simulation = 0
 
     graphe14(primary_earning = primary_earning_maries_pacses, 
              secondary_earning = secondary_earning_maries_pacses,
@@ -528,6 +550,7 @@ def simulation_reforme(annee = None):
             secondary_earning = secondary_earning_maries_pacses, 
             maries_ou_pacses = maries_ou_pacses,
             period = period)
+    
     
           
     graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
@@ -718,8 +741,9 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     eps1 = 0.25
     eps2 = 0.75
 
-    primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    #primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
     secondary_elasticity_simu = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    primary_elasticity_simu = primary_elasticity_B16(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2)
 
     revenu = primary_earning + secondary_earning     
     revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles  
@@ -1015,6 +1039,7 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
     plt.ylabel("Tm'/(1-Tm')")
     plt.title("Average marginal tax rates by {nom} earnings - january {annee}".format(annee = period, nom = nom))
     plt.show()
+    plt.legend()
     if nom == 'primary':
         plt.savefig('../outputs/B23/graphe_B23_{annee}.png'.format(annee = period))
     else:

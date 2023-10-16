@@ -27,9 +27,9 @@ plt.figure()
 for i in range(nombre_scenarios):
     plt.plot([inner[0] for inner in percentages[i]], [inner[1] for inner in percentages[i]], marker='o', linestyle='-')
 
-plt.xlabel('Annees')
-plt.ylabel('Pourcentage de gagnants')
-plt.title('Pourcentage de gagnants à une réforme vers \n l\'individualisation de l\'impot au cours du temps')
+#plt.xlabel('Annees')
+plt.ylabel('Winners (%)')
+plt.title('Reform towards individual taxation: Share of winners over time')
 plt.grid()
 
 plt.show()
