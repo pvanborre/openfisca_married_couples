@@ -245,10 +245,41 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne =
 
     return output*maries_ou_pacses
 
+def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses):
+    K = 4
+
+    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
+    revenu = primary_earning + secondary_earning
+    revenu = revenu[maries_ou_pacses]
+
+    sorted_indices = numpy.argsort(revenu)
+    revenu = revenu[sorted_indices]
+    ir_taux_marginal = ir_taux_marginal[sorted_indices]
+
+    ir_taux_marginal_mean = numpy.zeros_like(ir_taux_marginal)
+
+    for i in range(K, len(ir_taux_marginal) - K):
+        ir_taux_marginal_mean[i] = numpy.mean(ir_taux_marginal[i - K:i + K + 1])
+
+
+    period = "annee" # attention ligne à retirer, ici juste pour un test 
+    plt.scatter(revenu, ir_taux_marginal_mean, label='Discrete Data')
+    plt.xlabel('Gross earnings')
+    plt.ylabel('taux marginal moyen')
+    plt.title("Effective marginal tax rates - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/tax_one/graphe_tax_one_{annee}.png'.format(annee = period))
+    plt.close()
+
+    
 
 
 def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
     revenu = primary_earning + secondary_earning
+
+        
+    
 
     sorted_indices = numpy.argsort(revenu)
     earning_sorted = revenu[sorted_indices]
@@ -261,7 +292,7 @@ def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
 
     original_indices = numpy.argsort(sorted_indices)
 
-    period = 2018 # attention ligne à retirer, ici juste pour un test 
+    period = "annee" # attention ligne à retirer, ici juste pour un test 
     plt.scatter(revenu, tax_two_original[original_indices], label='Discrete Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('T two')
@@ -544,6 +575,8 @@ def simulation_reforme(annee = None):
             maries_ou_pacses = maries_ou_pacses,
             period = period)
     
+    moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+
           
     graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
     graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
