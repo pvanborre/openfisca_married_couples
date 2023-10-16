@@ -245,8 +245,8 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne =
 
     return output*maries_ou_pacses
 
-def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses):
-    K = 10
+def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period):
+    K = 30
 
     ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
     revenu = primary_earning + secondary_earning
@@ -264,12 +264,11 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     max_value = numpy.max(ir_taux_marginal[-K:])
     ir_taux_marginal_mean[-K:] = max_value
 
-    period = "annee" # attention ligne à retirer, ici juste pour un test 
-    plt.scatter(revenu, ir_taux_marginal_mean, label='Discrete Data')
-    #plt.plot(revenu, ir_taux_marginal_mean, label='Continuous Data')
+    #.scatter(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Discrete Data')
+    plt.plot(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Continuous Data')
     plt.xlabel('Gross earnings')
-    plt.ylabel('taux marginal moyen')
-    plt.title("Effective marginal tax rates - {annee}".format(annee = period))
+    plt.ylabel('Average marginal tax rate')
+    plt.title("Average marginal tax rates - {annee}".format(annee = period))
     plt.legend()
     plt.show()
     plt.savefig('../outputs/tax_one/graphe_tax_one_{annee}.png'.format(annee = period))
@@ -278,7 +277,7 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     return revenu, ir_taux_marginal_mean
 
     
-def tax_two_derivative(revenu, ir_taux_marginal_mean, maries_ou_pacses):
+def tax_two_derivative(revenu, ir_taux_marginal_mean, maries_ou_pacses, period):
 
 
     unique_incomes = numpy.unique(revenu) #unique nécessaire car sinon divisions par 0 dans le gradient
@@ -287,7 +286,6 @@ def tax_two_derivative(revenu, ir_taux_marginal_mean, maries_ou_pacses):
     tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
 
 
-    period = "annee" # attention ligne à retirer, ici juste pour un test 
     plt.scatter(revenu, tax_two_original, label='Discrete Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('T two')
@@ -580,8 +578,8 @@ def simulation_reforme(annee = None):
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
-    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
-    tax_two_derivative_simulation = tax_two_derivative(revenu, ir_marginal, maries_ou_pacses)
+    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
+    tax_two_derivative_simulation = tax_two_derivative(revenu, ir_marginal, maries_ou_pacses, period)
 
     graphe14(primary_earning = primary_earning_maries_pacses, 
              secondary_earning = secondary_earning_maries_pacses,
