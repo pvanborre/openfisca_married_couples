@@ -252,9 +252,6 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     revenu = primary_earning + secondary_earning
     revenu = revenu[maries_ou_pacses]
 
-    # ir_taux_marginal = ir_taux_marginal[revenu > 0]
-    # revenu = revenu[revenu > 0]
-
     sorted_indices = numpy.argsort(revenu)
     revenu = revenu[sorted_indices]
     ir_taux_marginal = ir_taux_marginal[sorted_indices]
@@ -264,7 +261,7 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     max_value = numpy.max(ir_taux_marginal[-K:])
     ir_taux_marginal_mean[-K:] = max_value
 
-    #.scatter(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Discrete Data')
+    #plt.scatter(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Discrete Data')
     plt.plot(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Continuous Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('Average marginal tax rate')
@@ -286,7 +283,8 @@ def tax_two_derivative(revenu, ir_taux_marginal_mean, maries_ou_pacses, period):
     tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
 
 
-    plt.scatter(revenu, tax_two_original, label='Discrete Data')
+    plt.scatter(revenu[revenu > 0], tax_two_original[revenu > 0], label='Discrete Data')
+    #plt.plot(revenu[revenu > 0], tax_two_original[revenu > 0], label='Continuous Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('T two')
     plt.title("Effective marginal marginal tax rates - {annee}".format(annee = period))
