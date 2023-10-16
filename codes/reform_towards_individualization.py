@@ -246,24 +246,27 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne =
     return output*maries_ou_pacses
 
 def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses):
-    K = 4
+    K = 20
 
     ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
     revenu = primary_earning + secondary_earning
     revenu = revenu[maries_ou_pacses]
 
+    ir_taux_marginal = ir_taux_marginal[revenu > 0]
+    revenu = revenu[revenu > 0]
+
     sorted_indices = numpy.argsort(revenu)
     revenu = revenu[sorted_indices]
     ir_taux_marginal = ir_taux_marginal[sorted_indices]
 
-    ir_taux_marginal_mean = numpy.zeros_like(ir_taux_marginal)
 
-    for i in range(K, len(ir_taux_marginal) - K):
-        ir_taux_marginal_mean[i] = numpy.mean(ir_taux_marginal[i - K:i + K + 1])
-
+    ir_taux_marginal_mean = numpy.convolve(ir_taux_marginal, numpy.ones(2 * K + 1) / (2 * K + 1), mode='same')
+    max_value = numpy.max(ir_taux_marginal[-K:])
+    ir_taux_marginal_mean[-K:] = max_value
 
     period = "annee" # attention ligne à retirer, ici juste pour un test 
     plt.scatter(revenu, ir_taux_marginal_mean, label='Discrete Data')
+    #plt.plot(revenu, ir_taux_marginal_mean, label='Continuous Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('taux marginal moyen')
     plt.title("Effective marginal tax rates - {annee}".format(annee = period))
