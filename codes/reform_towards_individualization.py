@@ -246,14 +246,14 @@ def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne =
     return output*maries_ou_pacses
 
 def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses):
-    K = 20
+    K = 10
 
     ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
     revenu = primary_earning + secondary_earning
     revenu = revenu[maries_ou_pacses]
 
-    ir_taux_marginal = ir_taux_marginal[revenu > 0]
-    revenu = revenu[revenu > 0]
+    # ir_taux_marginal = ir_taux_marginal[revenu > 0]
+    # revenu = revenu[revenu > 0]
 
     sorted_indices = numpy.argsort(revenu)
     revenu = revenu[sorted_indices]
@@ -275,28 +275,20 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     plt.savefig('../outputs/tax_one/graphe_tax_one_{annee}.png'.format(annee = period))
     plt.close()
 
+    return revenu, ir_taux_marginal_mean
+
     
+def tax_two_derivative(revenu, ir_taux_marginal_mean, maries_ou_pacses):
 
 
-def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
-    revenu = primary_earning + secondary_earning
-
-        
-    
-
-    sorted_indices = numpy.argsort(revenu)
-    earning_sorted = revenu[sorted_indices]
-    ir_marginal_sorted = ir_taux_marginal[sorted_indices]
-
-    unique_incomes = numpy.unique(earning_sorted) #unique nécessaire car sinon divisions par 0 dans le gradient
-    mean_values = [numpy.mean(ir_marginal_sorted[earning_sorted == i]) for i in unique_incomes]
+    unique_incomes = numpy.unique(revenu) #unique nécessaire car sinon divisions par 0 dans le gradient
+    mean_values = [numpy.mean(ir_taux_marginal_mean[revenu == i]) for i in unique_incomes]
     tax_two_sorted = numpy.gradient(mean_values, unique_incomes)
     tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
 
-    original_indices = numpy.argsort(sorted_indices)
 
     period = "annee" # attention ligne à retirer, ici juste pour un test 
-    plt.scatter(revenu, tax_two_original[original_indices], label='Discrete Data')
+    plt.scatter(revenu, tax_two_original, label='Discrete Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('T two')
     plt.title("Effective marginal marginal tax rates - {annee}".format(annee = period))
@@ -305,8 +297,39 @@ def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
     plt.savefig('../outputs/tax_two/graphe_tax_two_{annee}.png'.format(annee = period))
     plt.close()
 
+    output = numpy.zeros_like(maries_ou_pacses)
+    output[maries_ou_pacses] = tax_two_original
+    return output
 
-    return tax_two_original[original_indices]
+# def tax_two_derivative(primary_earning, secondary_earning, ir_taux_marginal):
+#     revenu = primary_earning + secondary_earning
+
+        
+    
+
+#     sorted_indices = numpy.argsort(revenu)
+#     earning_sorted = revenu[sorted_indices]
+#     ir_marginal_sorted = ir_taux_marginal[sorted_indices]
+
+#     unique_incomes = numpy.unique(earning_sorted) #unique nécessaire car sinon divisions par 0 dans le gradient
+#     mean_values = [numpy.mean(ir_marginal_sorted[earning_sorted == i]) for i in unique_incomes]
+#     tax_two_sorted = numpy.gradient(mean_values, unique_incomes)
+#     tax_two_original = numpy.interp(revenu, unique_incomes, tax_two_sorted) # obtenir a nouveau valeurs perdues par le unique par une interpolation linéaire
+
+#     original_indices = numpy.argsort(sorted_indices)
+
+#     period = "annee" # attention ligne à retirer, ici juste pour un test 
+#     plt.scatter(revenu, tax_two_original[original_indices], label='Discrete Data')
+#     plt.xlabel('Gross earnings')
+#     plt.ylabel('T two')
+#     plt.title("Effective marginal marginal tax rates - {annee}".format(annee = period))
+#     plt.legend()
+#     plt.show()
+#     plt.savefig('../outputs/tax_two/graphe_tax_two_{annee}.png'.format(annee = period))
+#     plt.close()
+
+
+#     return tax_two_original[original_indices]
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
@@ -557,7 +580,8 @@ def simulation_reforme(annee = None):
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
-    tax_two_derivative_simulation = tax_two_derivative(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal)
+    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    tax_two_derivative_simulation = tax_two_derivative(revenu, ir_marginal, maries_ou_pacses)
 
     graphe14(primary_earning = primary_earning_maries_pacses, 
              secondary_earning = secondary_earning_maries_pacses,
@@ -578,8 +602,7 @@ def simulation_reforme(annee = None):
             maries_ou_pacses = maries_ou_pacses,
             period = period)
     
-    moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
-
+    
           
     graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
     graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
