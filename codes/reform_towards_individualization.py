@@ -278,16 +278,20 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
 
 def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
-    # denominateur = 1
+    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    denominateur = 1
 
     return maries_ou_pacses * eps1 * 1/denominateur
 
 def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
     # formule en lemma 4 
-    denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
-    # denominateur = 1
+    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
+    denominateur = 1
     return maries_ou_pacses * eps2 * 1/denominateur
+
+def primary_elasticity_B16(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
+    # lemma 2 formula 
+    return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / (primary_earning + secondary_earning)
 
 
 def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -737,8 +741,9 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     eps1 = 0.25
     eps2 = 0.75
 
-    primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    #primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
     secondary_elasticity_simu = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    primary_elasticity_simu = primary_elasticity_B16(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2)
 
     revenu = primary_earning + secondary_earning     
     revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles  
