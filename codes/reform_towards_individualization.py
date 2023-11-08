@@ -284,7 +284,9 @@ def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, e
 
 def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
     # lemma 2 formula 
-    return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / (primary_earning + secondary_earning)
+    total_earning = primary_earning + secondary_earning
+    total_earning[total_earning == 0] = 0.001
+    return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / total_earning
 
 
 def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -748,24 +750,14 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
     decile_numbers = numpy.digitize(revenu, deciles) 
 
-    
-    decile_primary = [] #decile_primary and decile_secondary useless 
-    decile_secondary = []
     decile_couples = []
-
     for i in range(1, 11):
-        mask = (decile_numbers == i)
-        decile_primary.append(numpy.mean(primary_elasticity_simu[mask]))
-        decile_secondary.append(numpy.mean(secondary_elasticity_simu[mask]))
-        decile_couples.append(numpy.mean(couples_elasticity_simu[mask]))
-        
-    decile_primary = numpy.array(decile_primary)
-    decile_secondary = numpy.array(decile_secondary)
+        decile_couples.append(numpy.mean(couples_elasticity_simu[decile_numbers == i])) 
     decile_couples = numpy.array(decile_couples)
     
     plt.figure()
-    plt.plot(numpy.arange(1,11), decile_primary, label = "primary", linestyle='dashed')
-    plt.plot(numpy.arange(1,11), decile_secondary, label = "secondary", linestyle='dashed')
+    plt.plot(numpy.arange(1,11), decile_couples, label = "primary", linestyle='dashed')
+    plt.plot(numpy.arange(1,11), decile_couples, label = "secondary", linestyle='dashed')
     plt.plot(numpy.arange(1,11), decile_couples, label = "couples")
     plt.xlabel('Gross income (deciles)')
     plt.ylabel('Average elasticity')
