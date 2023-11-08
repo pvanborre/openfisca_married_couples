@@ -289,8 +289,8 @@ def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps
     return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / total_earning
 
 
-def extensive_partial_revenue_function(primary_earning, secondary_earning, maries_ou_pacses, taux_marginaux):
-    
+def extensive_partial_primary_revenue_function(primary_earning, secondary_earning, maries_ou_pacses, taux_marginaux):
+    # after computations we see that the effect of the extensive margin is negligeable
 
     primary_earning = primary_earning[maries_ou_pacses]
     secondary_earning = secondary_earning[maries_ou_pacses]
@@ -302,11 +302,6 @@ def extensive_partial_revenue_function(primary_earning, secondary_earning, marie
     taux_marginaux = taux_marginaux[condition]
 
     total_earning = primary_earning + secondary_earning
-
-    total_earning_sorted = numpy.sort(total_earning)
-    index_99th_percentile = int(0.99 * (len(total_earning_sorted) - 1))
-    y_bar =  total_earning_sorted[index_99th_percentile]
-    # arbitrary choice for y_bar, can completely be something else (upper bound of the integral)
 
     dual_earner_couples_primary_earnings = primary_earning[secondary_earning > 0]
     dual_earner_couples_total_earnings = total_earning[secondary_earning > 0]
@@ -321,32 +316,51 @@ def extensive_partial_revenue_function(primary_earning, secondary_earning, marie
     y90_single_earner_couple =  single_earner_couples_total_earnings_sorted[index_9th_decile]
 
     total_sum = 0
-    y1_prime = 0
     partial_integral_values = {}
     # trick for the computation : cumulative array fashion 
     # (avoids computing the integral from y1 to y_bar and then from y1' to y_bar since both integrals have a common part)
     # only integrals from 0 to y1_prime stored in this dictionary
 
-    eps = 10 # discretization step of the integral
+    distinct_primary_earnings = numpy.sort(numpy.unique(primary_earning))
 
-    while y1_prime < y_bar:
-        condition_sample = (primary_earning >= y1_prime) & (primary_earning < y1_prime + eps)
+    for i in range(len(distinct_primary_earnings)-1):
+        y1_prime = distinct_primary_earnings[i]
+        next_y1_prime = distinct_primary_earnings[i+1]
+
+        condition_sample = (primary_earning >= y1_prime) & (primary_earning < next_y1_prime)
         taux_marginaux_sample = taux_marginaux[condition_sample]
         total_earning_sample = total_earning[condition_sample]
-        moyenne_dual_earner = numpy.mean(taux_marginaux_sample/(total_earning_sample - taux_marginaux_sample) * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_dual_earner_couple))) 
-        moyenne_single_earner = numpy.mean(taux_marginaux_sample/(total_earning_sample - taux_marginaux_sample) * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_single_earner_couple))) 
+        denominator = total_earning_sample - taux_marginaux_sample
+        denominator[denominator == 0] = 0.001
+        moyenne_dual_earner = numpy.mean(taux_marginaux_sample/denominator * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_dual_earner_couple))) 
+        moyenne_single_earner = numpy.mean(taux_marginaux_sample/denominator * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_single_earner_couple))) 
 
-        condition_dual_sample = (dual_earner_couples_primary_earnings >= y1_prime) & (dual_earner_couples_primary_earnings < y1_prime + eps)
+        condition_dual_sample = (dual_earner_couples_primary_earnings >= y1_prime) & (dual_earner_couples_primary_earnings < next_y1_prime)
         mass_dual = len(dual_earner_couples_primary_earnings[condition_dual_sample])/len(dual_earner_couples_primary_earnings)
-        condition_single_sample = (single_earner_couples_primary_earnings >= y1_prime) & (single_earner_couples_primary_earnings < y1_prime + eps)
+        condition_single_sample = (single_earner_couples_primary_earnings >= y1_prime) & (single_earner_couples_primary_earnings < next_y1_prime)
         mass_single = len(single_earner_couples_primary_earnings[condition_single_sample])/len(single_earner_couples_primary_earnings)
 
         total_sum += (moyenne_dual_earner * mass_dual + moyenne_single_earner * mass_single)
-        y1_prime += eps 
 
-        partial_integral_values[y1_prime] = total_sum 
-
+        partial_integral_values[next_y1_prime] = total_sum 
+    
     return partial_integral_values
+
+def extensive_primary_revenue_function(primary_earning, secondary_earning, taux_marginaux, maries_ou_pacses):
+    partial_integral_values = extensive_partial_primary_revenue_function(primary_earning, secondary_earning, maries_ou_pacses, taux_marginaux)
+    print(partial_integral_values)
+    extensive_rev_function = numpy.zeros_like(primary_earning)
+
+    primary_earning_restricted = primary_earning[maries_ou_pacses]
+    secondary_earning_restricted = secondary_earning[maries_ou_pacses]
+    primary_earning_restricted = primary_earning_restricted[(primary_earning_restricted >= 0) & (secondary_earning_restricted >= 0)]
+    maxi = numpy.max(primary_earning_restricted) 
+
+    for i in range(len(primary_earning)):
+        if maries_ou_pacses[i] and primary_earning[i] > 0 and secondary_earning[i] >= 0:
+            extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[primary_earning[i]]
+    
+    return - extensive_rev_function * maries_ou_pacses
 
 
 def intensive_revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -587,42 +601,44 @@ def simulation_reforme(annee = None):
     revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
     tax_two_derivative_simulation = 0
 
-    graphe14(primary_earning = primary_earning_maries_pacses, 
-             secondary_earning = secondary_earning_maries_pacses,
-             maries_ou_pacses = maries_ou_pacses, 
-             ancien_irpp = ancien_irpp, 
-             ir_taux_marginal = ir_taux_marginal,
-             tax_two_derivative_simulation = tax_two_derivative_simulation,
-             cdf_primary_earnings = cdf_primary_earnings,
-             cdf_secondary_earnings = cdf_secondary_earnings,
-             density_primary_earnings = density_primary_earnings,
-             density_secondary_earnings = density_secondary_earnings,
-             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-             period = period)
+    print(extensive_primary_revenue_function(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses))
+
+    # graphe14(primary_earning = primary_earning_maries_pacses, 
+    #          secondary_earning = secondary_earning_maries_pacses,
+    #          maries_ou_pacses = maries_ou_pacses, 
+    #          ancien_irpp = ancien_irpp, 
+    #          ir_taux_marginal = ir_taux_marginal,
+    #          tax_two_derivative_simulation = tax_two_derivative_simulation,
+    #          cdf_primary_earnings = cdf_primary_earnings,
+    #          cdf_secondary_earnings = cdf_secondary_earnings,
+    #          density_primary_earnings = density_primary_earnings,
+    #          density_secondary_earnings = density_secondary_earnings,
+    #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+    #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+    #          period = period)
     
-    graph17(primary_earning = primary_earning_maries_pacses, 
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses,
-            period = period)
+    # graph17(primary_earning = primary_earning_maries_pacses, 
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses,
+    #         period = period)
     
     
           
-    graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    # graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    # graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    # graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+    # graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
     
-    graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
-    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    ma_borne = 500
-    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
-    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
+    # ma_borne = 500
+    # graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    # graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
 #################################################################################################
