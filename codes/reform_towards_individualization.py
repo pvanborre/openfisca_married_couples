@@ -288,35 +288,19 @@ def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps
     total_earning[total_earning == 0] = 0.001
     return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / total_earning
 
-def ninty_percentage_dual_earner_couples(primary_earning, secondary_earning, maries_ou_pacses):
+def ninty_percentage_earnings(primary_earning, secondary_earning, maries_ou_pacses):
     # extensive margin
     primary_earning = primary_earning[maries_ou_pacses]
     secondary_earning = secondary_earning[maries_ou_pacses]
-
-    primary_earning = primary_earning[secondary_earning > 0]
-    secondary_earning = secondary_earning[secondary_earning > 0] 
-    # remove these 2 lines if you don't want to distinguish between single and dual earner couples
-
     total_earning = primary_earning + secondary_earning
+
+    total_earning = total_earning[total_earning >= 0] # remove some outliers
+  
     earnings_sorted = numpy.sort(total_earning)
     index_9th_decile = int(0.9 * (len(earnings_sorted) - 1))
 
     return earnings_sorted[index_9th_decile]
 
-def ninty_percentage_single_earner_couples(primary_earning, secondary_earning, maries_ou_pacses):
-    # extensive margin
-    primary_earning = primary_earning[maries_ou_pacses]
-    secondary_earning = secondary_earning[maries_ou_pacses]
-
-    primary_earning = primary_earning[secondary_earning <= 0]
-    secondary_earning = secondary_earning[secondary_earning <= 0] 
-    # remove these 2 lines if you don't want to distinguish between single and dual earner couples
-
-    total_earning = primary_earning + secondary_earning
-    earnings_sorted = numpy.sort(total_earning)
-    index_9th_decile = int(0.9 * (len(earnings_sorted) - 1))
-
-    return earnings_sorted[index_9th_decile]
 
 def participation_elasticity(y, y90):
     return 0.65 - 0.4 * numpy.sqrt(y/y90)
