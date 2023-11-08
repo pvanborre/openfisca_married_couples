@@ -345,13 +345,14 @@ def extensive_partial_revenue_function(base_earning, other_earning, secondary_ea
         total_sum += (moyenne_dual_earner * mass_dual + moyenne_single_earner * mass_single)
 
         partial_integral_values[next_y1_prime] = total_sum 
-    
+
+    partial_integral_values[0] = 0
+
     return partial_integral_values
 
 def extensive_revenue_function(base_earning, other_earning, secondary_earning, taux_marginaux, maries_ou_pacses):
     partial_integral_values = extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, taux_marginaux)
-    partial_integral_values[0] = 0
-
+    
     extensive_rev_function = numpy.zeros_like(base_earning)
 
     base_earning_restricted = base_earning[maries_ou_pacses]
@@ -360,7 +361,7 @@ def extensive_revenue_function(base_earning, other_earning, secondary_earning, t
     maxi = numpy.max(base_earning_restricted) 
 
     for i in range(len(base_earning)):
-        if maries_ou_pacses[i] and base_earning[i] > 0 and other_earning[i] >= 0:
+        if maries_ou_pacses[i] and base_earning[i] >= 0 and other_earning[i] >= 0:
             extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning[i]]
     
     return - extensive_rev_function * maries_ou_pacses
