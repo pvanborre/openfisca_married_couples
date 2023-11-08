@@ -645,6 +645,9 @@ def simulation_reforme(annee = None):
     graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
+
+    lasso(revenu_individu,data_persons)
+
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
 #################################################################################################
@@ -1126,6 +1129,22 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
     else:
         plt.savefig('../outputs/B24/graphe_B24_{annee}.png'.format(annee = period))
     plt.close()
+
+
+# Analyse des résultats obtenus et investigation des pics (2007 - 2014)
+
+def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal,):
+    # we take as target variable the primary revenue function for the baseline scenario ep = 0.25, es = 0.75
+    primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, 0.25)
+    primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+
+    X1 = pd.get_dummies(mydata[["sexe", "cat_age", "cat_revenus", "cat_etudes", "pcs", "statut",
+                            "situation_matrimoniale", "contribution_principale", "statut_logement",
+                            "type_logement", "taille_agglo", "grande_region", "taux_marginal",
+                            "q15_1", "q15_2", "q15_3", "q16", "q17", "q19_1", "q19_2", "q19_3", "q23", "q24"]], drop_first=True)
+# 
+
+    data_foyers = data_persons.groupby('idfoy').first().reset_index()
 
 
 
