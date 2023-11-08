@@ -276,22 +276,17 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     
 
 
-def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
-    # formule en lemma 4 
-    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
-    denominateur = 1
+def primary_elasticity(maries_ou_pacses, eps1):
+    return maries_ou_pacses * eps1 
 
-    return maries_ou_pacses * eps1 * 1/denominateur
+def secondary_elasticity(maries_ou_pacses, eps2):
+    return maries_ou_pacses * eps2 
 
-def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
-    # formule en lemma 4 
-    # denominateur = 1 + tax_two_derivative/(1-ir_taux_marginal) * (eps1*primary_earning + eps2*secondary_earning)
-    denominateur = 1
-    return maries_ou_pacses * eps2 * 1/denominateur
-
-def primary_elasticity_B16(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
+def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
     # lemma 2 formula 
-    return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / (primary_earning + secondary_earning)
+    total_earning = primary_earning + secondary_earning
+    total_earning[total_earning == 0] = 0.001
+    return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / total_earning
 
 
 def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
@@ -366,8 +361,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     for i in range(len(eps1_tab)):
-        primary_elasticity_maries_pacses = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
-        secondary_elasticity_maries_pacses = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
+        primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, eps1_tab[i])
+        secondary_elasticity_maries_pacses = secondary_elasticity(maries_ou_pacses, eps2_tab[i])
         
         primary_revenue_function = revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
         secondary_revenue_function = revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
@@ -741,14 +736,16 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     eps1 = 0.25
     eps2 = 0.75
 
-    #primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
-    secondary_elasticity_simu = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
-    primary_elasticity_simu = primary_elasticity_B16(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2)
+    primary_elasticity_simu = primary_elasticity(maries_ou_pacses, eps1)
+    secondary_elasticity_simu = secondary_elasticity(maries_ou_pacses, eps2)
+    couples_elasticity_simu = couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2)
 
     revenu = primary_earning + secondary_earning     
     revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles  
+
     primary_elasticity_simu = primary_elasticity_simu[maries_ou_pacses]
     secondary_elasticity_simu = secondary_elasticity_simu[maries_ou_pacses]
+    couples_elasticity_simu = couples_elasticity_simu[maries_ou_pacses]
 
     revenu_sorted = numpy.sort(revenu)
     deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
@@ -757,25 +754,29 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     
     decile_primary = []
     decile_secondary = []
+    decile_couples = []
 
     for i in range(1, 11):
         mask = (decile_numbers == i)
         decile_primary.append(numpy.mean(primary_elasticity_simu[mask]))
         decile_secondary.append(numpy.mean(secondary_elasticity_simu[mask]))
+        decile_couples.append(numpy.mean(couples_elasticity_simu[mask]))
         
     decile_primary = numpy.array(decile_primary)
     decile_secondary = numpy.array(decile_secondary)
+    decile_couples = numpy.array(decile_couples)
+
     
     plt.figure()
-    plt.plot(numpy.arange(1,11), decile_primary, label = "primary")
-    plt.plot(numpy.arange(1,11), decile_secondary, label = "secondary")
+    plt.plot(numpy.arange(1,11), decile_primary, label = "primary", linestyle='dashed')
+    plt.plot(numpy.arange(1,11), decile_secondary, label = "secondary", linestyle='dashed')
+    plt.plot(numpy.arange(1,11), decile_couples, label = "couples")
     plt.xlabel('Gross income (deciles)')
     plt.ylabel('Average elasticity')
     plt.title("Average elasticities of couples - {annee}".format(annee = period))
     plt.legend()
     plt.show()
     plt.savefig('../outputs/B16/graphe_B16_{annee}.png'.format(annee = period))
-    # TODO : ce graphe ne va pas du tout a investiguer (on devrait être beaucoup plus proches de 0.25 et 0.75) 
     plt.close()
 
 
