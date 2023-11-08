@@ -423,11 +423,10 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
     print("Integral of smoothed_y secondary", integral_trap_secondary)
 
-
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
 
-def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
+def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
  
     # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
     # parmi les couples mariés ou pacsés, en janvier de l'année considérée
@@ -479,8 +478,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
-        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary scenario {i}'.format(i=i))
-        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary scenario {i}'.format(i=i))
+        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
         
         axes[i].legend()
 
@@ -607,7 +606,6 @@ def simulation_reforme(annee = None):
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
     revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
-    tax_two_derivative_simulation = 0
 
 
     graphe14(primary_earning = primary_earning_maries_pacses, 
@@ -615,7 +613,6 @@ def simulation_reforme(annee = None):
              maries_ou_pacses = maries_ou_pacses, 
              ancien_irpp = ancien_irpp, 
              ir_taux_marginal = ir_taux_marginal,
-             tax_two_derivative_simulation = tax_two_derivative_simulation,
              cdf_primary_earnings = cdf_primary_earnings,
              cdf_secondary_earnings = cdf_secondary_earnings,
              density_primary_earnings = density_primary_earnings,
@@ -635,7 +632,7 @@ def simulation_reforme(annee = None):
     graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
     graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
     graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
@@ -813,7 +810,7 @@ def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     plt.close()
 
 
-def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_marginal, tax_two_derivative, period):
+def graphB16(primary_earning, secondary_earning, maries_ou_pacses, period):
 
     # we take these elasticities for the graph B16 scenario
     eps1 = 0.25
