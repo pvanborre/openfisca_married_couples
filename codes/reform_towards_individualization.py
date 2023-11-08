@@ -276,10 +276,10 @@ def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, 
     
 
 
-def primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
+def primary_elasticity(maries_ou_pacses, eps1):
     return maries_ou_pacses * eps1 
 
-def secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative):
+def secondary_elasticity(maries_ou_pacses, eps2):
     return maries_ou_pacses * eps2 
 
 def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
@@ -361,8 +361,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     for i in range(len(eps1_tab)):
-        primary_elasticity_maries_pacses = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
-        secondary_elasticity_maries_pacses = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1_tab[i], eps2_tab[i], ir_taux_marginal, tax_two_derivative_simulation)
+        primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, eps1_tab[i])
+        secondary_elasticity_maries_pacses = secondary_elasticity(maries_ou_pacses, eps2_tab[i])
         
         primary_revenue_function = revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
         secondary_revenue_function = revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
@@ -736,12 +736,13 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     eps1 = 0.25
     eps2 = 0.75
 
-    primary_elasticity_simu = primary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
-    secondary_elasticity_simu = secondary_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2, ir_taux_marginal, tax_two_derivative)
+    primary_elasticity_simu = primary_elasticity(maries_ou_pacses, eps1)
+    secondary_elasticity_simu = secondary_elasticity(maries_ou_pacses, eps2)
     couples_elasticity_simu = couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2)
 
     revenu = primary_earning + secondary_earning     
     revenu = revenu[maries_ou_pacses] #on retire le reste car on en a pas besoin ici dans les déciles  
+
     primary_elasticity_simu = primary_elasticity_simu[maries_ou_pacses]
     secondary_elasticity_simu = secondary_elasticity_simu[maries_ou_pacses]
     couples_elasticity_simu = couples_elasticity_simu[maries_ou_pacses]
@@ -750,14 +751,25 @@ def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     deciles = numpy.percentile(revenu_sorted, numpy.arange(0, 100, 10))
     decile_numbers = numpy.digitize(revenu, deciles) 
 
+    
+    decile_primary = []
+    decile_secondary = []
     decile_couples = []
+
     for i in range(1, 11):
-        decile_couples.append(numpy.mean(couples_elasticity_simu[decile_numbers == i])) 
+        mask = (decile_numbers == i)
+        decile_primary.append(numpy.mean(primary_elasticity_simu[mask]))
+        decile_secondary.append(numpy.mean(secondary_elasticity_simu[mask]))
+        decile_couples.append(numpy.mean(couples_elasticity_simu[mask]))
+        
+    decile_primary = numpy.array(decile_primary)
+    decile_secondary = numpy.array(decile_secondary)
     decile_couples = numpy.array(decile_couples)
+
     
     plt.figure()
-    plt.plot(numpy.arange(1,11), decile_couples, label = "primary", linestyle='dashed')
-    plt.plot(numpy.arange(1,11), decile_couples, label = "secondary", linestyle='dashed')
+    plt.plot(numpy.arange(1,11), decile_primary, label = "primary", linestyle='dashed')
+    plt.plot(numpy.arange(1,11), decile_secondary, label = "secondary", linestyle='dashed')
     plt.plot(numpy.arange(1,11), decile_couples, label = "couples")
     plt.xlabel('Gross income (deciles)')
     plt.ylabel('Average elasticity')
