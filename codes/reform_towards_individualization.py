@@ -289,7 +289,86 @@ def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps
     return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / total_earning
 
 
-def revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
+def extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, taux_marginaux):
+    # after computations we see that the effect of the extensive margin is negligeable --> is this realistic?
+
+    base_earning = base_earning[maries_ou_pacses]
+    other_earning = other_earning[maries_ou_pacses]
+    secondary_earning = secondary_earning[maries_ou_pacses]
+    taux_marginaux = taux_marginaux[maries_ou_pacses]
+
+    condition = (base_earning >= 0) & (other_earning >= 0)
+    base_earning = base_earning[condition]
+    other_earning = other_earning[condition]
+    secondary_earning = secondary_earning[condition]
+    taux_marginaux = taux_marginaux[condition]
+
+    total_earning = base_earning + other_earning
+
+    dual_earner_couples_base_earnings = base_earning[secondary_earning > 0]
+    dual_earner_couples_total_earnings = total_earning[secondary_earning > 0]
+    dual_earner_couples_total_earnings_sorted = numpy.sort(dual_earner_couples_total_earnings)
+    index_9th_decile = int(0.9 * (len(dual_earner_couples_total_earnings_sorted) - 1))
+    y90_dual_earner_couple =  dual_earner_couples_total_earnings_sorted[index_9th_decile]
+
+    single_earner_couples_base_earnings = base_earning[secondary_earning == 0]
+    single_earner_couples_total_earnings = total_earning[secondary_earning == 0]
+    single_earner_couples_total_earnings_sorted = numpy.sort(single_earner_couples_total_earnings)
+    index_9th_decile = int(0.9 * (len(single_earner_couples_total_earnings_sorted) - 1))
+    y90_single_earner_couple =  single_earner_couples_total_earnings_sorted[index_9th_decile]
+
+    total_sum = 0
+    partial_integral_values = {}
+    # trick for the computation : cumulative array fashion 
+    # (avoids computing the integral from y1 to y_bar and then from y1' to y_bar since both integrals have a common part)
+    # only integrals from 0 to y1_prime stored in this dictionary
+
+    distinct_base_earnings = numpy.sort(numpy.unique(base_earning))
+
+    for i in range(len(distinct_base_earnings)-1):
+        y1_prime = distinct_base_earnings[i]
+        next_y1_prime = distinct_base_earnings[i+1]
+
+        condition_sample = (base_earning >= y1_prime) & (base_earning < next_y1_prime)
+        taux_marginaux_sample = taux_marginaux[condition_sample]
+        total_earning_sample = total_earning[condition_sample]
+        denominator = total_earning_sample - taux_marginaux_sample
+        denominator[denominator == 0] = 0.001
+        moyenne_dual_earner = numpy.mean(taux_marginaux_sample/denominator * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_dual_earner_couple))) 
+        moyenne_single_earner = numpy.mean(taux_marginaux_sample/denominator * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_single_earner_couple))) 
+
+        condition_dual_sample = (dual_earner_couples_base_earnings >= y1_prime) & (dual_earner_couples_base_earnings < next_y1_prime)
+        mass_dual = len(dual_earner_couples_base_earnings[condition_dual_sample])/len(dual_earner_couples_base_earnings)
+        condition_single_sample = (single_earner_couples_base_earnings >= y1_prime) & (single_earner_couples_base_earnings < next_y1_prime)
+        mass_single = len(single_earner_couples_base_earnings[condition_single_sample])/len(single_earner_couples_base_earnings)
+
+        total_sum += (moyenne_dual_earner * mass_dual + moyenne_single_earner * mass_single)
+
+        partial_integral_values[next_y1_prime] = total_sum 
+
+    partial_integral_values[0] = 0
+
+    return partial_integral_values
+
+def extensive_revenue_function(base_earning, other_earning, secondary_earning, taux_marginaux, maries_ou_pacses):
+    partial_integral_values = extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, taux_marginaux)
+    
+    extensive_rev_function = numpy.zeros_like(base_earning)
+
+    base_earning_restricted = base_earning[maries_ou_pacses]
+    other_earning_restricted = other_earning[maries_ou_pacses]
+    base_earning_restricted = base_earning_restricted[(base_earning_restricted >= 0) & (other_earning_restricted >= 0)]
+    maxi = numpy.max(base_earning_restricted) 
+
+    for i in range(len(base_earning)):
+        if maries_ou_pacses[i] and base_earning[i] >= 0 and other_earning[i] >= 0:
+            extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning[i]]
+    
+    return - extensive_rev_function * maries_ou_pacses
+
+
+
+def intensive_revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
 
     behavioral = - earning * density * elasticity * esperance_taux_marginal  
     mechanical = 1 - cdf
@@ -360,12 +439,15 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
+    primary_extensive_revenue_function = extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+    secondary_extensive_revenue_function = extensive_revenue_function(secondary_earning, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+
     for i in range(len(eps1_tab)):
         primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, eps1_tab[i])
         secondary_elasticity_maries_pacses = secondary_elasticity(maries_ou_pacses, eps2_tab[i])
         
-        primary_revenue_function = revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses)
-        secondary_revenue_function = revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses)
+        primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + primary_extensive_revenue_function
+        secondary_revenue_function = intensive_revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses) + secondary_extensive_revenue_function
 
         if i == 0:
             primary_earning_maries_pacses = primary_earning[maries_ou_pacses]
@@ -526,6 +608,7 @@ def simulation_reforme(annee = None):
     
     revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
     tax_two_derivative_simulation = 0
+
 
     graphe14(primary_earning = primary_earning_maries_pacses, 
              secondary_earning = secondary_earning_maries_pacses,
