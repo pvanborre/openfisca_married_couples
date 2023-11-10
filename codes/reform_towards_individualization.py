@@ -5,6 +5,14 @@ from scipy.integrate import quad
 from scipy.interpolate import CubicSpline, PchipInterpolator
 from scipy.signal import convolve
 
+from sklearn.linear_model import Lasso, ElasticNetCV
+from sklearn.model_selection import train_test_split, KFold, cross_val_predict
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error
+
+
+
+
 import sys
 import click
 
@@ -180,7 +188,114 @@ class useful_lasso(Reform):
             
         self.add_variable(secondary_age)
 
+        class primary_categorie_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieSalarie
+                default_value = TypesCategorieSalarie.prive_non_cadre
+                entity = FoyerFiscal
+                label = "Primary earner categorie salarie"
+                definition_period = YEAR
 
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_salarie', period.last_month) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_declarant_principal[mask] = categ_du_conjoint[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_declarant_principal * maries_ou_pacses
+                
+        self.add_variable(primary_categorie_salarie)
+
+        class secondary_categorie_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieSalarie
+                default_value = TypesCategorieSalarie.prive_non_cadre
+                entity = FoyerFiscal
+                label = "Secondary earner categorie salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_salarie', period.last_month) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_du_conjoint[mask] = categ_declarant_principal[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_du_conjoint * maries_ou_pacses
+                
+        self.add_variable(secondary_categorie_salarie)
+
+
+        class primary_categorie_non_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieNonSalarie
+                default_value = TypesCategorieNonSalarie.non_pertinent
+                entity = FoyerFiscal
+                label = "Primary earner categorie non salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_non_salarie', period) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_declarant_principal[mask] = categ_du_conjoint[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_declarant_principal * maries_ou_pacses
+                
+        self.add_variable(primary_categorie_non_salarie)
+
+        class secondary_categorie_non_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieNonSalarie
+                default_value = TypesCategorieNonSalarie.non_pertinent
+                entity = FoyerFiscal
+                label = "Secondary earner categorie non salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_non_salarie', period) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_du_conjoint[mask] = categ_declarant_principal[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_du_conjoint * maries_ou_pacses
+                
+        self.add_variable(secondary_categorie_non_salarie)
+
+       
+
+        
 
 def initialiser_simulation(tax_benefit_system, data_persons):
 
@@ -661,48 +776,69 @@ def simulation_reforme(annee = None):
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
-    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
+    # revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
 
 
-    graphe14(primary_earning = primary_earning_maries_pacses, 
-             secondary_earning = secondary_earning_maries_pacses,
-             maries_ou_pacses = maries_ou_pacses, 
-             ancien_irpp = ancien_irpp, 
-             ir_taux_marginal = ir_taux_marginal,
-             cdf_primary_earnings = cdf_primary_earnings,
-             cdf_secondary_earnings = cdf_secondary_earnings,
-             density_primary_earnings = density_primary_earnings,
-             density_secondary_earnings = density_secondary_earnings,
-             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-             period = period)
+    # graphe14(primary_earning = primary_earning_maries_pacses, 
+    #          secondary_earning = secondary_earning_maries_pacses,
+    #          maries_ou_pacses = maries_ou_pacses, 
+    #          ancien_irpp = ancien_irpp, 
+    #          ir_taux_marginal = ir_taux_marginal,
+    #          cdf_primary_earnings = cdf_primary_earnings,
+    #          cdf_secondary_earnings = cdf_secondary_earnings,
+    #          density_primary_earnings = density_primary_earnings,
+    #          density_secondary_earnings = density_secondary_earnings,
+    #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+    #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+    #          period = period)
     
-    graph17(primary_earning = primary_earning_maries_pacses, 
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses,
-            period = period)
+    # graph17(primary_earning = primary_earning_maries_pacses, 
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses,
+    #         period = period)
     
     
           
-    graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    # graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    # graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    # graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
-    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    ma_borne = 500
-    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
-    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
+    # ma_borne = 500
+    # graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    # graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
+    # LASSO 
+    primary_age = simulation.calculate('primary_age', period)
+    secondary_age = simulation.calculate('secondary_age', period)
+    primary_categorie_salarie = simulation.calculate('primary_categorie_salarie', period)
+    secondary_categorie_salarie = simulation.calculate('secondary_categorie_salarie', period)
+    primary_categorie_non_salarie = simulation.calculate('primary_categorie_non_salarie', period)
+    secondary_categorie_non_salarie = simulation.calculate('secondary_categorie_non_salarie', period)
 
-    lasso(revenu_individu,data_persons)
+
+    lasso(data_persons = data_persons, 
+          primary_earning = primary_earning_maries_pacses, 
+          secondary_earning = secondary_earning_maries_pacses,
+          ir_taux_marginal = ir_taux_marginal, 
+          maries_ou_pacses = maries_ou_pacses, 
+          cdf_primary_earnings = cdf_primary_earnings, 
+          density_primary_earnings = density_primary_earnings, 
+          primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+          primary_age = primary_age, 
+          secondary_age = secondary_age, 
+          primary_categorie_salarie = primary_categorie_salarie, 
+          secondary_categorie_salarie = secondary_categorie_salarie, 
+          primary_categorie_non_salarie = primary_categorie_non_salarie, 
+          secondary_categorie_non_salarie = secondary_categorie_non_salarie)
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -1189,18 +1325,105 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
 
 # Analyse des résultats obtenus et investigation des pics (2007 - 2014)
 
-def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal,):
+def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, primary_age, secondary_age, primary_categorie_salarie, secondary_categorie_salarie, primary_categorie_non_salarie, secondary_categorie_non_salarie):
     # we take as target variable the primary revenue function for the baseline scenario ep = 0.25, es = 0.75
     primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, 0.25)
     primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+    primary_revenue_function = primary_revenue_function[maries_ou_pacses]
 
-    # TODO : remove lines where not married or pacsed 
 
-    X1 = pandas.get_dummies(mydata[["statut_marital", "primary_earnings"]], drop_first=True)
+    primary_age = primary_age[maries_ou_pacses]
+    secondary_age = secondary_age[maries_ou_pacses]
+    primary_categorie_salarie = primary_categorie_salarie[maries_ou_pacses]
+    secondary_categorie_salarie = secondary_categorie_salarie[maries_ou_pacses]
+    primary_categorie_non_salarie = primary_categorie_non_salarie[maries_ou_pacses]
+    secondary_categorie_non_salarie = secondary_categorie_non_salarie[maries_ou_pacses]
+    primary_earning = primary_earning[maries_ou_pacses]
+    secondary_earning = secondary_earning[maries_ou_pacses]
+    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
+
+    total_earning = primary_earning + secondary_earning
+    total_earning[total_earning == 0] = 0.0001 # la share sera 0 si on du 0/0, est ce que l'on veut vraiment?
+    share_of_primary = primary_earning/total_earning
 
 
     data_foyers = data_persons.groupby('idfoy').first().reset_index()
-    w = data_foyers["wprm"]
+    weights, loyer, statut_occupation_logement, zone_apl = data_foyers["wprm"], data_foyers["loyer"], data_foyers["statut_occupation_logement"], data_foyers["zone_apl"]
+    weights = weights[maries_ou_pacses]
+    loyer = loyer[maries_ou_pacses]
+    statut_occupation_logement = statut_occupation_logement[maries_ou_pacses]
+    zone_apl = zone_apl[maries_ou_pacses]
+    
+    df = pandas.DataFrame({'primary_categorie_salarie': primary_categorie_salarie, 'secondary_categorie_salarie': secondary_categorie_salarie, 'primary_categorie_non_salarie':primary_categorie_non_salarie, 'secondary_categorie_non_salarie':secondary_categorie_non_salarie, 'statut_occupation_logement':statut_occupation_logement, 'zone_apl':zone_apl, 'taux_marginal':ir_taux_marginal})
+    X1 = pandas.get_dummies(df, columns=['primary_categorie_salarie', 'secondary_categorie_salarie', 'primary_categorie_non_salarie', 'secondary_categorie_non_salarie', 'statut_occupation_logement', 'zone_apl', 'taux_marginal'])
+    X2 = pandas.DataFrame({'primary_age':primary_age, 'secondary_age':secondary_age, 'primary_earning':primary_earning, 'secondary_earning':secondary_earning, 'loyer':loyer})
+    X = pandas.concat([X1, X2], axis=1)
+
+
+    print(X)
+    #print(X.shape)
+    
+    # 1st version
+    X_train, X_test, y_train, y_test = train_test_split(X, primary_revenue_function, test_size=0.2, random_state=42)
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # print(X_train_scaled)
+    # print(X_train_scaled.shape)
+
+    alpha = 0.01  # Regularization strength 
+    lasso_reg = Lasso(alpha=alpha)
+    lasso_reg.fit(X_train_scaled, y_train)
+    y_pred = lasso_reg.predict(X_test_scaled)
+    mse = mean_squared_error(y_test, y_pred)
+    print(f'Mean Squared Error: {mse}')
+    print('Coefficients:', lasso_reg.coef_)
+
+
+
+
+    # 2d version with some cross validation
+    # alpha = 1
+    # l1_ratio = 0.5  
+    # fit = ElasticNetCV(alphas=numpy.logspace(-4, 4, 100), l1_ratio=l1_ratio, cv=KFold(n_splits=10), random_state=0)
+    # y_pred = cross_val_predict(fit, X, primary_revenue_function, cv=KFold(n_splits=10))
+
+    # # Plot regularization path
+    # plt.plot(numpy.log(fit.alphas_), fit.coef_path_.T)
+    # plt.xlabel("Log(Alpha)")
+    # plt.ylabel("Coefficients")
+    # plt.title("Regularization Path")
+    # plt.show()
+
+    # # Calculate cross-validated mean squared error for different values of alpha
+    # mse_values = []
+    # alphas = numpy.log(fit.alphas_)
+
+    # for alpha in alphas:
+    #     fit.alpha = alpha
+    #     fit.l1_ratio = l1_ratio
+    #     y_pred = cross_val_predict(fit, X, primary_revenue_function, cv=KFold(n_splits=10))
+    #     mse = mean_squared_error(primary_revenue_function, y_pred)
+    #     mse_values.append(mse)
+
+    # # Plot cross-validated mean squared error
+    # plt.plot(alphas, mse_values)
+    # plt.xlabel("Log(Alpha)")
+    # plt.ylabel("Cross-Validated MSE")
+    # plt.title("Cross-Validated MSE vs. Log(Alpha)")
+    # plt.show()
+
+    # # Find the optimal alpha using the one-standard-error rule
+    # min_mse = min(mse_values)
+    # one_se_rule_alpha = alphas[numpy.where(mse_values <= min_mse + numpy.std(mse_values))[0][0]]
+    # print(f"Optimal alpha that minimizes cross-validated MSE: {one_se_rule_alpha}")
+
+    # # Set the alpha to the optimal value and fit the final model
+    # fit.alpha = one_se_rule_alpha
+    # fit.fit(X, primary_revenue_function)
+    # print(f"Model coefficients at optimal alpha: {fit.coef_}")
 
 
 
