@@ -52,6 +52,7 @@ class vers_individualisation(Reform):
         self.modify_parameters(modifier_function = modify_parameters)
 
         class revenu_individu(Variable):
+            # I could have used revenu_categoriel (same modulo a deduction)
             value_type = float
             entity = Individu
             label = "Revenu d'un individu du foyer fiscal"
@@ -124,6 +125,60 @@ class vers_individualisation(Reform):
                 return min_(revenu_declarant_principal, revenu_du_conjoint) * maries_ou_pacses
 
         self.add_variable(secondary_earning)
+
+        
+
+class useful_lasso(Reform):
+    name = "add more variables useful for the lasso"
+    def apply(self):
+
+        class primary_age(Variable):
+            value_type = int
+            entity = FoyerFiscal
+            label = "Primary earner age"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                age_i = foyer_fiscal.members('age', period.last_month) # est de taille nb individus
+                age_declarant_principal = foyer_fiscal.sum(age_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                age_du_conjoint = foyer_fiscal.sum(age_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                mask = revenu_declarant_principal < revenu_du_conjoint
+                age_declarant_principal[mask] = age_du_conjoint[mask]
+
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                return age_declarant_principal * maries_ou_pacses
+            
+        self.add_variable(primary_age)
+
+        class secondary_age(Variable):
+            value_type = int
+            entity = FoyerFiscal
+            label = "Secondary earner age"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                age_i = foyer_fiscal.members('age', period.last_month) # est de taille nb individus
+                age_declarant_principal = foyer_fiscal.sum(age_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                age_du_conjoint = foyer_fiscal.sum(age_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                mask = revenu_declarant_principal < revenu_du_conjoint
+                age_du_conjoint[mask] = age_declarant_principal[mask]
+
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                return age_du_conjoint * maries_ou_pacses
+            
+        self.add_variable(secondary_age)
 
 
 
@@ -564,7 +619,8 @@ def simulation_reforme(annee = None):
     #####################################################
 
     tax_benefit_system = FranceTaxBenefitSystem()
-    tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+    #tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+    tax_benefit_system_reforme = useful_lasso(vers_individualisation(tax_benefit_system)) # chain the 2 reforms
 
 
 
@@ -1138,13 +1194,13 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, 0.25)
     primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
 
-    X1 = pd.get_dummies(mydata[["sexe", "cat_age", "cat_revenus", "cat_etudes", "pcs", "statut",
-                            "situation_matrimoniale", "contribution_principale", "statut_logement",
-                            "type_logement", "taille_agglo", "grande_region", "taux_marginal",
-                            "q15_1", "q15_2", "q15_3", "q16", "q17", "q19_1", "q19_2", "q19_3", "q23", "q24"]], drop_first=True)
-# 
+    # TODO : remove lines where not married or pacsed 
+
+    X1 = pandas.get_dummies(mydata[["statut_marital", "primary_earnings"]], drop_first=True)
+
 
     data_foyers = data_persons.groupby('idfoy').first().reset_index()
+    w = data_foyers["wprm"]
 
 
 
