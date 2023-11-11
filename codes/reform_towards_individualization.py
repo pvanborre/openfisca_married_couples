@@ -1391,50 +1391,6 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
 
 
 
-
-    # 2d version with some cross validation
-    # alpha = 1
-    # l1_ratio = 0.5  
-    # fit = ElasticNetCV(alphas=numpy.logspace(-4, 4, 100), l1_ratio=l1_ratio, cv=KFold(n_splits=10), random_state=0)
-    # y_pred = cross_val_predict(fit, X, primary_revenue_function, cv=KFold(n_splits=10))
-
-    # # Plot regularization path
-    # plt.plot(numpy.log(fit.alphas_), fit.coef_path_.T)
-    # plt.xlabel("Log(Alpha)")
-    # plt.ylabel("Coefficients")
-    # plt.title("Regularization Path")
-    # plt.show()
-
-    # # Calculate cross-validated mean squared error for different values of alpha
-    # mse_values = []
-    # alphas = numpy.log(fit.alphas_)
-
-    # for alpha in alphas:
-    #     fit.alpha = alpha
-    #     fit.l1_ratio = l1_ratio
-    #     y_pred = cross_val_predict(fit, X, primary_revenue_function, cv=KFold(n_splits=10))
-    #     mse = mean_squared_error(primary_revenue_function, y_pred)
-    #     mse_values.append(mse)
-
-    # # Plot cross-validated mean squared error
-    # plt.plot(alphas, mse_values)
-    # plt.xlabel("Log(Alpha)")
-    # plt.ylabel("Cross-Validated MSE")
-    # plt.title("Cross-Validated MSE vs. Log(Alpha)")
-    # plt.show()
-
-    # # Find the optimal alpha using the one-standard-error rule
-    # min_mse = min(mse_values)
-    # one_se_rule_alpha = alphas[numpy.where(mse_values <= min_mse + numpy.std(mse_values))[0][0]]
-    # print(f"Optimal alpha that minimizes cross-validated MSE: {one_se_rule_alpha}")
-
-    # # Set the alpha to the optimal value and fit the final model
-    # fit.alpha = one_se_rule_alpha
-    # fit.fit(X, primary_revenue_function)
-    # print(f"Model coefficients at optimal alpha: {fit.coef_}")
-
-
-
 def redirect_print_to_file(filename):
     sys.stdout = open(filename, 'a')
     
