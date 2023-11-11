@@ -5,6 +5,14 @@ from scipy.integrate import quad
 from scipy.interpolate import CubicSpline, PchipInterpolator
 from scipy.signal import convolve
 
+from sklearn.linear_model import Lasso, ElasticNetCV
+from sklearn.model_selection import train_test_split, KFold, cross_val_predict
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error
+
+from tabulate import tabulate
+
+
 import sys
 import click
 
@@ -52,6 +60,7 @@ class vers_individualisation(Reform):
         self.modify_parameters(modifier_function = modify_parameters)
 
         class revenu_individu(Variable):
+            # I could have used revenu_categoriel (same modulo a deduction)
             value_type = float
             entity = Individu
             label = "Revenu d'un individu du foyer fiscal"
@@ -125,7 +134,168 @@ class vers_individualisation(Reform):
 
         self.add_variable(secondary_earning)
 
+        
 
+class useful_lasso(Reform):
+    name = "add more variables useful for the lasso"
+    def apply(self):
+
+        class primary_age(Variable):
+            value_type = int
+            entity = FoyerFiscal
+            label = "Primary earner age"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                age_i = foyer_fiscal.members('age', period.last_month) # est de taille nb individus
+                age_declarant_principal = foyer_fiscal.sum(age_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                age_du_conjoint = foyer_fiscal.sum(age_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                mask = revenu_declarant_principal < revenu_du_conjoint
+                age_declarant_principal[mask] = age_du_conjoint[mask]
+
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                return age_declarant_principal * maries_ou_pacses
+            
+        self.add_variable(primary_age)
+
+        class secondary_age(Variable):
+            value_type = int
+            entity = FoyerFiscal
+            label = "Secondary earner age"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                age_i = foyer_fiscal.members('age', period.last_month) # est de taille nb individus
+                age_declarant_principal = foyer_fiscal.sum(age_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                age_du_conjoint = foyer_fiscal.sum(age_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                mask = revenu_declarant_principal < revenu_du_conjoint
+                age_du_conjoint[mask] = age_declarant_principal[mask]
+
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                return age_du_conjoint * maries_ou_pacses
+            
+        self.add_variable(secondary_age)
+
+        class primary_categorie_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieSalarie
+                default_value = TypesCategorieSalarie.prive_non_cadre
+                entity = FoyerFiscal
+                label = "Primary earner categorie salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_salarie', period.last_month) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_declarant_principal[mask] = categ_du_conjoint[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_declarant_principal * maries_ou_pacses
+                
+        self.add_variable(primary_categorie_salarie)
+
+        class secondary_categorie_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieSalarie
+                default_value = TypesCategorieSalarie.prive_non_cadre
+                entity = FoyerFiscal
+                label = "Secondary earner categorie salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_salarie', period.last_month) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_du_conjoint[mask] = categ_declarant_principal[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_du_conjoint * maries_ou_pacses
+                
+        self.add_variable(secondary_categorie_salarie)
+
+
+        class primary_categorie_non_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieNonSalarie
+                default_value = TypesCategorieNonSalarie.non_pertinent
+                entity = FoyerFiscal
+                label = "Primary earner categorie non salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_non_salarie', period) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_declarant_principal[mask] = categ_du_conjoint[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_declarant_principal * maries_ou_pacses
+                
+        self.add_variable(primary_categorie_non_salarie)
+
+        class secondary_categorie_non_salarie(Variable):
+                value_type = Enum
+                possible_values = TypesCategorieNonSalarie
+                default_value = TypesCategorieNonSalarie.non_pertinent
+                entity = FoyerFiscal
+                label = "Secondary earner categorie non salarie"
+                definition_period = YEAR
+
+                def formula(foyer_fiscal, period):
+                    revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                    revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    categ_i = foyer_fiscal.members('categorie_non_salarie', period) # est de taille nb individus
+                    categ_declarant_principal = foyer_fiscal.sum(categ_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                    categ_du_conjoint = foyer_fiscal.sum(categ_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                    mask = revenu_declarant_principal < revenu_du_conjoint
+                    categ_du_conjoint[mask] = categ_declarant_principal[mask]
+
+                    maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                    return categ_du_conjoint * maries_ou_pacses
+                
+        self.add_variable(secondary_categorie_non_salarie)
+
+       
+
+        
 
 def initialiser_simulation(tax_benefit_system, data_persons):
 
@@ -423,11 +593,10 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
     print("Integral of smoothed_y secondary", integral_trap_secondary)
 
-
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
 
-def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, tax_two_derivative_simulation, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
+def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
  
     # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
     # parmi les couples mariés ou pacsés, en janvier de l'année considérée
@@ -479,8 +648,8 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
-        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary scenario {i}'.format(i=i))
-        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary scenario {i}'.format(i=i))
+        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
         
         axes[i].legend()
 
@@ -565,7 +734,8 @@ def simulation_reforme(annee = None):
     #####################################################
 
     tax_benefit_system = FranceTaxBenefitSystem()
-    tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+    #tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
+    tax_benefit_system_reforme = useful_lasso(vers_individualisation(tax_benefit_system)) # chain the 2 reforms
 
 
 
@@ -606,47 +776,69 @@ def simulation_reforme(annee = None):
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
-    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
-    tax_two_derivative_simulation = 0
+    # revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
 
 
-    graphe14(primary_earning = primary_earning_maries_pacses, 
-             secondary_earning = secondary_earning_maries_pacses,
-             maries_ou_pacses = maries_ou_pacses, 
-             ancien_irpp = ancien_irpp, 
-             ir_taux_marginal = ir_taux_marginal,
-             tax_two_derivative_simulation = tax_two_derivative_simulation,
-             cdf_primary_earnings = cdf_primary_earnings,
-             cdf_secondary_earnings = cdf_secondary_earnings,
-             density_primary_earnings = density_primary_earnings,
-             density_secondary_earnings = density_secondary_earnings,
-             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-             period = period)
+    # graphe14(primary_earning = primary_earning_maries_pacses, 
+    #          secondary_earning = secondary_earning_maries_pacses,
+    #          maries_ou_pacses = maries_ou_pacses, 
+    #          ancien_irpp = ancien_irpp, 
+    #          ir_taux_marginal = ir_taux_marginal,
+    #          cdf_primary_earnings = cdf_primary_earnings,
+    #          cdf_secondary_earnings = cdf_secondary_earnings,
+    #          density_primary_earnings = density_primary_earnings,
+    #          density_secondary_earnings = density_secondary_earnings,
+    #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+    #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+    #          period = period)
     
-    graph17(primary_earning = primary_earning_maries_pacses, 
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses,
-            period = period)
+    # graph17(primary_earning = primary_earning_maries_pacses, 
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses,
+    #         period = period)
     
     
           
-    graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    # graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    # graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    # graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, tax_two_derivative_simulation, period)
+    # graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
-    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    # graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    ma_borne = 500
-    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
-    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
+    # ma_borne = 500
+    # graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    # graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
+
+    # LASSO 
+    primary_age = simulation.calculate('primary_age', period)
+    secondary_age = simulation.calculate('secondary_age', period)
+    primary_categorie_salarie = simulation.calculate('primary_categorie_salarie', period)
+    secondary_categorie_salarie = simulation.calculate('secondary_categorie_salarie', period)
+    primary_categorie_non_salarie = simulation.calculate('primary_categorie_non_salarie', period)
+    secondary_categorie_non_salarie = simulation.calculate('secondary_categorie_non_salarie', period)
+
+
+    lasso(data_persons = data_persons, 
+          primary_earning = primary_earning_maries_pacses, 
+          secondary_earning = secondary_earning_maries_pacses,
+          ir_taux_marginal = ir_taux_marginal, 
+          maries_ou_pacses = maries_ou_pacses, 
+          cdf_primary_earnings = cdf_primary_earnings, 
+          density_primary_earnings = density_primary_earnings, 
+          primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+          primary_age = primary_age, 
+          secondary_age = secondary_age, 
+          primary_categorie_salarie = primary_categorie_salarie, 
+          secondary_categorie_salarie = secondary_categorie_salarie, 
+          primary_categorie_non_salarie = primary_categorie_non_salarie, 
+          secondary_categorie_non_salarie = secondary_categorie_non_salarie)
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -813,7 +1005,7 @@ def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     plt.close()
 
 
-def graphB16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_marginal, tax_two_derivative, period):
+def graphB16(primary_earning, secondary_earning, maries_ou_pacses, period):
 
     # we take these elasticities for the graph B16 scenario
     eps1 = 0.25
@@ -1129,6 +1321,75 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
     else:
         plt.savefig('../outputs/B24/graphe_B24_{annee}.png'.format(annee = period))
     plt.close()
+
+
+# Analyse des résultats obtenus et investigation des pics (2007 - 2014)
+
+def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, primary_age, secondary_age, primary_categorie_salarie, secondary_categorie_salarie, primary_categorie_non_salarie, secondary_categorie_non_salarie):
+    # we take as target variable the primary revenue function for the baseline scenario ep = 0.25, es = 0.75
+    primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, 0.25)
+    primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+    primary_revenue_function = primary_revenue_function[maries_ou_pacses]
+
+
+    primary_age = primary_age[maries_ou_pacses]
+    secondary_age = secondary_age[maries_ou_pacses]
+    primary_categorie_salarie = primary_categorie_salarie[maries_ou_pacses]
+    secondary_categorie_salarie = secondary_categorie_salarie[maries_ou_pacses]
+    primary_categorie_non_salarie = primary_categorie_non_salarie[maries_ou_pacses]
+    secondary_categorie_non_salarie = secondary_categorie_non_salarie[maries_ou_pacses]
+    primary_earning = primary_earning[maries_ou_pacses]
+    secondary_earning = secondary_earning[maries_ou_pacses]
+    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
+
+    total_earning = primary_earning + secondary_earning
+    total_earning[total_earning == 0] = 0.0001 # la share sera 0 si on du 0/0, est ce que l'on veut vraiment?
+    share_of_primary = primary_earning/total_earning
+
+
+    data_foyers = data_persons.groupby('idfoy').first().reset_index()
+    weights = data_foyers["wprm"]
+    weights = weights[maries_ou_pacses]
+    
+    df = pandas.DataFrame({'primary_categorie_salarie': primary_categorie_salarie, 'secondary_categorie_salarie': secondary_categorie_salarie, 'primary_categorie_non_salarie':primary_categorie_non_salarie, 'secondary_categorie_non_salarie':secondary_categorie_non_salarie, 'taux_marginal':ir_taux_marginal})
+    X1 = pandas.get_dummies(df, columns=['primary_categorie_salarie', 'secondary_categorie_salarie', 'primary_categorie_non_salarie', 'secondary_categorie_non_salarie', 'taux_marginal'])
+    X2 = pandas.DataFrame({'primary_age':primary_age, 'secondary_age':secondary_age, 'primary_earning':primary_earning, 'secondary_earning':secondary_earning})
+    X = pandas.concat([X1, X2], axis=1)
+
+
+    print(X)
+    
+    # 1st version
+    X_train, X_test, y_train, y_test = train_test_split(X, primary_revenue_function, test_size=0.2, random_state=42)
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    alpha = 0.01  # Regularization strength 
+    lasso_reg = Lasso(alpha=alpha)
+    lasso_reg.fit(X_train_scaled, y_train)
+    y_pred = lasso_reg.predict(X_test_scaled)
+    mse = mean_squared_error(y_test, y_pred)
+    print(f'Mean Squared Error: {mse}')
+    print()
+
+    column_list = X.columns.tolist()
+    coeff = lasso_reg.coef_
+    table_to_print = []
+    print("Beginning of the lasso results")
+    for i in range(len(column_list)):
+        #print(column_list[i], " : ", coeff[i])
+        table_to_print.append((column_list[i], coeff[i]))
+
+    headers = ["Feature", "Coefficient"]
+    table = tabulate(table_to_print, headers, tablefmt="grid")
+    print(table)
+    print()
+
+    
+
+
 
 
 
