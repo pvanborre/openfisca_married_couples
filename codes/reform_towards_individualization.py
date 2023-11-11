@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split, KFold, cross_val_predict
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
 
-
+from tabulate import tabulate
 
 
 import sys
@@ -1358,7 +1358,6 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
 
 
     print(X)
-    #print(X.shape)
     
     # 1st version
     X_train, X_test, y_train, y_test = train_test_split(X, primary_revenue_function, test_size=0.2, random_state=42)
@@ -1366,9 +1365,6 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-
-    # print(X_train_scaled)
-    # print(X_train_scaled.shape)
 
     alpha = 0.01  # Regularization strength 
     lasso_reg = Lasso(alpha=alpha)
@@ -1380,8 +1376,17 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
 
     column_list = X.columns.tolist()
     coeff = lasso_reg.coef_
+    table_to_print = []
     for i in range(len(column_list)):
-        print(column_list[i], " : ", coeff[i])
+        #print(column_list[i], " : ", coeff[i])
+        table_to_print.append((column_list[i], coeff[i]))
+
+    headers = ["Feature", "Coefficient"]
+    table = tabulate(table_to_print, headers, tablefmt="grid")
+    print(table)
+
+    
+
 
 
 
