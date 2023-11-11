@@ -1353,7 +1353,7 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     
     df = pandas.DataFrame({'primary_categorie_salarie': primary_categorie_salarie, 'secondary_categorie_salarie': secondary_categorie_salarie, 'primary_categorie_non_salarie':primary_categorie_non_salarie, 'secondary_categorie_non_salarie':secondary_categorie_non_salarie, 'taux_marginal':ir_taux_marginal})
     X1 = pandas.get_dummies(df, columns=['primary_categorie_salarie', 'secondary_categorie_salarie', 'primary_categorie_non_salarie', 'secondary_categorie_non_salarie', 'taux_marginal'])
-    X2 = pandas.DataFrame({'primary_age':primary_age, 'secondary_age':secondary_age, 'primary_earning':primary_earning, 'secondary_earning':secondary_earning,'share_of_primary':share_of_primary})
+    X2 = pandas.DataFrame({'primary_age':primary_age, 'secondary_age':secondary_age, 'primary_earning':primary_earning, 'secondary_earning':secondary_earning})
     X = pandas.concat([X1, X2], axis=1)
 
 
@@ -1377,6 +1377,7 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     column_list = X.columns.tolist()
     coeff = lasso_reg.coef_
     table_to_print = []
+    print("Beginning of the lasso results")
     for i in range(len(column_list)):
         #print(column_list[i], " : ", coeff[i])
         table_to_print.append((column_list[i], coeff[i]))
@@ -1384,6 +1385,7 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     headers = ["Feature", "Coefficient"]
     table = tabulate(table_to_print, headers, tablefmt="grid")
     print(table)
+    print()
 
     
 
