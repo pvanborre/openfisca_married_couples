@@ -1348,15 +1348,12 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
 
 
     data_foyers = data_persons.groupby('idfoy').first().reset_index()
-    weights, loyer, statut_occupation_logement, zone_apl = data_foyers["wprm"], data_foyers["loyer"], data_foyers["statut_occupation_logement"], data_foyers["zone_apl"]
+    weights = data_foyers["wprm"]
     weights = weights[maries_ou_pacses]
-    loyer = loyer[maries_ou_pacses]
-    statut_occupation_logement = statut_occupation_logement[maries_ou_pacses]
-    zone_apl = zone_apl[maries_ou_pacses]
     
-    df = pandas.DataFrame({'primary_categorie_salarie': primary_categorie_salarie, 'secondary_categorie_salarie': secondary_categorie_salarie, 'primary_categorie_non_salarie':primary_categorie_non_salarie, 'secondary_categorie_non_salarie':secondary_categorie_non_salarie, 'statut_occupation_logement':statut_occupation_logement, 'zone_apl':zone_apl, 'taux_marginal':ir_taux_marginal})
-    X1 = pandas.get_dummies(df, columns=['primary_categorie_salarie', 'secondary_categorie_salarie', 'primary_categorie_non_salarie', 'secondary_categorie_non_salarie', 'statut_occupation_logement', 'zone_apl', 'taux_marginal'])
-    X2 = pandas.DataFrame({'primary_age':primary_age, 'secondary_age':secondary_age, 'primary_earning':primary_earning, 'secondary_earning':secondary_earning, 'loyer':loyer})
+    df = pandas.DataFrame({'primary_categorie_salarie': primary_categorie_salarie, 'secondary_categorie_salarie': secondary_categorie_salarie, 'primary_categorie_non_salarie':primary_categorie_non_salarie, 'secondary_categorie_non_salarie':secondary_categorie_non_salarie, 'taux_marginal':ir_taux_marginal})
+    X1 = pandas.get_dummies(df, columns=['primary_categorie_salarie', 'secondary_categorie_salarie', 'primary_categorie_non_salarie', 'secondary_categorie_non_salarie', 'taux_marginal'])
+    X2 = pandas.DataFrame({'primary_age':primary_age, 'secondary_age':secondary_age, 'primary_earning':primary_earning, 'secondary_earning':secondary_earning,'share_of_primary':share_of_primary})
     X = pandas.concat([X1, X2], axis=1)
 
 
@@ -1379,7 +1376,13 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     y_pred = lasso_reg.predict(X_test_scaled)
     mse = mean_squared_error(y_test, y_pred)
     print(f'Mean Squared Error: {mse}')
-    print('Coefficients:', lasso_reg.coef_)
+    print()
+
+    column_list = X.columns.tolist()
+    coeff = lasso_reg.coef_
+    for i in range(len(column_list)):
+        print(column_list[i], " : ", coeff[i])
+
 
 
 
