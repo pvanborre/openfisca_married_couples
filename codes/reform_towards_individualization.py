@@ -791,6 +791,18 @@ def simulation_reforme(annee = None):
     #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
     #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
     #          period = period)
+
+    graphe16(primary_earning = primary_earning_maries_pacses,
+            secondary_earning = secondary_earning_maries_pacses, 
+            maries_ou_pacses = maries_ou_pacses, 
+            ir_taux_marginal = ir_taux_marginal,
+            cdf_primary_earnings = cdf_primary_earnings,
+            cdf_secondary_earnings = cdf_secondary_earnings,
+            density_primary_earnings = density_primary_earnings,
+            density_secondary_earnings = density_secondary_earnings, 
+            primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+            secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
+            period = period)
     
     # graph17(primary_earning = primary_earning_maries_pacses, 
     #         secondary_earning = secondary_earning_maries_pacses, 
@@ -1357,7 +1369,7 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     X = pandas.concat([X1, X2], axis=1)
 
 
-    print(X)
+    #print(X)
     
     # 1st version
     X_train, X_test, y_train, y_test = train_test_split(X, primary_revenue_function, test_size=0.2, random_state=42)
@@ -1386,6 +1398,127 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     table = tabulate(table_to_print, headers, tablefmt="grid")
     print(table)
     print()
+
+
+def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_marginal, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
+
+    eps1_tab = [0.25, 0.5, 0.75]
+    eps2_tab = [0.75, 0.5, 0.25]
+    rapport = [0.0]*len(eps1_tab)
+
+
+    primary_extensive_revenue_function = extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+    secondary_extensive_revenue_function = extensive_revenue_function(secondary_earning, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
+
+    for i in range(len(eps1_tab)):
+        primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, eps1_tab[i])
+        secondary_elasticity_maries_pacses = secondary_elasticity(maries_ou_pacses, eps2_tab[i])
+        
+        primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + primary_extensive_revenue_function
+        secondary_revenue_function = intensive_revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses) + secondary_extensive_revenue_function
+
+        if i == 0:
+            primary_earning_maries_pacses = primary_earning[maries_ou_pacses]
+            secondary_earning_maries_pacses = secondary_earning[maries_ou_pacses]
+
+            condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
+            primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
+            secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
+
+        primary_revenue_function = primary_revenue_function[maries_ou_pacses]
+        primary_revenue_function = primary_revenue_function[condition]
+        secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
+        secondary_revenue_function = secondary_revenue_function[condition]
+ 
+        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
+        rapport[i] = primary_integral/secondary_integral
+
+
+    # equal weights
+    weight = numpy.ones_like(primary_earning_maries_pacses)
+    x_equal_weights = numpy.mean(weight*primary_earning_maries_pacses)
+    y_equal_weights = numpy.mean(weight*secondary_earning_maries_pacses)
+    print("equal weights : ", x_equal_weights, y_equal_weights)
+    plt.plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red')
+
+    # decreasing
+    total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
+    total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.01
+    weight = numpy.power(total_earnings_maries_pacses, -0.8)
+    x_decreasing = numpy.mean(weight*primary_earning_maries_pacses)
+    y_decreasing = numpy.mean(weight*secondary_earning_maries_pacses)
+    print("decreasing ", x_decreasing, y_decreasing)
+    plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple')
+
+    # Rawlsian
+    total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
+    total_earnings_sorted = numpy.sort(total_earnings_maries_pacses)
+    index_5th_percentile = int(0.05 * (len(total_earnings_sorted) - 1))
+    P5 =  total_earnings_sorted[index_5th_percentile]
+    weight = 1*(total_earnings_maries_pacses <= P5)
+    x_rawlsian = numpy.mean(weight*primary_earning_maries_pacses)
+    y_rawlsian = numpy.mean(weight*secondary_earning_maries_pacses)
+    print("rawlsian ", x_rawlsian, y_rawlsian)
+    plt.plot(x_rawlsian, y_rawlsian, marker='+', markersize=10, color='orange')
+
+    # secondary earner
+    total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
+    total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.01
+    weight = secondary_earning_maries_pacses/total_earnings_maries_pacses
+    x_secondary = numpy.mean(weight*primary_earning_maries_pacses)
+    y_secondary = numpy.mean(weight*secondary_earning_maries_pacses)
+    print("secondary earner ", x_secondary, y_secondary)
+    plt.plot(x_secondary, y_secondary, marker='+', markersize=10, color='orange')
+
+
+    # rawslian secondary earner
+    total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
+    total_earnings_sorted = numpy.sort(total_earnings_maries_pacses)
+    index_5th_percentile = int(0.05 * (len(total_earnings_sorted) - 1))
+    P5 =  total_earnings_sorted[index_5th_percentile]
+    total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.01
+    weight = (total_earnings_maries_pacses <= P5)*secondary_earning_maries_pacses/total_earnings_maries_pacses
+    x_rawlsian_secondary = numpy.mean(weight*primary_earning_maries_pacses)
+    y_rawlsian_secondary = numpy.mean(weight*secondary_earning_maries_pacses)
+    print("rawlsian secondary ", x_rawlsian_secondary, y_rawlsian_secondary)
+    plt.plot(x_rawlsian_secondary, y_rawlsian_secondary, marker='+', markersize=10, color='orange')
+
+
+
+    plt.figure()
+    x = numpy.linspace(0, 600000, 4)
+    plt.plot(x, x, c = '#828282')
+
+    green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
+    for i in range(len(eps1_tab)):
+        color = green_shades[i]
+        plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
+
+    plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
+
+    eps = 5000
+    plt.xlim(-eps, max(secondary_earning_maries_pacses)) 
+    plt.ylim(-eps, max(primary_earning_maries_pacses)) 
+
+    plt.grid()
+    
+
+
+    plt.xlabel('Secondary earner')
+    plt.ylabel('Primary earner')
+    plt.title("Reform towards individual taxation: Political economy - {}".format(period))
+
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/16/graphe_16_{annee}.png'.format(annee = period))
+    plt.close()
+
+    
+
+
+    
+
+
 
     
 
