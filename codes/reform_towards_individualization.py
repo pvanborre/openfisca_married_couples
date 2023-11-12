@@ -300,7 +300,7 @@ class mute_decote(Reform):
         class decote(Variable):
             value_type = float
             entity = FoyerFiscal
-            label = "Decote set to 0"
+            label = "Decote set to 0 for couples"
             definition_period = YEAR
 
             def formula_2001_01_01(foyer_fiscal, period, parameters):
@@ -563,6 +563,7 @@ def extensive_revenue_function(base_earning, other_earning, secondary_earning, t
         if maries_ou_pacses[i] and base_earning[i] >= 0 and other_earning[i] >= 0:
             extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning[i]]
     
+    print("extensive", extensive_rev_function)
     return - extensive_rev_function * maries_ou_pacses
 
 
@@ -813,18 +814,18 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     # revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
 
 
-    # graphe14(primary_earning = primary_earning_maries_pacses, 
-    #          secondary_earning = secondary_earning_maries_pacses,
-    #          maries_ou_pacses = maries_ou_pacses, 
-    #          ancien_irpp = ancien_irpp, 
-    #          ir_taux_marginal = ir_taux_marginal,
-    #          cdf_primary_earnings = cdf_primary_earnings,
-    #          cdf_secondary_earnings = cdf_secondary_earnings,
-    #          density_primary_earnings = density_primary_earnings,
-    #          density_secondary_earnings = density_secondary_earnings,
-    #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-    #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-    #          period = period)
+    graphe14(primary_earning = primary_earning_maries_pacses, 
+             secondary_earning = secondary_earning_maries_pacses,
+             maries_ou_pacses = maries_ou_pacses, 
+             ancien_irpp = ancien_irpp, 
+             ir_taux_marginal = ir_taux_marginal,
+             cdf_primary_earnings = cdf_primary_earnings,
+             cdf_secondary_earnings = cdf_secondary_earnings,
+             density_primary_earnings = density_primary_earnings,
+             density_secondary_earnings = density_secondary_earnings,
+             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+             period = period)
 
     graphe16(primary_earning = primary_earning_maries_pacses,
             secondary_earning = secondary_earning_maries_pacses, 
@@ -838,10 +839,10 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
             period = period)
     
-    # graph17(primary_earning = primary_earning_maries_pacses, 
-    #         secondary_earning = secondary_earning_maries_pacses, 
-    #         maries_ou_pacses = maries_ou_pacses,
-    #         period = period)
+    graph17(primary_earning = primary_earning_maries_pacses, 
+            secondary_earning = secondary_earning_maries_pacses, 
+            maries_ou_pacses = maries_ou_pacses,
+            period = period)
     
     
           
@@ -885,7 +886,8 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
           primary_categorie_salarie = primary_categorie_salarie, 
           secondary_categorie_salarie = secondary_categorie_salarie, 
           primary_categorie_non_salarie = primary_categorie_non_salarie, 
-          secondary_categorie_non_salarie = secondary_categorie_non_salarie)
+          secondary_categorie_non_salarie = secondary_categorie_non_salarie,
+          period=period)
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -1372,7 +1374,7 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
 
 # Analyse des résultats obtenus et investigation des pics (2007 - 2014)
 
-def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, primary_age, secondary_age, primary_categorie_salarie, secondary_categorie_salarie, primary_categorie_non_salarie, secondary_categorie_non_salarie):
+def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, primary_age, secondary_age, primary_categorie_salarie, secondary_categorie_salarie, primary_categorie_non_salarie, secondary_categorie_non_salarie, period):
     # we take as target variable the primary revenue function for the baseline scenario ep = 0.25, es = 0.75
     primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, 0.25)
     primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
@@ -1424,13 +1426,15 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     column_list = X.columns.tolist()
     coeff = lasso_reg.coef_
     table_to_print = []
-    print("Beginning of the lasso results")
+    print("Beginning of the lasso results for year", period)
     for i in range(len(column_list)):
-        #print(column_list[i], " : ", coeff[i])
-        table_to_print.append((column_list[i], coeff[i]))
+        feature_name = column_list[i].replace("_", r"\_")
+        table_to_print.append((feature_name, coeff[i]))
 
     headers = ["Feature", "Coefficient"]
-    table = tabulate(table_to_print, headers, tablefmt="grid")
+    #table = tabulate(table_to_print, headers, tablefmt="latex_raw")
+    table = tabulate(table_to_print, headers, tablefmt="latex_raw", showindex=False, colalign=("left", "right"))
+
     print(table)
     print()
 
