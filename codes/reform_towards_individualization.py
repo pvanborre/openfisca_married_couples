@@ -293,7 +293,36 @@ class useful_lasso(Reform):
                 
         self.add_variable(secondary_categorie_non_salarie)
 
-       
+
+class mute_decote(Reform):
+    name = "Mute the decote mechanism for couples"
+    def apply(self):
+        class decote(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Decote set to 0"
+            definition_period = YEAR
+
+            def formula_2001_01_01(foyer_fiscal, period, parameters):
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                decote = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote
+
+                return around(max_(0, decote.seuil - ir_plaf_qf) * decote.taux)
+
+            def formula_2014_01_01(foyer_fiscal, period, parameters):
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                nb_adult = foyer_fiscal('nb_adult', period)
+                taux_decote = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote.taux
+                decote_seuil_celib = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote.seuil_celib
+                decote_seuil_couple = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote.seuil_couple
+                decote_celib = max_(0, decote_seuil_celib - taux_decote * ir_plaf_qf)
+                decote_couple = max_(0, decote_seuil_couple - taux_decote * ir_plaf_qf)
+
+                return numpy.around((nb_adult == 1) * decote_celib ) # we mute decote_couple here
+
+        self.replace_variable(decote)
+
+ 
 
         
 
@@ -719,13 +748,15 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
-def simulation_reforme(annee = None):
+@click.option('-m', '--want_to_mute_decote', default = False, type = bool, required = True)
+def simulation_reforme(annee = None, want_to_mute_decote = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
     
     data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
     
+    print("want_to_mute", want_to_mute_decote)
     print("Table des personnes")
     print(data_persons, "\n\n\n\n\n")
 
@@ -734,8 +765,11 @@ def simulation_reforme(annee = None):
     #####################################################
 
     tax_benefit_system = FranceTaxBenefitSystem()
-    #tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
-    tax_benefit_system_reforme = useful_lasso(vers_individualisation(tax_benefit_system)) # chain the 2 reforms
+    if want_to_mute_decote:
+        tax_benefit_system_reforme = useful_lasso(vers_individualisation(mute_decote(tax_benefit_system)))
+    else:
+        tax_benefit_system_reforme = useful_lasso(vers_individualisation(tax_benefit_system)) # chain the 2 reforms
+        
 
 
 
@@ -828,7 +862,8 @@ def simulation_reforme(annee = None):
     # graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
-    # LASSO 
+    # LASSO
+  
     primary_age = simulation.calculate('primary_age', period)
     secondary_age = simulation.calculate('secondary_age', period)
     primary_categorie_salarie = simulation.calculate('primary_categorie_salarie', period)
