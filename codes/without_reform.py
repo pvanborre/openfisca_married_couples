@@ -45,7 +45,7 @@ def simulate_sans_reforme(annee = None):
     
 
 
-    total_taxes = simulation.calculate('irpp', period)
+    total_taxes = simulation.calculate('impot_revenu_restant_a_payer', period)
     irpp_positif = numpy.where(total_taxes != 0, -total_taxes, 0)
     print("Impot payé par chacun des foyers fiscaux", irpp_positif)
 
