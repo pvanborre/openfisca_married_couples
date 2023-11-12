@@ -293,7 +293,117 @@ class useful_lasso(Reform):
                 
         self.add_variable(secondary_categorie_non_salarie)
 
-       
+
+class mute_decote(Reform):
+    name = "Mute the decote mechanism for couples"
+    def apply(self):
+        class decote(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Decote set to 0 for couples"
+            definition_period = YEAR
+
+            def formula_2001_01_01(foyer_fiscal, period, parameters):
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                decote = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote
+
+                return numpy.around(max_(0, decote.seuil - ir_plaf_qf) * decote.taux)
+
+            def formula_2014_01_01(foyer_fiscal, period, parameters):
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                nb_adult = foyer_fiscal('nb_adult', period)
+                taux_decote = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote.taux
+                decote_seuil_celib = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote.seuil_celib
+                decote_seuil_couple = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote.seuil_couple
+                decote_celib = max_(0, decote_seuil_celib - taux_decote * ir_plaf_qf)
+                decote_couple = max_(0, decote_seuil_couple - taux_decote * ir_plaf_qf)
+
+                return numpy.around((nb_adult == 1) * decote_celib ) # we mute decote_couple here
+            
+        self.update_variable(decote)
+            
+        class decote_gain_fiscal(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Gain fiscal de la décote/Décote au sens Dgfip tel que sur la feuille d'impôt"
+            definition_period = YEAR
+
+            def formula_1982_01_01(foyer_fiscal, period, parameters):
+                '''
+                Renvoie le gain fiscal du à la décote
+                '''
+                decote = foyer_fiscal('decote', period)
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+
+                return numpy.around(min_(decote, ir_plaf_qf))
+            
+        self.update_variable(decote_gain_fiscal)
+
+
+        class reduction_ss_condition_revenus(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Réduction d'impôt sous condition de revenus, s'imputant avant toutes autres réductions"
+            definition_period = YEAR
+            end = '2019-12-31'
+            reference = 'https://www.legifrance.gouv.fr/affichCodeArticle.do?idArticle=LEGIARTI000037985566&cidTexte=LEGITEXT000006069577'
+            documentation = '''
+            La "réfaction foyers modestes" est abrogée par la Loi de Finances 2020.
+            '''
+
+            def formula_2016_01_01(foyer_fiscal, period, parameters):
+                '''
+                Réduction d'impôt sous condition de revenus
+                Cette réduction instaurée en 2016 vise à adoucir un effet de seuil d'assujettissement
+                à l'impôt pour les foyers fiscaux les plus modestes, elle est plus à considérer comme une
+                "décote bis" qu'une réduction fiscale à proprement parler.
+                '''
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                decote = foyer_fiscal('decote', period)
+                nb_adult = foyer_fiscal('nb_adult', period)
+                nb_parts = foyer_fiscal('nbptr', period)
+                rfr = foyer_fiscal('rfr', period)
+                P = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.reduction_ss_condition_revenus
+
+                ir_apres_plaf_qf_et_decote = ir_plaf_qf - decote
+                plafond1 = P.plafond_rfr_celib * nb_adult + P.majoration_plafond_par_demi_parts_supp * 2 * (nb_parts - nb_adult)
+                plafond2 = P.plafond_rfr_couple * nb_adult + P.majoration_plafond_par_demi_parts_supp * 2 * (nb_parts - nb_adult)
+                reduction1 = P.taux * ir_apres_plaf_qf_et_decote
+                reduction2 = P.taux * ir_apres_plaf_qf_et_decote * (plafond2 - rfr) / (plafond2 - plafond1)
+
+                reduction_sous_condition_de_ressources = (
+                    (rfr < plafond1) * reduction1
+                    + (rfr >= plafond1) * (rfr < plafond2) * reduction2
+                    )
+
+                return reduction_sous_condition_de_ressources
+            
+        self.update_variable(reduction_ss_condition_revenus)
+
+        class ip_net(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = 'Impôt sur le revenu après décote et réduction sous condition de revenus, avant réductions'
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period, parameters):
+                '''
+                Impôt net avant réductions
+                '''
+                decote = foyer_fiscal('decote', period)
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                # N'est pas véritablement une 'réduction', cf. la définition de cette variable
+                reduction_ss_condition_revenus = foyer_fiscal('reduction_ss_condition_revenus', period)
+
+                return numpy.around(max_(0, ir_plaf_qf - decote - reduction_ss_condition_revenus))
+            
+        self.update_variable(ip_net)
+        
+
+
+                
+
+ 
 
         
 
@@ -534,6 +644,7 @@ def extensive_revenue_function(base_earning, other_earning, secondary_earning, t
         if maries_ou_pacses[i] and base_earning[i] >= 0 and other_earning[i] >= 0:
             extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning[i]]
     
+    print("extensive", extensive_rev_function)
     return - extensive_rev_function * maries_ou_pacses
 
 
@@ -719,13 +830,15 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
-def simulation_reforme(annee = None):
+@click.option('-m', '--want_to_mute_decote', default = False, type = bool, required = True)
+def simulation_reforme(annee = None, want_to_mute_decote = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
     
     data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
     
+    print("want_to_mute", want_to_mute_decote)
     print("Table des personnes")
     print(data_persons, "\n\n\n\n\n")
 
@@ -734,8 +847,11 @@ def simulation_reforme(annee = None):
     #####################################################
 
     tax_benefit_system = FranceTaxBenefitSystem()
-    #tax_benefit_system_reforme = vers_individualisation(tax_benefit_system)
-    tax_benefit_system_reforme = useful_lasso(vers_individualisation(tax_benefit_system)) # chain the 2 reforms
+    if want_to_mute_decote:
+        tax_benefit_system_reforme = useful_lasso(vers_individualisation(mute_decote(tax_benefit_system)))
+    else:
+        tax_benefit_system_reforme = useful_lasso(vers_individualisation(tax_benefit_system)) # chain the 2 reforms
+        
 
 
 
@@ -792,17 +908,17 @@ def simulation_reforme(annee = None):
     #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
     #          period = period)
 
-    graphe16(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses, 
-            ir_taux_marginal = ir_taux_marginal,
-            cdf_primary_earnings = cdf_primary_earnings,
-            cdf_secondary_earnings = cdf_secondary_earnings,
-            density_primary_earnings = density_primary_earnings,
-            density_secondary_earnings = density_secondary_earnings, 
-            primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
-            secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
-            period = period)
+    # graphe16(primary_earning = primary_earning_maries_pacses,
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses, 
+    #         ir_taux_marginal = ir_taux_marginal,
+    #         cdf_primary_earnings = cdf_primary_earnings,
+    #         cdf_secondary_earnings = cdf_secondary_earnings,
+    #         density_primary_earnings = density_primary_earnings,
+    #         density_secondary_earnings = density_secondary_earnings, 
+    #         primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+    #         secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
+    #         period = period)
     
     # graph17(primary_earning = primary_earning_maries_pacses, 
     #         secondary_earning = secondary_earning_maries_pacses, 
@@ -828,7 +944,8 @@ def simulation_reforme(annee = None):
     # graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
-    # LASSO 
+    # LASSO
+  
     primary_age = simulation.calculate('primary_age', period)
     secondary_age = simulation.calculate('secondary_age', period)
     primary_categorie_salarie = simulation.calculate('primary_categorie_salarie', period)
@@ -850,7 +967,8 @@ def simulation_reforme(annee = None):
           primary_categorie_salarie = primary_categorie_salarie, 
           secondary_categorie_salarie = secondary_categorie_salarie, 
           primary_categorie_non_salarie = primary_categorie_non_salarie, 
-          secondary_categorie_non_salarie = secondary_categorie_non_salarie)
+          secondary_categorie_non_salarie = secondary_categorie_non_salarie,
+          period=period)
 
 #################################################################################################
 ########### Graphes de vérification de la robustesse des résultats ##############################
@@ -879,6 +997,7 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
         decile_means.append(moyenne_part_primary)
         
     decile_means = numpy.array(decile_means)
+    print("share of primary for year", period, decile_means)
     
     plt.figure()
     plt.scatter(numpy.arange(1,11), decile_means, s = 10)
@@ -1337,7 +1456,7 @@ def graphB23_B24(earning, maries_ou_pacses, ir_taux_marginal, output, period, no
 
 # Analyse des résultats obtenus et investigation des pics (2007 - 2014)
 
-def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, primary_age, secondary_age, primary_categorie_salarie, secondary_categorie_salarie, primary_categorie_non_salarie, secondary_categorie_non_salarie):
+def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, primary_age, secondary_age, primary_categorie_salarie, secondary_categorie_salarie, primary_categorie_non_salarie, secondary_categorie_non_salarie, period):
     # we take as target variable the primary revenue function for the baseline scenario ep = 0.25, es = 0.75
     primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, 0.25)
     primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses)
@@ -1389,14 +1508,17 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     column_list = X.columns.tolist()
     coeff = lasso_reg.coef_
     table_to_print = []
-    print("Beginning of the lasso results")
+    print("Beginning of the lasso results for year", period)
     for i in range(len(column_list)):
-        #print(column_list[i], " : ", coeff[i])
-        table_to_print.append((column_list[i], coeff[i]))
+        #feature_name = column_list[i].replace("_", r"\_")
+        feature_name = column_list[i]
+        table_to_print.append((feature_name, coeff[i]))
 
-    headers = ["Feature", "Coefficient"]
-    table = tabulate(table_to_print, headers, tablefmt="grid")
-    print(table)
+    #headers = ["Feature", "Coefficient"]
+    #table = tabulate(table_to_print, headers, tablefmt="latex_raw")
+    #table = tabulate(table_to_print, headers, tablefmt="latex_raw", showindex=False, colalign=("left", "right"))
+
+    print(table_to_print)
     print()
 
 
