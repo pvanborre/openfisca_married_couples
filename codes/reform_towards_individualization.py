@@ -1450,6 +1450,8 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     print("decreasing ", x_decreasing, y_decreasing)
     plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple')
 
+    # IMPORTANT TODO voir si on ne retire pas les revenus nuls qui tirent P5 vers le bas
+
     # Rawlsian
     total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
     total_earnings_sorted = numpy.sort(total_earnings_maries_pacses)
