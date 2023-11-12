@@ -307,7 +307,7 @@ class mute_decote(Reform):
                 ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
                 decote = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.decote
 
-                return around(max_(0, decote.seuil - ir_plaf_qf) * decote.taux)
+                return numpy.around(max_(0, decote.seuil - ir_plaf_qf) * decote.taux)
 
             def formula_2014_01_01(foyer_fiscal, period, parameters):
                 ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
@@ -319,8 +319,89 @@ class mute_decote(Reform):
                 decote_couple = max_(0, decote_seuil_couple - taux_decote * ir_plaf_qf)
 
                 return numpy.around((nb_adult == 1) * decote_celib ) # we mute decote_couple here
+            
+        self.update_variable(decote)
+            
+        class decote_gain_fiscal(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Gain fiscal de la décote/Décote au sens Dgfip tel que sur la feuille d'impôt"
+            definition_period = YEAR
 
-        self.replace_variable(decote)
+            def formula_1982_01_01(foyer_fiscal, period, parameters):
+                '''
+                Renvoie le gain fiscal du à la décote
+                '''
+                decote = foyer_fiscal('decote', period)
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+
+                return numpy.around(min_(decote, ir_plaf_qf))
+            
+        self.update_variable(decote_gain_fiscal)
+
+
+        class reduction_ss_condition_revenus(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Réduction d'impôt sous condition de revenus, s'imputant avant toutes autres réductions"
+            definition_period = YEAR
+            end = '2019-12-31'
+            reference = 'https://www.legifrance.gouv.fr/affichCodeArticle.do?idArticle=LEGIARTI000037985566&cidTexte=LEGITEXT000006069577'
+            documentation = '''
+            La "réfaction foyers modestes" est abrogée par la Loi de Finances 2020.
+            '''
+
+            def formula_2016_01_01(foyer_fiscal, period, parameters):
+                '''
+                Réduction d'impôt sous condition de revenus
+                Cette réduction instaurée en 2016 vise à adoucir un effet de seuil d'assujettissement
+                à l'impôt pour les foyers fiscaux les plus modestes, elle est plus à considérer comme une
+                "décote bis" qu'une réduction fiscale à proprement parler.
+                '''
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                decote = foyer_fiscal('decote', period)
+                nb_adult = foyer_fiscal('nb_adult', period)
+                nb_parts = foyer_fiscal('nbptr', period)
+                rfr = foyer_fiscal('rfr', period)
+                P = parameters(period).impot_revenu.calcul_impot_revenu.plaf_qf.reduction_ss_condition_revenus
+
+                ir_apres_plaf_qf_et_decote = ir_plaf_qf - decote
+                plafond1 = P.plafond_rfr_celib * nb_adult + P.majoration_plafond_par_demi_parts_supp * 2 * (nb_parts - nb_adult)
+                plafond2 = P.plafond_rfr_couple * nb_adult + P.majoration_plafond_par_demi_parts_supp * 2 * (nb_parts - nb_adult)
+                reduction1 = P.taux * ir_apres_plaf_qf_et_decote
+                reduction2 = P.taux * ir_apres_plaf_qf_et_decote * (plafond2 - rfr) / (plafond2 - plafond1)
+
+                reduction_sous_condition_de_ressources = (
+                    (rfr < plafond1) * reduction1
+                    + (rfr >= plafond1) * (rfr < plafond2) * reduction2
+                    )
+
+                return reduction_sous_condition_de_ressources
+            
+        self.update_variable(reduction_ss_condition_revenus)
+
+        class ip_net(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = 'Impôt sur le revenu après décote et réduction sous condition de revenus, avant réductions'
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period, parameters):
+                '''
+                Impôt net avant réductions
+                '''
+                decote = foyer_fiscal('decote', period)
+                ir_plaf_qf = foyer_fiscal('ir_plaf_qf', period)
+                # N'est pas véritablement une 'réduction', cf. la définition de cette variable
+                reduction_ss_condition_revenus = foyer_fiscal('reduction_ss_condition_revenus', period)
+
+                return numpy.around(max_(0, ir_plaf_qf - decote - reduction_ss_condition_revenus))
+            
+        self.update_variable(ip_net)
+        
+
+
+                
 
  
 
@@ -814,35 +895,35 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     # revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
 
 
-    graphe14(primary_earning = primary_earning_maries_pacses, 
-             secondary_earning = secondary_earning_maries_pacses,
-             maries_ou_pacses = maries_ou_pacses, 
-             ancien_irpp = ancien_irpp, 
-             ir_taux_marginal = ir_taux_marginal,
-             cdf_primary_earnings = cdf_primary_earnings,
-             cdf_secondary_earnings = cdf_secondary_earnings,
-             density_primary_earnings = density_primary_earnings,
-             density_secondary_earnings = density_secondary_earnings,
-             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-             period = period)
+    # graphe14(primary_earning = primary_earning_maries_pacses, 
+    #          secondary_earning = secondary_earning_maries_pacses,
+    #          maries_ou_pacses = maries_ou_pacses, 
+    #          ancien_irpp = ancien_irpp, 
+    #          ir_taux_marginal = ir_taux_marginal,
+    #          cdf_primary_earnings = cdf_primary_earnings,
+    #          cdf_secondary_earnings = cdf_secondary_earnings,
+    #          density_primary_earnings = density_primary_earnings,
+    #          density_secondary_earnings = density_secondary_earnings,
+    #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+    #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+    #          period = period)
 
-    graphe16(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses, 
-            ir_taux_marginal = ir_taux_marginal,
-            cdf_primary_earnings = cdf_primary_earnings,
-            cdf_secondary_earnings = cdf_secondary_earnings,
-            density_primary_earnings = density_primary_earnings,
-            density_secondary_earnings = density_secondary_earnings, 
-            primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
-            secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
-            period = period)
+    # graphe16(primary_earning = primary_earning_maries_pacses,
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses, 
+    #         ir_taux_marginal = ir_taux_marginal,
+    #         cdf_primary_earnings = cdf_primary_earnings,
+    #         cdf_secondary_earnings = cdf_secondary_earnings,
+    #         density_primary_earnings = density_primary_earnings,
+    #         density_secondary_earnings = density_secondary_earnings, 
+    #         primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+    #         secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
+    #         period = period)
     
-    graph17(primary_earning = primary_earning_maries_pacses, 
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses,
-            period = period)
+    # graph17(primary_earning = primary_earning_maries_pacses, 
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses,
+    #         period = period)
     
     
           
