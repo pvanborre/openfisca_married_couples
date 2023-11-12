@@ -916,6 +916,7 @@ def graph17(primary_earning, secondary_earning, maries_ou_pacses, period):
         decile_means.append(moyenne_part_primary)
         
     decile_means = numpy.array(decile_means)
+    print("share of primary for year", period, decile_means)
     
     plt.figure()
     plt.scatter(numpy.arange(1,11), decile_means, s = 10)
@@ -1428,14 +1429,15 @@ def lasso(data_persons, primary_earning, secondary_earning, ir_taux_marginal, ma
     table_to_print = []
     print("Beginning of the lasso results for year", period)
     for i in range(len(column_list)):
-        feature_name = column_list[i].replace("_", r"\_")
+        #feature_name = column_list[i].replace("_", r"\_")
+        feature_name = column_list[i]
         table_to_print.append((feature_name, coeff[i]))
 
-    headers = ["Feature", "Coefficient"]
+    #headers = ["Feature", "Coefficient"]
     #table = tabulate(table_to_print, headers, tablefmt="latex_raw")
-    table = tabulate(table_to_print, headers, tablefmt="latex_raw", showindex=False, colalign=("left", "right"))
+    #table = tabulate(table_to_print, headers, tablefmt="latex_raw", showindex=False, colalign=("left", "right"))
 
-    print(table)
+    print(table_to_print)
     print()
 
 
