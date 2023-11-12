@@ -761,7 +761,7 @@ def simulation_reforme(annee = None):
                 simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
     
 
-    ancien_irpp = simulation.calculate('irpp', period)
+    ancien_irpp = simulation.calculate('impot_revenu_restant_a_payer', period)
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
     ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
     primary_earning_maries_pacses = simulation.calculate('primary_earning', period)

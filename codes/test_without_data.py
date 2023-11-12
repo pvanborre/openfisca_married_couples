@@ -62,6 +62,6 @@ tax_benefit_system = FranceTaxBenefitSystem()
 simulation_builder = SimulationBuilder()
 simulation = simulation_builder.build_from_entities(tax_benefit_system, TEST_CASE)
 
-irpp = simulation.calculate('irpp', '2017')
+irpp = simulation.calculate('impot_revenu_restant_a_payer', '2017')
 
 print("irpp", irpp)

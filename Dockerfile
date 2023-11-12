@@ -8,11 +8,17 @@ RUN apt-get update && \
 RUN pip install pandas
 RUN pip install tables
 RUN pip install matplotlib
+RUN pip install scikit-learn
+RUN pip install tabulate
 
 WORKDIR /app
 
 RUN git clone https://github.com/openfisca/openfisca-core.git
 RUN git clone https://github.com/openfisca/openfisca-france.git
+
+# better practice to add the specific tag of the repo ?
+# RUN git clone --branch <tag_or_branch> https://github.com/example/repo.git
+
 
 WORKDIR /app/openfisca-core 
 RUN make install-deps install-edit
