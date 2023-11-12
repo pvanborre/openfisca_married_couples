@@ -1433,44 +1433,48 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
         primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
         rapport[i] = primary_integral/secondary_integral
 
+    plt.figure()
 
+    secondary_earning_maries_pacses = secondary_earning_maries_pacses[primary_earning_maries_pacses > 0]
+    primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
+    
     # equal weights
     weight = numpy.ones_like(primary_earning_maries_pacses)
-    x_equal_weights = numpy.mean(weight*primary_earning_maries_pacses)
-    y_equal_weights = numpy.mean(weight*secondary_earning_maries_pacses)
+    x_equal_weights = numpy.mean(weight*secondary_earning_maries_pacses)
+    y_equal_weights = numpy.mean(weight*primary_earning_maries_pacses)
     print("equal weights : ", x_equal_weights, y_equal_weights)
-    plt.plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red')
+    plt.plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red', label = "equal weights")
+    #plt.scatter(x_equal_weights, y_equal_weights, color='red', marker='x', s=100) #other way to display the cross
 
     # decreasing
     total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
-    total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.01
-    weight = numpy.power(total_earnings_maries_pacses, -0.8)
-    x_decreasing = numpy.mean(weight*primary_earning_maries_pacses)
-    y_decreasing = numpy.mean(weight*secondary_earning_maries_pacses)
+    total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.001 #useless line since we restricted > 0 above
+    weight = numpy.power(total_earnings_maries_pacses, -0.5)
+    x_decreasing = numpy.mean(weight*secondary_earning_maries_pacses)
+    y_decreasing = numpy.mean(weight*primary_earning_maries_pacses)
     print("decreasing ", x_decreasing, y_decreasing)
-    plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple')
-
-    # IMPORTANT TODO voir si on ne retire pas les revenus nuls qui tirent P5 vers le bas
+    plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple', label = "decreasing")
 
     # Rawlsian
     total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
     total_earnings_sorted = numpy.sort(total_earnings_maries_pacses)
     index_5th_percentile = int(0.05 * (len(total_earnings_sorted) - 1))
     P5 =  total_earnings_sorted[index_5th_percentile]
+    print("P5", P5)
     weight = 1*(total_earnings_maries_pacses <= P5)
-    x_rawlsian = numpy.mean(weight*primary_earning_maries_pacses)
-    y_rawlsian = numpy.mean(weight*secondary_earning_maries_pacses)
+    x_rawlsian = numpy.mean(weight*secondary_earning_maries_pacses)
+    y_rawlsian = numpy.mean(weight*primary_earning_maries_pacses)
     print("rawlsian ", x_rawlsian, y_rawlsian)
-    plt.plot(x_rawlsian, y_rawlsian, marker='+', markersize=10, color='orange')
+    plt.plot(x_rawlsian, y_rawlsian, marker='+', markersize=10, color='orange', label = "rawlsian")
 
     # secondary earner
     total_earnings_maries_pacses = primary_earning_maries_pacses + secondary_earning_maries_pacses
     total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.01
     weight = secondary_earning_maries_pacses/total_earnings_maries_pacses
-    x_secondary = numpy.mean(weight*primary_earning_maries_pacses)
-    y_secondary = numpy.mean(weight*secondary_earning_maries_pacses)
+    x_secondary = numpy.mean(weight*secondary_earning_maries_pacses)
+    y_secondary = numpy.mean(weight*primary_earning_maries_pacses)
     print("secondary earner ", x_secondary, y_secondary)
-    plt.plot(x_secondary, y_secondary, marker='+', markersize=10, color='orange')
+    plt.plot(x_secondary, y_secondary, marker='+', markersize=10, color='blue', label = "secondary")
 
 
     # rawslian secondary earner
@@ -1480,15 +1484,15 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
     P5 =  total_earnings_sorted[index_5th_percentile]
     total_earnings_maries_pacses[total_earnings_maries_pacses == 0] = 0.01
     weight = (total_earnings_maries_pacses <= P5)*secondary_earning_maries_pacses/total_earnings_maries_pacses
-    x_rawlsian_secondary = numpy.mean(weight*primary_earning_maries_pacses)
-    y_rawlsian_secondary = numpy.mean(weight*secondary_earning_maries_pacses)
+    x_rawlsian_secondary = numpy.mean(weight*secondary_earning_maries_pacses)
+    y_rawlsian_secondary = numpy.mean(weight*primary_earning_maries_pacses)
     print("rawlsian secondary ", x_rawlsian_secondary, y_rawlsian_secondary)
-    plt.plot(x_rawlsian_secondary, y_rawlsian_secondary, marker='+', markersize=10, color='orange')
+    plt.plot(x_rawlsian_secondary, y_rawlsian_secondary, marker='+', markersize=10, color='pink', label = "rawlsian secondary")
 
 
 
-    plt.figure()
-    x = numpy.linspace(0, 600000, 4)
+    
+    x = numpy.linspace(0, 30000, 4)
     plt.plot(x, x, c = '#828282')
 
     green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
@@ -1498,9 +1502,9 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
 
     plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
 
-    eps = 5000
-    plt.xlim(-eps, max(secondary_earning_maries_pacses)) 
-    plt.ylim(-eps, max(primary_earning_maries_pacses)) 
+    eps = 500
+    plt.xlim(-eps, 30000) 
+    plt.ylim(-eps, 30000) 
 
     plt.grid()
     
@@ -1508,7 +1512,7 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ir_taux_margi
 
     plt.xlabel('Secondary earner')
     plt.ylabel('Primary earner')
-    plt.title("Reform towards individual taxation: Political economy - {}".format(period))
+    plt.title("Reform towards individual taxation: Welfare - {}".format(period))
 
     plt.legend()
     plt.show()
