@@ -412,8 +412,6 @@ def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps
 
 
 def extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, irpp):
-    # after computations we see that the effect of the extensive margin is negligeable --> is this realistic?
-    # to check now with the changes 
 
     base_earning = base_earning[maries_ou_pacses]
     other_earning = other_earning[maries_ou_pacses]
