@@ -735,56 +735,56 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
     secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
     
-    # revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
+    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
 
 
-    # graphe14(primary_earning = primary_earning_maries_pacses, 
-    #          secondary_earning = secondary_earning_maries_pacses,
-    #          maries_ou_pacses = maries_ou_pacses, 
-    #          ancien_irpp = ancien_irpp, 
-    #          ir_taux_marginal = ir_taux_marginal,
-    #          cdf_primary_earnings = cdf_primary_earnings,
-    #          cdf_secondary_earnings = cdf_secondary_earnings,
-    #          density_primary_earnings = density_primary_earnings,
-    #          density_secondary_earnings = density_secondary_earnings,
-    #          primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-    #          secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
-    #          period = period)
+    graphe14(primary_earning = primary_earning_maries_pacses, 
+             secondary_earning = secondary_earning_maries_pacses,
+             maries_ou_pacses = maries_ou_pacses, 
+             ancien_irpp = ancien_irpp, 
+             ir_taux_marginal = ir_taux_marginal,
+             cdf_primary_earnings = cdf_primary_earnings,
+             cdf_secondary_earnings = cdf_secondary_earnings,
+             density_primary_earnings = density_primary_earnings,
+             density_secondary_earnings = density_secondary_earnings,
+             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
+             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+             period = period)
 
-    # graphe16(primary_earning = primary_earning_maries_pacses,
-    #         secondary_earning = secondary_earning_maries_pacses, 
-    #         maries_ou_pacses = maries_ou_pacses, 
-    #         ancien_irpp = ancien_irpp,
-    #         cdf_primary_earnings = cdf_primary_earnings,
-    #         cdf_secondary_earnings = cdf_secondary_earnings,
-    #         density_primary_earnings = density_primary_earnings,
-    #         density_secondary_earnings = density_secondary_earnings, 
-    #         primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
-    #         secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
-    #         period = period)
+    graphe16(primary_earning = primary_earning_maries_pacses,
+            secondary_earning = secondary_earning_maries_pacses, 
+            maries_ou_pacses = maries_ou_pacses, 
+            ancien_irpp = ancien_irpp,
+            cdf_primary_earnings = cdf_primary_earnings,
+            cdf_secondary_earnings = cdf_secondary_earnings,
+            density_primary_earnings = density_primary_earnings,
+            density_secondary_earnings = density_secondary_earnings, 
+            primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+            secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
+            period = period)
     
-    # graph17(primary_earning = primary_earning_maries_pacses, 
-    #         secondary_earning = secondary_earning_maries_pacses, 
-    #         maries_ou_pacses = maries_ou_pacses,
-    #         period = period)
+    graph17(primary_earning = primary_earning_maries_pacses, 
+            secondary_earning = secondary_earning_maries_pacses, 
+            maries_ou_pacses = maries_ou_pacses,
+            period = period)
     
     
           
-    # graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    # graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    # graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
+    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
-    # graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    # graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    # graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
 
-    # graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    # graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
     
-    # ma_borne = 500
-    # graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
-    # graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
+    ma_borne = 500
+    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
 
