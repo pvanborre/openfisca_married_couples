@@ -705,11 +705,11 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     secondary_earning_condition = secondary_earning[condition]
 
     # then we restrict to only those who are married (or pacsed)
-    ancien_irpp_condition = ancien_irpp_condition[maries_ou_pacses]
-    maries_ou_pacses_condition = maries_ou_pacses_condition[maries_ou_pacses] # useless i think
-    ir_taux_marginal_condition = ir_taux_marginal_condition[maries_ou_pacses]
-    primary_earning_condition = primary_earning_condition[maries_ou_pacses]
-    secondary_earning_condition = secondary_earning_condition[maries_ou_pacses]
+    ancien_irpp_condition = ancien_irpp_condition[maries_ou_pacses_condition]
+    maries_ou_pacses_condition = maries_ou_pacses_condition[maries_ou_pacses_condition] # useless i think
+    ir_taux_marginal_condition = ir_taux_marginal_condition[maries_ou_pacses_condition]
+    primary_earning_condition = primary_earning_condition[maries_ou_pacses_condition]
+    secondary_earning_condition = secondary_earning_condition[maries_ou_pacses_condition]
 
 
 
