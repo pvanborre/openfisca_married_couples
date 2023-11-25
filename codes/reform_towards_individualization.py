@@ -274,12 +274,15 @@ def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entit
 
 
 
-def cdf_earnings(earning, maries_ou_pacses, period, title):
-    earnings_maries_pacses = earning[maries_ou_pacses]
-    counts = numpy.array([numpy.sum(earnings_maries_pacses <= y2) for y2 in earnings_maries_pacses])
+def cdf_earnings(earning_condition_maries_pacses):
+    """
+    This function takes as input a numpy array of earnings (restricted to married couples having positive earnings and age between 25 and 55)
+    Then it computes the cumulative distribution of earnings that will have the same size as the input
+    """
+    counts = numpy.array([numpy.sum(earning_condition_maries_pacses <= y2) for y2 in earning_condition_maries_pacses])
 
-    cdf = numpy.zeros_like(earning, dtype=float)
-    cdf[maries_ou_pacses] = counts/len(earnings_maries_pacses)
+    cdf = numpy.zeros_like(earning_condition_maries_pacses, dtype=float)
+    cdf = counts/len(earning_condition_maries_pacses)
     print("check de la cdf", cdf)
 
     return cdf
@@ -289,31 +292,33 @@ def cdf_earnings(earning, maries_ou_pacses, period, title):
 def gaussian_kernel(x):
     return 1/numpy.sqrt(2*numpy.pi) * numpy.exp(-1/2 * x * x)
 
-def density_earnings(earning, maries_ou_pacses, period, title):
-    earnings_maries_pacses = earning[maries_ou_pacses]
+def density_earnings(earning_condition_maries_pacses, period):
+    """
+    This function takes as input a numpy array of earnings (restricted to married couples having positive earnings and age between 25 and 55) and the period (year) of study
+    Then it computes the density of earnings that will have the same size as the input
+    """
     
     # Calculate the bandwidth using Silverman's rule (see the paper https://arxiv.org/pdf/1212.2812.pdf top of page 12)
-    n = len(earnings_maries_pacses)
-    estimated_std = numpy.std(earnings_maries_pacses, ddof=1)  
+    n = len(earning_condition_maries_pacses)
+    estimated_std = numpy.std(earning_condition_maries_pacses, ddof=1)  
     bandwidth = 1.06 * estimated_std * n ** (-1/5)
     print("bandwidth", bandwidth)
 
-    density = numpy.zeros_like(earning, dtype=float)
+    density = numpy.zeros_like(earning_condition_maries_pacses, dtype=float)
 
     # remarque : il ne faut pas que les foyers fiscaux non mariés ou pacsés portent de densité, on les retire donc puis on les remet
     
 
     if period not in ['2010', '2011', '2012']:
         # ce code vectorisé marche bien sauf pour ces 3 années où j'ai une memory error
-        kernel_values = gaussian_kernel((earnings_maries_pacses[:, numpy.newaxis] - earnings_maries_pacses) / bandwidth)
-        density[maries_ou_pacses] = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
+        kernel_values = gaussian_kernel((earning_condition_maries_pacses[:, numpy.newaxis] - earning_condition_maries_pacses) / bandwidth)
+        density = (1 / bandwidth) * numpy.mean(kernel_values, axis=1)
 
     else:
         # pour les 3 années concernées, on revient à un code avec une boucle for 
-        for i in range(len(earning)):
-            if maries_ou_pacses[i]:
-                kernel_values = gaussian_kernel((earnings_maries_pacses - earning[i]) / bandwidth)
-                density[i] = numpy.mean(kernel_values) * 1/bandwidth
+        for i in range(len(earning_condition_maries_pacses)):
+            kernel_values = gaussian_kernel((earning_condition_maries_pacses - earning_condition_maries_pacses[i]) / bandwidth)
+            density[i] = numpy.mean(kernel_values) * 1/bandwidth
 
     
     density /= numpy.sum(density) # attention ne valait pas forcément 1 avant (classique avec les kernels) 
@@ -324,16 +329,23 @@ def density_earnings(earning, maries_ou_pacses, period, title):
 
 
 
-def esperance_taux_marginal(earning, ir_taux_marginal, maries_ou_pacses, borne = 0.05):
-    output = numpy.zeros_like(earning, dtype=float)
+def esperance_taux_marginal(earning_condition_maries_pacses, taux_marginal_condition_maries_pacses, borne = 0.05):
+    """
+    This function takes as input a numpy array of earnings and of marginal tax rates (restricted to married couples having positive earnings and age between 25 and 55)
+    The borne is a threshold on which we average (we do not consider the mean only on y=y0 but on y in [y0-borne, y0 + borne])
+    Then it computes the mean of marginal tax rates for all these intervals [y0-borne, y0 + borne]
+    The output is of the same size as the inputs
+    """
 
-    for i in range(len(earning)):
-        diff = numpy.abs(earning - earning[i])
-        ir_taux_marginal2 = numpy.copy(ir_taux_marginal)
+    output = numpy.zeros_like(earning_condition_maries_pacses, dtype=float)
+
+    for i in range(len(earning_condition_maries_pacses)):
+        diff = numpy.abs(earning_condition_maries_pacses - earning_condition_maries_pacses[i])
+        ir_taux_marginal2 = numpy.copy(taux_marginal_condition_maries_pacses)
         ir_taux_marginal2[diff > borne] = 0
         output[i] = numpy.sum(ir_taux_marginal2 / (1 - ir_taux_marginal2))/numpy.sum(diff <= borne)
 
-    return output*maries_ou_pacses
+    return output
 
 def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period):
     K = 30
@@ -705,11 +717,11 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     secondary_earning_condition = secondary_earning[condition]
 
     # then we restrict to only those who are married (or pacsed)
-    ancien_irpp_condition = ancien_irpp_condition[maries_ou_pacses_condition]
-    maries_ou_pacses_condition = maries_ou_pacses_condition[maries_ou_pacses_condition] # useless i think
-    ir_taux_marginal_condition = ir_taux_marginal_condition[maries_ou_pacses_condition]
-    primary_earning_condition = primary_earning_condition[maries_ou_pacses_condition]
-    secondary_earning_condition = secondary_earning_condition[maries_ou_pacses_condition]
+    ancien_irpp_condition_maries_pacses = ancien_irpp_condition[maries_ou_pacses_condition]
+    maries_ou_pacses_condition_maries_pacses = maries_ou_pacses_condition[maries_ou_pacses_condition] # useless i think
+    ir_taux_marginal_condition_maries_pacses = ir_taux_marginal_condition[maries_ou_pacses_condition]
+    primary_earning_condition_maries_pacses = primary_earning_condition[maries_ou_pacses_condition]
+    secondary_earning_condition_maries_pacses = secondary_earning_condition[maries_ou_pacses_condition]
 
 
 
@@ -724,13 +736,17 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
 
 
 
-    cdf_primary_earnings = cdf_earnings(primary_earning, maries_ou_pacses, period, 'primary')
-    density_primary_earnings = density_earnings(primary_earning, maries_ou_pacses, period, 'primary')
-    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning, ir_taux_marginal, maries_ou_pacses)
+    cdf_primary_earnings = cdf_earnings(earning_condition_maries_pacses = primary_earning_condition_maries_pacses)
+    density_primary_earnings = density_earnings(earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
+                                                period = period)
+    primary_esperance_taux_marginal = esperance_taux_marginal(earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
+                                                              taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses)
 
-    cdf_secondary_earnings = cdf_earnings(secondary_earning, maries_ou_pacses, period, 'secondary')
-    density_secondary_earnings = density_earnings(secondary_earning, maries_ou_pacses, period, 'secondary')
-    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning, ir_taux_marginal, maries_ou_pacses)
+    cdf_secondary_earnings = cdf_earnings(earning_condition_maries_pacses = secondary_earning_condition_maries_pacses)
+    density_secondary_earnings = density_earnings(earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
+                                                  period = period)
+    secondary_esperance_taux_marginal = esperance_taux_marginal(earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
+                                                                taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses)
     
     revenu, ir_marginal = moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period)
 
@@ -778,12 +794,19 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     graphB17(primary_earning, secondary_earning, maries_ou_pacses, period)
     graphB18(primary_earning, secondary_earning, maries_ou_pacses, period)
 
-    graphB21(primary_earning, secondary_earning, maries_ou_pacses, period)
-    graphB22(primary_earning, secondary_earning, maries_ou_pacses, period)
+    graphB21(primary_earning, secondary_earning, cdf_primary_earnings, cdf_secondary_earnings, period)
+    graphB22(primary_earning, secondary_earning, density_primary_earnings, density_secondary_earnings, period)
     
     ma_borne = 500
-    graphB23_B24(primary_earning, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
-    graphB23_B24(secondary_earning, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
+    primary_esperance_taux_marginal500 = esperance_taux_marginal(earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
+                                                              taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses,
+                                                              borne = ma_borne)
+    secondary_esperance_taux_marginal500 = esperance_taux_marginal(earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
+                                                                taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses,
+                                                                borne = ma_borne)
+    
+    graphB23_B24(primary_earning, maries_ou_pacses, ir_taux_marginal, primary_esperance_taux_marginal500, period, 'primary')
+    graphB23_B24(secondary_earning, maries_ou_pacses, ir_taux_marginal, secondary_esperance_taux_marginal500, period, 'secondary')
 
 
 
@@ -896,10 +919,9 @@ def graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
 
 
 
-def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
-    cdf_primary = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    cdf_secondary = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, cdf_primary, cdf_secondary, period):
 
+    # lines not needed here but take it step by step...
     cdf_primary = cdf_primary[primary_earning_maries_pacses > 0]
     primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
 
@@ -926,9 +948,7 @@ def graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, mar
     plt.close()
 
 
-def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period):
-    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
+def graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, density_primary_earnings, density_secondary_earnings, period):
 
     density_primary_earnings = density_primary_earnings[primary_earning_maries_pacses > 0]
     primary_earning_maries_pacses = primary_earning_maries_pacses[primary_earning_maries_pacses > 0]
