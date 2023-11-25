@@ -134,6 +134,54 @@ class vers_individualisation(Reform):
 
         self.add_variable(secondary_earning)
 
+        class primary_age(Variable):
+            value_type = int
+            entity = FoyerFiscal
+            label = "Primary earner age"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                age_i = foyer_fiscal.members('age', period.last_month) # est de taille nb individus
+                age_declarant_principal = foyer_fiscal.sum(age_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                age_du_conjoint = foyer_fiscal.sum(age_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                mask = revenu_declarant_principal < revenu_du_conjoint
+                age_declarant_principal[mask] = age_du_conjoint[mask]
+
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                return age_declarant_principal * maries_ou_pacses
+
+        self.add_variable(primary_age)
+
+        class secondary_age(Variable):
+            value_type = int
+            entity = FoyerFiscal
+            label = "Secondary earner age"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                age_i = foyer_fiscal.members('age', period.last_month) # est de taille nb individus
+                age_declarant_principal = foyer_fiscal.sum(age_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                age_du_conjoint = foyer_fiscal.sum(age_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                mask = revenu_declarant_principal < revenu_du_conjoint
+                age_du_conjoint[mask] = age_declarant_principal[mask]
+
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+
+                return age_du_conjoint * maries_ou_pacses
+
+        self.add_variable(secondary_age)
+
         
 
 class mute_decote(Reform):
@@ -637,27 +685,60 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
             else:
                 simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
     
+    # TODO commenter tout mon code de manière très très propre
 
     ancien_irpp = simulation.calculate('impot_revenu_restant_a_payer', period)
     maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
     ir_taux_marginal = simulation.calculate('ir_taux_marginal', period)
-    primary_earning_maries_pacses = simulation.calculate('primary_earning', period)
-    secondary_earning_maries_pacses = simulation.calculate('secondary_earning', period)
+    primary_earning = simulation.calculate('primary_earning', period)
+    secondary_earning = simulation.calculate('secondary_earning', period)
     revenu_celib = simulation.calculate('revenu_celibataire', period)
+    primary_age = simulation.calculate('primary_age', period)
+    secondary_age = simulation.calculate('secondary_age', period)
 
-    cdf_primary_earnings = cdf_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    density_primary_earnings = density_earnings(primary_earning_maries_pacses, maries_ou_pacses, period, 'primary')
-    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    # we restrict the foyers fiscaux to those who have positive earnings and in which both spouses are between 25 and 55 years old
+    condition = (primary_earning > 0) & (secondary_earning >= 0) & (primary_age >= 25) & (primary_age <= 55) & (secondary_age >= 25) & (secondary_age <= 55)  
+    ancien_irpp_condition = ancien_irpp[condition]
+    maries_ou_pacses_condition = maries_ou_pacses[condition]
+    ir_taux_marginal_condition = ir_taux_marginal[condition]
+    primary_earning_condition = primary_earning[condition]
+    secondary_earning_condition = secondary_earning[condition]
 
-    cdf_secondary_earnings = cdf_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    density_secondary_earnings = density_earnings(secondary_earning_maries_pacses, maries_ou_pacses, period, 'secondary')
-    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses)
+    # then we restrict to only those who are married (or pacsed)
+    ancien_irpp_condition = ancien_irpp_condition[maries_ou_pacses]
+    maries_ou_pacses_condition = maries_ou_pacses_condition[maries_ou_pacses] # useless i think
+    ir_taux_marginal_condition = ir_taux_marginal_condition[maries_ou_pacses]
+    primary_earning_condition = primary_earning_condition[maries_ou_pacses]
+    secondary_earning_condition = secondary_earning_condition[maries_ou_pacses]
+
+
+
+
+
+
+
+
+    # TODO individu fictif rassemblant les 5% du bas de la distribution (mais du coup poids associé plus important ?)
+
+
+
+
+
+    cdf_primary_earnings = cdf_earnings(primary_earning, maries_ou_pacses, period, 'primary')
+    density_primary_earnings = density_earnings(primary_earning, maries_ou_pacses, period, 'primary')
+    primary_esperance_taux_marginal = esperance_taux_marginal(primary_earning, ir_taux_marginal, maries_ou_pacses)
+
+    cdf_secondary_earnings = cdf_earnings(secondary_earning, maries_ou_pacses, period, 'secondary')
+    density_secondary_earnings = density_earnings(secondary_earning, maries_ou_pacses, period, 'secondary')
+    secondary_esperance_taux_marginal = esperance_taux_marginal(secondary_earning, ir_taux_marginal, maries_ou_pacses)
     
-    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_maries_pacses, secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, period)
+    revenu, ir_marginal = moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period)
+
+    
 
 
-    graphe14(primary_earning = primary_earning_maries_pacses, 
-             secondary_earning = secondary_earning_maries_pacses,
+    graphe14(primary_earning = primary_earning, 
+             secondary_earning = secondary_earning,
              maries_ou_pacses = maries_ou_pacses, 
              ancien_irpp = ancien_irpp, 
              ir_taux_marginal = ir_taux_marginal,
@@ -669,8 +750,8 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
              secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
              period = period)
 
-    graphe16(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses, 
+    graphe16(primary_earning = primary_earning,
+            secondary_earning = secondary_earning, 
             maries_ou_pacses = maries_ou_pacses, 
             ancien_irpp = ancien_irpp,
             cdf_primary_earnings = cdf_primary_earnings,
@@ -681,28 +762,28 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
             period = period)
     
-    graph17(primary_earning = primary_earning_maries_pacses, 
-            secondary_earning = secondary_earning_maries_pacses, 
+    graph17(primary_earning = primary_earning, 
+            secondary_earning = secondary_earning, 
             maries_ou_pacses = maries_ou_pacses,
             period = period)
     
     
-          
-    graphB13(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB14(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, period)
-    graphB15(primary_earning_maries_pacses, secondary_earning_maries_pacses, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
+    # TODO ici aussi mettre noms variables des fonctions sinon on va s'y perdre
+    graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, period)
+    graphB14(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, period)
+    graphB15(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, ir_taux_marginal, period)
     
-    graphB16(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB16(primary_earning, secondary_earning, maries_ou_pacses, period)
     
-    graphB17(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB18(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB17(primary_earning, secondary_earning, maries_ou_pacses, period)
+    graphB18(primary_earning, secondary_earning, maries_ou_pacses, period)
 
-    graphB21(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
-    graphB22(primary_earning_maries_pacses, secondary_earning_maries_pacses, maries_ou_pacses, period)
+    graphB21(primary_earning, secondary_earning, maries_ou_pacses, period)
+    graphB22(primary_earning, secondary_earning, maries_ou_pacses, period)
     
     ma_borne = 500
-    graphB23_B24(primary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
-    graphB23_B24(secondary_earning_maries_pacses, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning_maries_pacses, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
+    graphB23_B24(primary_earning, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(primary_earning, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'primary')
+    graphB23_B24(secondary_earning, maries_ou_pacses, ir_taux_marginal, esperance_taux_marginal(secondary_earning, ir_taux_marginal, maries_ou_pacses, borne=ma_borne), period, 'secondary')
 
 
 
