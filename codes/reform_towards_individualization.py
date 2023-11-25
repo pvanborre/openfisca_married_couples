@@ -439,32 +439,31 @@ def extensive_partial_revenue_function(base_earning_condition_maries_pacses, oth
 
         partial_integral_values[next_y1_prime] = total_sum 
 
-    partial_integral_values[0] = 0 # integral from 0 to 0
+    partial_integral_values[numpy.min(base_earning_condition_maries_pacses)] = 0 
 
     return partial_integral_values
 
 def extensive_revenue_function(base_earning_condition_maries_pacses, other_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses):
-    partial_integral_values = extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, irpp)
+    partial_integral_values = extensive_partial_revenue_function(base_earning_condition_maries_pacses, other_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses)
     
-    extensive_rev_function = numpy.zeros_like(base_earning)
+    extensive_rev_function = numpy.zeros_like(base_earning_condition_maries_pacses)
 
 
-    maxi = numpy.max(base_earning_restricted) 
+    maxi = numpy.max(base_earning_condition_maries_pacses) 
 
-    for i in range(len(base_earning)):
-        if maries_ou_pacses[i] and base_earning[i] >= 0 and other_earning[i] >= 0:
-            extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning[i]]
+    for i in range(len(base_earning_condition_maries_pacses)):
+        extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning_condition_maries_pacses[i]]
     
     print("extensive", extensive_rev_function)
     return - extensive_rev_function 
 
 
 
-def intensive_revenue_function(earning, cdf, density, esperance_taux_marginal, maries_ou_pacses, elasticity):
+def intensive_revenue_function(earning, cdf, density, esperance_taux_marginal, elasticity):
 
     behavioral = - earning * density * elasticity * esperance_taux_marginal  
     mechanical = 1 - cdf
-    return (behavioral + mechanical) * maries_ou_pacses
+    return behavioral + mechanical
 
 
     
@@ -533,23 +532,18 @@ def graphe14(primary_earning_condition_maries_pacses, secondary_earning_conditio
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
-    primary_extensive_revenue_function = extensive_revenue_function(primary_earning, secondary_earning, secondary_earning, ancien_irpp, maries_ou_pacses)
-    secondary_extensive_revenue_function = extensive_revenue_function(secondary_earning, primary_earning, secondary_earning, ancien_irpp, maries_ou_pacses)
+    primary_extensive_revenue_function = extensive_revenue_function(primary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses)
+    secondary_extensive_revenue_function = extensive_revenue_function(secondary_earning_condition_maries_pacses, primary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses)
 
     for i in range(len(eps1_tab)):
         primary_elasticity_maries_pacses = eps1_tab[i]
         secondary_elasticity_maries_pacses = eps2_tab[i]
         
-        primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + primary_extensive_revenue_function
-        secondary_revenue_function = intensive_revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses) + secondary_extensive_revenue_function
+        primary_revenue_function = intensive_revenue_function(primary_earning_condition_maries_pacses, cdf_primary_earnings_condition_maries_pacses, density_primary_earnings_condition_maries_pacses, primary_esperance_taux_marginal_condition_maries_pacses, primary_elasticity_maries_pacses) + primary_extensive_revenue_function
+        secondary_revenue_function = intensive_revenue_function(secondary_earning_condition_maries_pacses, cdf_secondary_earnings_condition_maries_pacses, density_secondary_earnings_condition_maries_pacses, secondary_esperance_taux_marginal_condition_maries_pacses, secondary_elasticity_maries_pacses) + secondary_extensive_revenue_function
 
-
-        primary_revenue_function = primary_revenue_function[maries_ou_pacses]
-        primary_revenue_function = primary_revenue_function[condition]
-        secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
-        secondary_revenue_function = secondary_revenue_function[condition]
  
-        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
+        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, primary_revenue_function, secondary_revenue_function)
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
@@ -566,12 +560,12 @@ def graphe14(primary_earning_condition_maries_pacses, secondary_earning_conditio
         tau_1 = 0.1 # comment bien choisir tau_1 ????
         tau_2 = - tau_1 * rapport[i]
         
-        nouvel_irpp = -ancien_irpp + tau_1 * primary_earning_maries_pacses/12 + tau_2 * secondary_earning_maries_pacses/12 
+        nouvel_irpp = -irpp_condition_maries_pacses + tau_1 * primary_earning_condition_maries_pacses/12 + tau_2 * secondary_earning_condition_maries_pacses/12 
         print("IR après réforme scenario ", i, " ", nouvel_irpp)
 
         # nombre de gagnants
-        is_winner = secondary_earning_maries_pacses*rapport[i] > primary_earning_maries_pacses
-        pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_maries_pacses)
+        is_winner = secondary_earning_condition_maries_pacses*rapport[i] > primary_earning_condition_maries_pacses
+        pourcentage_gagnants[i] = 100*is_winner.sum()/len(primary_earning_condition_maries_pacses)
         print("Scenario", i)
         print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
     
@@ -594,13 +588,13 @@ def graphe14(primary_earning_condition_maries_pacses, secondary_earning_conditio
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
         plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 100000*i, 300000), bbox = dict(boxstyle ="round", fc = color))
 
-    plt.scatter(secondary_earning_maries_pacses, primary_earning_maries_pacses, s = 0.1, c = '#828282') 
+    plt.scatter(secondary_earning_condition_maries_pacses, primary_earning_condition_maries_pacses, s = 0.1, c = '#828282') 
 
     #plt.axis("equal")
 
     eps = 5000
-    plt.xlim(-eps, max(secondary_earning_maries_pacses)) 
-    plt.ylim(-eps, max(primary_earning_maries_pacses)) 
+    plt.xlim(-eps, max(secondary_earning_condition_maries_pacses)) 
+    plt.ylim(-eps, max(primary_earning_condition_maries_pacses)) 
 
     plt.grid()
     
@@ -729,18 +723,18 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     
 
 
-    graphe14(primary_earning = primary_earning, 
-             secondary_earning = secondary_earning,
-             maries_ou_pacses = maries_ou_pacses, 
-             ancien_irpp = ancien_irpp, 
-             ir_taux_marginal = ir_taux_marginal,
-             cdf_primary_earnings = cdf_primary_earnings,
-             cdf_secondary_earnings = cdf_secondary_earnings,
-             density_primary_earnings = density_primary_earnings,
-             density_secondary_earnings = density_secondary_earnings,
-             primary_esperance_taux_marginal = primary_esperance_taux_marginal,
-             secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
+    graphe14(primary_earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
+             secondary_earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
+             irpp_condition_maries_pacses = ancien_irpp_condition_maries_pacses,
+             taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses,
+             cdf_primary_earnings_condition_maries_pacses = cdf_primary_earnings,
+             cdf_secondary_earnings_condition_maries_pacses = cdf_secondary_earnings,
+             density_primary_earnings_condition_maries_pacses = density_primary_earnings,
+             density_secondary_earnings_condition_maries_pacses = density_secondary_earnings,
+             primary_esperance_taux_marginal_condition_maries_pacses = primary_esperance_taux_marginal,
+             secondary_esperance_taux_marginal_condition_maries_pacses = secondary_esperance_taux_marginal,
              period = period)
+
 
     graphe16(primary_earning = primary_earning,
             secondary_earning = secondary_earning, 
