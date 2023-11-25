@@ -380,42 +380,32 @@ def moyenne_taux_marginal(primary_earning_condition_maries_pacses, secondary_ear
     
 
 
-def primary_elasticity(maries_ou_pacses, eps1):
-    return maries_ou_pacses * eps1 
-
-def secondary_elasticity(maries_ou_pacses, eps2):
-    return maries_ou_pacses * eps2 
-
 def couples_elasticity(primary_earning, secondary_earning, maries_ou_pacses, eps1, eps2):
-    # lemma 2 formula 
+    # lemma 2 formula : we average the elasticities with the shares
     total_earning = primary_earning + secondary_earning
     total_earning[total_earning == 0] = 0.001
     return maries_ou_pacses * (eps1*primary_earning + eps2*secondary_earning) / total_earning
 
 
-def extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, irpp):
+def extensive_partial_revenue_function(base_earning_condition_maries_pacses, other_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses):
+    """
+    This function takes as input numpy array of earnings, and of tax rates (restricted to married couples having positive earnings and age between 25 and 55)
+    Then it computes in a cumulative way some integrals that we store in a dictionary partial_integral_values
+    partial_integral_values[y] is the integral from 0 to y of ...
+    """
 
-    base_earning = base_earning[maries_ou_pacses]
-    other_earning = other_earning[maries_ou_pacses]
-    secondary_earning = secondary_earning[maries_ou_pacses]
-    irpp = irpp[maries_ou_pacses]
 
-    condition = (base_earning >= 0) & (other_earning >= 0)
-    base_earning = base_earning[condition]
-    other_earning = other_earning[condition]
-    secondary_earning = secondary_earning[condition]
-    irpp = irpp[condition]
+    total_earning_condition_maries_pacses = base_earning_condition_maries_pacses + other_earning_condition_maries_pacses
 
-    total_earning = base_earning + other_earning
-
-    dual_earner_couples_base_earnings = base_earning[secondary_earning > 0]
-    dual_earner_couples_total_earnings = total_earning[secondary_earning > 0]
+    dual_earner_couples_base_earnings = base_earning_condition_maries_pacses[secondary_earning_condition_maries_pacses > 0]
+    dual_earner_couples_total_earnings = total_earning_condition_maries_pacses[secondary_earning_condition_maries_pacses > 0]
+    # we take the 9th decile to account for the formula of extensive elasticity 
     dual_earner_couples_total_earnings_sorted = numpy.sort(dual_earner_couples_total_earnings)
     index_9th_decile = int(0.9 * (len(dual_earner_couples_total_earnings_sorted) - 1))
     y90_dual_earner_couple =  dual_earner_couples_total_earnings_sorted[index_9th_decile]
 
-    single_earner_couples_base_earnings = base_earning[secondary_earning == 0]
-    single_earner_couples_total_earnings = total_earning[secondary_earning == 0]
+    single_earner_couples_base_earnings = base_earning_condition_maries_pacses[secondary_earning_condition_maries_pacses == 0]
+    single_earner_couples_total_earnings = total_earning_condition_maries_pacses[secondary_earning_condition_maries_pacses == 0]
     single_earner_couples_total_earnings_sorted = numpy.sort(single_earner_couples_total_earnings)
     index_9th_decile = int(0.9 * (len(single_earner_couples_total_earnings_sorted) - 1))
     y90_single_earner_couple =  single_earner_couples_total_earnings_sorted[index_9th_decile]
@@ -426,15 +416,15 @@ def extensive_partial_revenue_function(base_earning, other_earning, secondary_ea
     # (avoids computing the integral from y1 to y_bar and then from y1' to y_bar since both integrals have a common part)
     # only integrals from 0 to y1_prime stored in this dictionary
 
-    distinct_base_earnings = numpy.sort(numpy.unique(base_earning))
+    distinct_base_earnings = numpy.sort(numpy.unique(base_earning_condition_maries_pacses))
 
     for i in range(len(distinct_base_earnings)-1):
         y1_prime = distinct_base_earnings[i]
         next_y1_prime = distinct_base_earnings[i+1]
 
-        condition_sample = (base_earning >= y1_prime) & (base_earning < next_y1_prime)
-        irpp_sample = irpp[condition_sample]
-        total_earning_sample = total_earning[condition_sample]
+        condition_sample = (base_earning_condition_maries_pacses >= y1_prime) & (base_earning_condition_maries_pacses < next_y1_prime)
+        irpp_sample = irpp_condition_maries_pacses[condition_sample]
+        total_earning_sample = total_earning_condition_maries_pacses[condition_sample]
         denominator = total_earning_sample - irpp_sample
         denominator[denominator == 0] = 0.001
         moyenne_dual_earner = numpy.mean(irpp_sample/denominator * (0.65 - 0.4 * numpy.sqrt(total_earning_sample/y90_dual_earner_couple))) 
@@ -449,18 +439,16 @@ def extensive_partial_revenue_function(base_earning, other_earning, secondary_ea
 
         partial_integral_values[next_y1_prime] = total_sum 
 
-    partial_integral_values[0] = 0
+    partial_integral_values[0] = 0 # integral from 0 to 0
 
     return partial_integral_values
 
-def extensive_revenue_function(base_earning, other_earning, secondary_earning, irpp, maries_ou_pacses):
+def extensive_revenue_function(base_earning_condition_maries_pacses, other_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses):
     partial_integral_values = extensive_partial_revenue_function(base_earning, other_earning, secondary_earning, maries_ou_pacses, irpp)
     
     extensive_rev_function = numpy.zeros_like(base_earning)
 
-    base_earning_restricted = base_earning[maries_ou_pacses]
-    other_earning_restricted = other_earning[maries_ou_pacses]
-    base_earning_restricted = base_earning_restricted[(base_earning_restricted >= 0) & (other_earning_restricted >= 0)]
+
     maxi = numpy.max(base_earning_restricted) 
 
     for i in range(len(base_earning)):
@@ -468,7 +456,7 @@ def extensive_revenue_function(base_earning, other_earning, secondary_earning, i
             extensive_rev_function[i] = partial_integral_values[maxi] - partial_integral_values[base_earning[i]]
     
     print("extensive", extensive_rev_function)
-    return - extensive_rev_function * maries_ou_pacses
+    return - extensive_rev_function 
 
 
 
@@ -530,11 +518,14 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
 
-def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, ir_taux_marginal, cdf_primary_earnings, cdf_secondary_earnings, density_primary_earnings, density_secondary_earnings, primary_esperance_taux_marginal, secondary_esperance_taux_marginal, period):
- 
-    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
-    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
+def graphe14(primary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, irpp_condition_maries_pacses, taux_marginal_condition_maries_pacses, cdf_primary_earnings_condition_maries_pacses, cdf_secondary_earnings_condition_maries_pacses, density_primary_earnings_condition_maries_pacses, density_secondary_earnings_condition_maries_pacses, primary_esperance_taux_marginal_condition_maries_pacses, secondary_esperance_taux_marginal_condition_maries_pacses, period):
+    """
+    This function outputs the most important graph of the paper : Reform towards individual taxation: Political economy
+    We are looking at winners and losers of a reform towards individualization among married couples for a given year 
+    TBC... TODO 
+    """
 
+    # we test the political feasibility for different elasticities scenarios"
     eps1_tab = [0.25, 0.5, 0.75]
     eps2_tab = [0.75, 0.5, 0.25]
     rapport = [0.0]*len(eps1_tab)
@@ -546,32 +537,12 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
     secondary_extensive_revenue_function = extensive_revenue_function(secondary_earning, primary_earning, secondary_earning, ancien_irpp, maries_ou_pacses)
 
     for i in range(len(eps1_tab)):
-        primary_elasticity_maries_pacses = primary_elasticity(maries_ou_pacses, eps1_tab[i])
-        secondary_elasticity_maries_pacses = secondary_elasticity(maries_ou_pacses, eps2_tab[i])
+        primary_elasticity_maries_pacses = eps1_tab[i]
+        secondary_elasticity_maries_pacses = eps2_tab[i]
         
         primary_revenue_function = intensive_revenue_function(primary_earning, cdf_primary_earnings, density_primary_earnings, primary_esperance_taux_marginal, maries_ou_pacses, primary_elasticity_maries_pacses) + primary_extensive_revenue_function
         secondary_revenue_function = intensive_revenue_function(secondary_earning, cdf_secondary_earnings, density_secondary_earnings, secondary_esperance_taux_marginal, maries_ou_pacses, secondary_elasticity_maries_pacses) + secondary_extensive_revenue_function
 
-        if i == 0:
-            primary_earning_maries_pacses = primary_earning[maries_ou_pacses]
-            print("revenu du déclarant principal", primary_earning_maries_pacses)
-            secondary_earning_maries_pacses = secondary_earning[maries_ou_pacses]
-            print("revenu du conjoint", secondary_earning_maries_pacses)
-
-            # Statistiques descriptives
-            nombre_foyers_maries_pacses = len(primary_earning_maries_pacses)
-            print("Nombre de foyers fiscaux dont membres sont mariés ou pacsés", nombre_foyers_maries_pacses)
-            print("Proportion de foyers fiscaux dont membres mariés ou pacsés", nombre_foyers_maries_pacses/len(maries_ou_pacses))
-
-
-            # on enlève les outliers
-            condition = (primary_earning_maries_pacses >= 0) & (secondary_earning_maries_pacses >= 0)
-            primary_earning_maries_pacses = primary_earning_maries_pacses[condition]
-            secondary_earning_maries_pacses = secondary_earning_maries_pacses[condition]
-            print("Nombre d'outliers que l'on retire", nombre_foyers_maries_pacses - len(primary_earning_maries_pacses))
-
-            ancien_irpp = ancien_irpp[maries_ou_pacses]
-            ancien_irpp = ancien_irpp[condition]
 
         primary_revenue_function = primary_revenue_function[maries_ou_pacses]
         primary_revenue_function = primary_revenue_function[condition]
