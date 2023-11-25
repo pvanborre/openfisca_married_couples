@@ -347,24 +347,26 @@ def esperance_taux_marginal(earning_condition_maries_pacses, taux_marginal_condi
 
     return output
 
-def moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period):
-    K = 30
-
-    ir_taux_marginal = ir_taux_marginal[maries_ou_pacses]
-    revenu = primary_earning + secondary_earning
-    revenu = revenu[maries_ou_pacses]
+def moyenne_taux_marginal(primary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, taux_marginal_condition_maries_pacses, period, K = 3):
+    """
+    This function takes as input a numpy array of primary and secondary earnings, and of marginal tax rates (restricted to married couples having positive earnings and age between 25 and 55)
+    We perform a convolution in a window of size 2K that is an average of neighbors marginal taxes because we convolve with the vector [1/(2K+1), ..., 1/(2K+1)]
+    The output is of the same size as the inputs : we output the total earnings of foyers fiscaux and these average marginal tax rates
+    """
+    revenu = primary_earning_condition_maries_pacses + secondary_earning_condition_maries_pacses
 
     sorted_indices = numpy.argsort(revenu)
     revenu = revenu[sorted_indices]
-    ir_taux_marginal = ir_taux_marginal[sorted_indices]
+    taux_marginal_condition_maries_pacses = taux_marginal_condition_maries_pacses[sorted_indices]
 
 
-    ir_taux_marginal_mean = numpy.convolve(ir_taux_marginal, numpy.ones(2 * K + 1) / (2 * K + 1), mode='same')
-    max_value = numpy.max(ir_taux_marginal[-K:])
+    ir_taux_marginal_mean = numpy.convolve(taux_marginal_condition_maries_pacses, numpy.ones(2 * K + 1) / (2 * K + 1), mode='same')
+    
+    # here we fill in the last K values (that we couldn't get thanks to the convolution (slicing window of size K to the right))
+    max_value = numpy.max(taux_marginal_condition_maries_pacses[-K:])
     ir_taux_marginal_mean[-K:] = max_value
 
-    #plt.scatter(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Discrete Data')
-    plt.plot(revenu[revenu > 0], ir_taux_marginal_mean[revenu > 0], label='Continuous Data')
+    plt.plot(revenu, ir_taux_marginal_mean, label='Continuous Data')
     plt.xlabel('Gross earnings')
     plt.ylabel('Average marginal tax rate')
     plt.title("Average marginal tax rates - {annee}".format(annee = period))
@@ -748,7 +750,10 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     secondary_esperance_taux_marginal = esperance_taux_marginal(earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
                                                                 taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses)
     
-    revenu, ir_marginal = moyenne_taux_marginal(primary_earning, secondary_earning, ir_taux_marginal, maries_ou_pacses, period)
+    revenu, ir_marginal = moyenne_taux_marginal(primary_earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
+                                                secondary_earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
+                                                taux_marginal_condition_maries_pacses = ir_taux_marginal_condition_maries_pacses,
+                                                period = period)
 
     
 
