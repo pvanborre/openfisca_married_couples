@@ -495,24 +495,49 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     # le but ici est de convoler nos points pas juste avec une gaussienne
     # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
     
-    sigma = 1.0  
-    kernel_size = int(6 * sigma) * 2 + 1
-    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
-    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    
-    dirac_delta = numpy.zeros_like(x_kernel)
-    dirac_delta[len(x_kernel) // 3] = 0.3
+    bandwidth = 1
+    print("bandwidth revenue function", bandwidth)
 
-    combined_kernel = gaussian_kernel + dirac_delta
-    combined_kernel /= numpy.sum(combined_kernel)
+    smoothed_y_primary = numpy.zeros_like(primary_income, dtype=float)
 
-    smoothed_y_primary = convolve(primary_function, combined_kernel, mode='same')
+    for i in range(len(primary_income)):
+        kernel_values = gaussian_kernel((primary_function - primary_function[i]) / bandwidth)
+        smoothed_y_primary[i] = numpy.mean(kernel_values) * 1/bandwidth
+
     integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
     print("Integral of smoothed_y primary", integral_trap_primary)
 
-    smoothed_y_secondary = convolve(secondary_function, combined_kernel, mode='same')
+    # for secondary
+    bandwidth = 1
+    print("bandwidth revenue function", bandwidth)
+
+    smoothed_y_secondary = numpy.zeros_like(secondary_income, dtype=float)
+
+    for i in range(len(secondary_income)):
+        kernel_values = gaussian_kernel((secondary_function - secondary_function[i]) / bandwidth)
+        smoothed_y_secondary[i] = numpy.mean(kernel_values) * 1/bandwidth
+
     integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
     print("Integral of smoothed_y secondary", integral_trap_secondary)
+
+    # sigma = 1.0  
+    # kernel_size = int(6 * sigma) * 2 + 1
+    # x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
+    # gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
+    
+    # dirac_delta = numpy.zeros_like(x_kernel)
+    # dirac_delta[len(x_kernel) // 3] = 0.3
+
+    # combined_kernel = gaussian_kernel + dirac_delta
+    # combined_kernel /= numpy.sum(combined_kernel)
+
+    # smoothed_y_primary = convolve(primary_function, combined_kernel, mode='same')
+    # integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
+    # print("Integral of smoothed_y primary", integral_trap_primary)
+
+    # smoothed_y_secondary = convolve(secondary_function, combined_kernel, mode='same')
+    # integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
+    # print("Integral of smoothed_y secondary", integral_trap_secondary)
 
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
