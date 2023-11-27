@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from scipy.interpolate import CubicSpline, PchipInterpolator
 from scipy.signal import convolve
+from statsmodels.nonparametric.kernel_regression import KernelReg
 
 from sklearn.linear_model import Lasso, ElasticNetCV
 from sklearn.model_selection import train_test_split, KFold, cross_val_predict
@@ -426,10 +427,12 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     threshold = 3
 
     z_scores = (primary_function - numpy.mean(primary_function)) / numpy.std(primary_function)
+    print("number of outliers primary revenue function", numpy.sum(abs(z_scores) > threshold))
     primary_income = primary_income[abs(z_scores) <= threshold]
     primary_function = primary_function[abs(z_scores) <= threshold]
 
     z_scores = (secondary_function - numpy.mean(secondary_function)) / numpy.std(secondary_function)
+    print("number of outliers secondary revenue function", numpy.sum(abs(z_scores) > threshold))
     secondary_income = secondary_income[abs(z_scores) <= threshold]
     secondary_function = secondary_function[abs(z_scores) <= threshold]
 
@@ -443,27 +446,27 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     secondary_income = secondary_income[sorted_indices_s]
     secondary_function = secondary_function[sorted_indices_s]
 
-    # le but ici est de convoler nos points pas juste avec une gaussienne
-    # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
-    
-    sigma = 1.0  
-    kernel_size = int(6 * sigma) * 2 + 1
-    x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
-    gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    
-    dirac_delta = numpy.zeros_like(x_kernel)
-    dirac_delta[len(x_kernel) // 3] = 0.3
+    print("we begin the kernel regression")
 
-    combined_kernel = gaussian_kernel + dirac_delta
-    combined_kernel /= numpy.sum(combined_kernel)
+    # 500 for 2018, 800 for 2017 a mettre sous forme de dictionnaire {year:band}
 
-    smoothed_y_primary = convolve(primary_function, combined_kernel, mode='same')
+
+    kernel_reg = KernelReg(endog=primary_function, exog=primary_income, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    smoothed_y_primary, _ = kernel_reg.fit()
+    smoothed_y_primary = smoothed_y_primary[sorted_indices]
     integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
     print("Integral of smoothed_y primary", integral_trap_primary)
 
-    smoothed_y_secondary = convolve(secondary_function, combined_kernel, mode='same')
+    print("end of the first regression")
+
+    kernel_reg = KernelReg(endog=secondary_function, exog=secondary_income, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    smoothed_y_secondary, _ = kernel_reg.fit()
+    smoothed_y_secondary = smoothed_y_secondary[sorted_indices_s]
     integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
     print("Integral of smoothed_y secondary", integral_trap_secondary)
+
+    print("end of the second regression")
+
 
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
@@ -669,17 +672,17 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
              secondary_esperance_taux_marginal = secondary_esperance_taux_marginal,
              period = period)
 
-    graphe16(primary_earning = primary_earning_maries_pacses,
-            secondary_earning = secondary_earning_maries_pacses, 
-            maries_ou_pacses = maries_ou_pacses, 
-            ancien_irpp = ancien_irpp,
-            cdf_primary_earnings = cdf_primary_earnings,
-            cdf_secondary_earnings = cdf_secondary_earnings,
-            density_primary_earnings = density_primary_earnings,
-            density_secondary_earnings = density_secondary_earnings, 
-            primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
-            secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
-            period = period)
+    # graphe16(primary_earning = primary_earning_maries_pacses,
+    #         secondary_earning = secondary_earning_maries_pacses, 
+    #         maries_ou_pacses = maries_ou_pacses, 
+    #         ancien_irpp = ancien_irpp,
+    #         cdf_primary_earnings = cdf_primary_earnings,
+    #         cdf_secondary_earnings = cdf_secondary_earnings,
+    #         density_primary_earnings = density_primary_earnings,
+    #         density_secondary_earnings = density_secondary_earnings, 
+    #         primary_esperance_taux_marginal = primary_esperance_taux_marginal, 
+    #         secondary_esperance_taux_marginal = secondary_esperance_taux_marginal, 
+    #         period = period)
     
     graph17(primary_earning = primary_earning_maries_pacses, 
             secondary_earning = secondary_earning_maries_pacses, 
@@ -1326,12 +1329,12 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
 
 
-def redirect_print_to_file(filename):
-    sys.stdout = open(filename, 'a')
+# def redirect_print_to_file(filename):
+#     sys.stdout = open(filename, 'a')
     
-redirect_print_to_file('output_graphe_15.txt')
+# redirect_print_to_file('output_graphe_15.txt')
 
 simulation_reforme()
 
-sys.stdout.close()
-sys.stdout = sys.__stdout__
+# sys.stdout.close()
+# sys.stdout = sys.__stdout__
