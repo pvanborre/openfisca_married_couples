@@ -472,14 +472,16 @@ def intensive_revenue_function(earning, cdf, density, esperance_taux_marginal, e
 
 def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, primary_function, secondary_function):
 
-    # on enleve les outliers 
+   # on enleve les outliers 
     threshold = 3
 
     z_scores = (primary_function - numpy.mean(primary_function)) / numpy.std(primary_function)
+    print("number of outliers primary revenue function", numpy.sum(abs(z_scores) > threshold))
     primary_income = primary_income[abs(z_scores) <= threshold]
     primary_function = primary_function[abs(z_scores) <= threshold]
 
     z_scores = (secondary_function - numpy.mean(secondary_function)) / numpy.std(secondary_function)
+    print("number of outliers secondary revenue function", numpy.sum(abs(z_scores) > threshold))
     secondary_income = secondary_income[abs(z_scores) <= threshold]
     secondary_function = secondary_function[abs(z_scores) <= threshold]
 
@@ -492,24 +494,24 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     secondary_income = secondary_income[sorted_indices_s]
     secondary_function = secondary_function[sorted_indices_s]
 
-    # lines to remove
-    integral_trap_primary = 0
-    integral_trap_secondary = 0
     print("we begin the kernel regression")
 
-    kernel_reg = KernelReg(endog=primary_function, exog=primary_income, var_type='c', reg_type='ll', bw='cv_ls', ckertype='gaussian')
+    # 500 for 2018, 1800 for 2017 a mettre sous forme de dictionnaire {year:band}
+    bandwidth = 1000
+
+    kernel_reg = KernelReg(endog=primary_function, exog=primary_income, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
     smoothed_y_primary = smoothed_y_primary[sorted_indices]
-    # integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
-    # print("Integral of smoothed_y primary", integral_trap_primary)
+    integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
+    print("Integral of smoothed_y primary", integral_trap_primary)
 
     print("end of the first regression")
 
-    kernel_reg = KernelReg(endog=secondary_function, exog=secondary_income, var_type='c', reg_type='ll', bw='cv_ls', ckertype='gaussian')
+    kernel_reg = KernelReg(endog=secondary_function, exog=secondary_income, var_type='c', reg_type='ll',bw=[bandwidth], ckertype='gaussian')
     smoothed_y_secondary, _ = kernel_reg.fit()
     smoothed_y_secondary = smoothed_y_secondary[sorted_indices_s]
-    # integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
-    # print("Integral of smoothed_y secondary", integral_trap_primary)
+    integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
+    print("Integral of smoothed_y secondary", integral_trap_secondary)
 
     print("end of the second regression")
 
@@ -1047,6 +1049,9 @@ def graphB13(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses,
 
 def graphB14(primary_earning, secondary_earning, revenu_celib, maries_ou_pacses, period):
 
+    # IMPORTANT look at scipy.stats.gaussian_kde for pdf estimation with gaussian kernel
+
+
     # couples 
     earning = primary_earning + secondary_earning
     earnings_maries_pacses = earning[maries_ou_pacses]
@@ -1398,12 +1403,12 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
 
 
 
-def redirect_print_to_file(filename):
-    sys.stdout = open(filename, 'a')
+# def redirect_print_to_file(filename):
+#     sys.stdout = open(filename, 'a')
     
-redirect_print_to_file('output_graphe_15.txt')
+# redirect_print_to_file('output_graphe_15.txt')
 
 simulation_reforme()
 
-sys.stdout.close()
-sys.stdout = sys.__stdout__
+# sys.stdout.close()
+# sys.stdout = sys.__stdout__
