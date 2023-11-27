@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from scipy.interpolate import CubicSpline, PchipInterpolator
 from scipy.signal import convolve
+from statsmodels.nonparametric.kernel_regression import KernelReg
 
 from sklearn.linear_model import Lasso, ElasticNetCV
 from sklearn.model_selection import train_test_split, KFold, cross_val_predict
@@ -483,7 +484,6 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     secondary_function = secondary_function[abs(z_scores) <= threshold]
 
 
-
     sorted_indices = numpy.argsort(primary_income)
     primary_income = primary_income[sorted_indices]
     primary_function = primary_function[sorted_indices]
@@ -492,52 +492,19 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     secondary_income = secondary_income[sorted_indices_s]
     secondary_function = secondary_function[sorted_indices_s]
 
-    # le but ici est de convoler nos points pas juste avec une gaussienne
-    # mais comme les variations sont très rapides au début, on met un dirac + gaussienne
-    
-    bandwidth = 1
-    print("bandwidth revenue function", bandwidth)
-
-    smoothed_y_primary = numpy.zeros_like(primary_income, dtype=float)
-
-    for i in range(len(primary_income)):
-        kernel_values = gaussian_kernel((primary_function - primary_function[i]) / bandwidth)
-        smoothed_y_primary[i] = numpy.mean(kernel_values) * 1/bandwidth
-
+    kernel_reg = KernelReg(endog=primary_function, exog=primary_income, var_type='c', reg_type='ll', bw='cv_ls', ckertype='gaussian')
+    smoothed_y_primary, _ = kernel_reg.fit()
+    smoothed_y_primary = smoothed_y_primary[sorted_indices]
     integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
     print("Integral of smoothed_y primary", integral_trap_primary)
 
-    # for secondary
-    bandwidth = 1
-    print("bandwidth revenue function", bandwidth)
-
-    smoothed_y_secondary = numpy.zeros_like(secondary_income, dtype=float)
-
-    for i in range(len(secondary_income)):
-        kernel_values = gaussian_kernel((secondary_function - secondary_function[i]) / bandwidth)
-        smoothed_y_secondary[i] = numpy.mean(kernel_values) * 1/bandwidth
-
+    kernel_reg = KernelReg(endog=secondary_function, exog=secondary_income, var_type='c', reg_type='ll', bw='cv_ls', ckertype='gaussian')
+    smoothed_y_secondary, _ = kernel_reg.fit()
+    smoothed_y_secondary = smoothed_y_secondary[sorted_indices_s]
     integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
-    print("Integral of smoothed_y secondary", integral_trap_secondary)
+    print("Integral of smoothed_y secondary", integral_trap_primary)
 
-    # sigma = 1.0  
-    # kernel_size = int(6 * sigma) * 2 + 1
-    # x_kernel = numpy.linspace(-3 * sigma, 3 * sigma, kernel_size)
-    # gaussian_kernel = numpy.exp(-x_kernel**2 / (2 * sigma**2)) / (sigma * numpy.sqrt(2 * numpy.pi))
-    
-    # dirac_delta = numpy.zeros_like(x_kernel)
-    # dirac_delta[len(x_kernel) // 3] = 0.3
 
-    # combined_kernel = gaussian_kernel + dirac_delta
-    # combined_kernel /= numpy.sum(combined_kernel)
-
-    # smoothed_y_primary = convolve(primary_function, combined_kernel, mode='same')
-    # integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
-    # print("Integral of smoothed_y primary", integral_trap_primary)
-
-    # smoothed_y_secondary = convolve(secondary_function, combined_kernel, mode='same')
-    # integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
-    # print("Integral of smoothed_y secondary", integral_trap_secondary)
 
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
 
@@ -567,13 +534,14 @@ def graphe14(primary_earning_condition_maries_pacses, secondary_earning_conditio
         primary_revenue_function = intensive_revenue_function(primary_earning_condition_maries_pacses, cdf_primary_earnings_condition_maries_pacses, density_primary_earnings_condition_maries_pacses, primary_esperance_taux_marginal_condition_maries_pacses, primary_elasticity_maries_pacses) + primary_extensive_revenue_function
         secondary_revenue_function = intensive_revenue_function(secondary_earning_condition_maries_pacses, cdf_secondary_earnings_condition_maries_pacses, density_secondary_earnings_condition_maries_pacses, secondary_esperance_taux_marginal_condition_maries_pacses, secondary_elasticity_maries_pacses) + secondary_extensive_revenue_function
 
- 
         primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_condition_maries_pacses, secondary_earning_condition_maries_pacses, primary_revenue_function, secondary_revenue_function)
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
         axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
         axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+
+
         
         axes[i].legend()
 
