@@ -492,18 +492,26 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
     secondary_income = secondary_income[sorted_indices_s]
     secondary_function = secondary_function[sorted_indices_s]
 
+    # lines to remove
+    integral_trap_primary = 0
+    integral_trap_secondary = 0
+    print("we begin the kernel regression")
+
     kernel_reg = KernelReg(endog=primary_function, exog=primary_income, var_type='c', reg_type='ll', bw='cv_ls', ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
     smoothed_y_primary = smoothed_y_primary[sorted_indices]
-    integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
-    print("Integral of smoothed_y primary", integral_trap_primary)
+    # integral_trap_primary = numpy.trapz(smoothed_y_primary, primary_income)
+    # print("Integral of smoothed_y primary", integral_trap_primary)
+
+    print("end of the first regression")
 
     kernel_reg = KernelReg(endog=secondary_function, exog=secondary_income, var_type='c', reg_type='ll', bw='cv_ls', ckertype='gaussian')
     smoothed_y_secondary, _ = kernel_reg.fit()
     smoothed_y_secondary = smoothed_y_secondary[sorted_indices_s]
-    integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
-    print("Integral of smoothed_y secondary", integral_trap_primary)
+    # integral_trap_secondary = numpy.trapz(smoothed_y_secondary, secondary_income)
+    # print("Integral of smoothed_y secondary", integral_trap_primary)
 
+    print("end of the second regression")
 
 
     return integral_trap_primary, integral_trap_secondary, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary
@@ -694,7 +702,7 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
 
 
 
-
+    print("beginning of the intermediate functions")
 
     cdf_primary_earnings = cdf_earnings(earning_condition_maries_pacses = primary_earning_condition_maries_pacses)
     density_primary_earnings = density_earnings(earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
@@ -714,7 +722,7 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
                                                 period = period)
 
     
-
+    print("beginning of the graphs")
 
     graphe14(primary_earning_condition_maries_pacses = primary_earning_condition_maries_pacses,
              secondary_earning_condition_maries_pacses = secondary_earning_condition_maries_pacses,
