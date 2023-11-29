@@ -12,7 +12,6 @@ def esperance_taux_marginal(earning, taux_marginal, weights, period, borne = 0.0
     TODO
     """
     output = np.zeros_like(earning, dtype=float)
-    earning.sort()
 
     for i in range(len(earning)):
         diff = np.abs(earning - earning[i])
@@ -33,9 +32,28 @@ def esperance_taux_marginal(earning, taux_marginal, weights, period, borne = 0.0
     plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
     plt.close()
 
-    kernel_reg = KernelReg(endog=earning, exog=output, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    bandwidth = 500
+
+    sorted_indices = np.argsort(earning)
+    earning2 = earning[sorted_indices]
+    output2 = output[sorted_indices]
+
+    kernel_reg = KernelReg(endog=earning2, exog=output2, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
     smoothed_y_primary = smoothed_y_primary[sorted_indices]
+
+    plt.plot(earning2, smoothed_y_primary, label='MTR ratio')   
+    plt.xlabel('Gross income')
+    plt.ylabel('MTR ratio')
+    plt.title("MTR ratio - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/mtr_ratio3_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+
+
 
     return output
 
