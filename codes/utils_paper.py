@@ -23,6 +23,21 @@ def esperance_taux_marginal(earning, taux_marginal, weights, period, borne = 0.0
 
         output[i] = np.sum(weighted_taux_marginal) / np.sum(weighted_diff)
     
+    # Define the grid of earnings
+    earnings_grid = np.arange(0, 100001, step=1000)
+
+    # Initialize an array to store the averages
+    averages = np.zeros_like(earnings_grid, dtype=float)
+
+    # Calculate the average output for each element in the grid
+    for i, grid_point in enumerate(earnings_grid):
+        mask = (earning == grid_point)
+        if np.any(mask):
+            averages[i] = np.mean(output[mask])
+
+    # Print or use the averages array as needed
+    print(averages)
+    
     plt.scatter(earning, output, label='MTR ratio')   
     plt.xlabel('Gross income')
     plt.ylabel('MTR ratio')
