@@ -421,7 +421,7 @@ def intensive_revenue_function(earning, cdf, density, esperance_taux_marginal, m
     
 
 
-def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, primary_function, secondary_function):
+def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, primary_function, secondary_function, period):
 
     # on enleve les outliers 
     threshold = 3
@@ -448,8 +448,9 @@ def tracer_et_integrer_revenue_fonctions(primary_income, secondary_income, prima
 
     print("we begin the kernel regression")
 
-    # 500 for 2018, 800 for 2017 a mettre sous forme de dictionnaire {year:band}
-
+    dico_bandwidth = {'2017':800, '2018':5000}
+    bandwidth = dico_bandwidth[period]
+    print("bandwidth revenue function", bandwidth)
 
     kernel_reg = KernelReg(endog=primary_function, exog=primary_income, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
@@ -519,12 +520,15 @@ def graphe14(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
         secondary_revenue_function = secondary_revenue_function[condition]
  
-        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
+        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, period)
         rapport[i] = primary_integral/secondary_integral
         print('rapport integrales scenario ', i, " ", rapport[i])
 
-        axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
-        axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        axes[i].scatter(primary_income[primary_income < 200000], primary_revenue_function[primary_income < 200000], label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        axes[i].scatter(secondary_income[secondary_income < 200000], secondary_revenue_function[secondary_income < 200000], label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        
+        # axes[i].plot(primary_income[primary_income < 200000], smoothed_y_primary[primary_income < 200000], label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        # axes[i].plot(secondary_income[secondary_income < 200000], smoothed_y_secondary[secondary_income < 200000], label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
         
         axes[i].legend()
 
@@ -1227,7 +1231,7 @@ def graphe16(primary_earning, secondary_earning, maries_ou_pacses, ancien_irpp, 
         secondary_revenue_function = secondary_revenue_function[maries_ou_pacses]
         secondary_revenue_function = secondary_revenue_function[condition]
  
-        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function)
+        primary_integral, secondary_integral, primary_income, smoothed_y_primary, secondary_income, smoothed_y_secondary = tracer_et_integrer_revenue_fonctions(primary_earning_maries_pacses, secondary_earning_maries_pacses, primary_revenue_function, secondary_revenue_function, period)
         rapport[i] = primary_integral/secondary_integral
 
     plt.figure()
