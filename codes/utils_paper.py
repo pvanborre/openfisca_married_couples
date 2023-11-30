@@ -67,6 +67,23 @@ def primary_cdf_pdf(earning, taux_marginal, weights, elasticity, period):
     print("Integral of smoothed_y primary", integral_trap_primary)
 
 
+    # expérience ici 
+    tab_bandwidth = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
+    for bandwidth in tab_bandwidth:
+        kernel_reg = KernelReg(endog=taux_marginal, exog=earning, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+        smoothed_y_primary, _ = kernel_reg.fit()
+        plt.plot(earning[earning<200000], smoothed_y_primary[earning<200000], label='MTR')   
+        plt.xlabel('Gross income')
+        plt.ylabel('MTR')
+        plt.title("MTR - {annee}".format(annee = period))
+        plt.legend()
+        plt.show()
+        plt.savefig('../outputs/test_cdf/mtr_{bandwidth}_{annee}.png'.format(bandwidth=bandwidth, annee = period))
+        plt.close()
+
+
+
+
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
