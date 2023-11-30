@@ -5,78 +5,9 @@ from scipy.stats import gaussian_kde
 import click
 from statsmodels.nonparametric.kernel_regression import KernelReg
 
-# TODO commenter ce code 
-
-def esperance_taux_marginal(earning, taux_marginal, weights, period, borne = 0.05):
-    """
-    TODO
-    """
-    output = np.zeros_like(earning, dtype=float)
-
-    for i in range(len(earning)):
-        diff = np.abs(earning - earning[i])
-        ir_taux_marginal2 = np.copy(taux_marginal)
-        ir_taux_marginal2[diff > borne] = 0
-        
-        weighted_taux_marginal = ir_taux_marginal2 / (1 - ir_taux_marginal2) * weights
-        weighted_diff = (diff <= borne) * weights
-
-        output[i] = np.sum(weighted_taux_marginal) / np.sum(weighted_diff)
-    
-    # Define the grid of earnings
-    earnings_grid = np.arange(0, 100001, step=1000)
-
-    # Initialize an array to store the averages
-    averages = np.zeros_like(earnings_grid, dtype=float)
-
-    # Calculate the average output for each element in the grid
-    for i, grid_point in enumerate(earnings_grid):
-        mask = (earning == grid_point)
-        if np.any(mask):
-            averages[i] = np.mean(output[mask])
-
-    # Print or use the averages array as needed
-    print(averages)
-    
-    plt.scatter(earning, output, label='MTR ratio')   
-    plt.xlabel('Gross income')
-    plt.ylabel('MTR ratio')
-    plt.title("MTR ratio - {annee}".format(annee = period))
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
-    plt.close()
-
-    bandwidth = 500
-
-    sorted_indices = np.argsort(earning)
-    earning2 = earning[sorted_indices]
-    output2 = output[sorted_indices]
-
-    kernel_reg = KernelReg(endog=earning2, exog=output2, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
-    smoothed_y_primary, _ = kernel_reg.fit()
-    smoothed_y_primary = smoothed_y_primary[sorted_indices]
-
-    plt.plot(earning2, smoothed_y_primary, label='MTR ratio')   
-    plt.xlabel('Gross income')
-    plt.ylabel('MTR ratio')
-    plt.title("MTR ratio - {annee}".format(annee = period))
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/test_cdf/mtr_ratio3_{annee}.png'.format(annee = period))
-    plt.close()
 
 
-
-
-
-    return output
-
-# new_rni_values = np.linspace(rni_values.min(), rni_values.max(), 1000)
-# interpolated_cdf = np.interp(new_rni_values, rni_values, cdf1)
-
-
-def primary_cdf_pdf(earning, esperance_taux_marginal, weights, elasticity, period):
+def primary_cdf_pdf(earning, taux_marginal, weights, elasticity, period):
     """
     TODO
     """
@@ -89,9 +20,10 @@ def primary_cdf_pdf(earning, esperance_taux_marginal, weights, elasticity, perio
     pdf = kde(x_values)
     cdf = np.cumsum(pdf) / np.sum(pdf)
 
-    interpolated_esperance = np.interp(x_values, earning, esperance_taux_marginal)
+    ipol_MTR_test_case_baseline = np.interp(x_values, earning, taux_marginal)
+    
 
-    behavioral = - x_values * pdf * elasticity * interpolated_esperance  
+    behavioral = - x_values * pdf * elasticity * ipol_MTR_test_case_baseline/(1-ipol_MTR_test_case_baseline)  
     mechanical = 1 - cdf
     intensive_revenue_function = behavioral + mechanical
 
@@ -113,7 +45,7 @@ def primary_cdf_pdf(earning, esperance_taux_marginal, weights, elasticity, perio
     plt.savefig('../outputs/test_cdf/graphe_B14_{annee}.png'.format(annee = period))
     plt.close()
 
-    plt.plot(x_values, interpolated_esperance, label='MTR ratio')   
+    plt.plot(x_values, ipol_MTR_test_case_baseline/(1-ipol_MTR_test_case_baseline), label='MTR ratio')   
     plt.xlabel('Gross income')
     plt.ylabel('MTR ratio')
     plt.title("MTR ratio - {annee}".format(annee = period))
@@ -121,6 +53,19 @@ def primary_cdf_pdf(earning, esperance_taux_marginal, weights, elasticity, perio
     plt.show()
     plt.savefig('../outputs/test_cdf/mtr_ratio_{annee}.png'.format(annee = period))
     plt.close()
+
+    plt.plot(x_values, intensive_revenue_function, label='MTR ratio')   
+    plt.xlabel('Gross income')
+    plt.ylabel('MTR ratio')
+    plt.title("MTR ratio - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/revenue_function_{annee}.png'.format(annee = period))
+    plt.close()
+
+    integral_trap_primary = np.trapz(intensive_revenue_function, x_values)
+    print("Integral of smoothed_y primary", integral_trap_primary)
+
 
 
 @click.command()
@@ -130,13 +75,8 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
     print(work_df)
 
-    esperance_rapport_mtr = esperance_taux_marginal(earning = work_df['primary_earning'].values,
-                                                      taux_marginal = work_df['taux_marginal'].values, 
-                                                      weights = work_df['wprm'].values,
-                                                      period = annee)
-
     primary_cdf_pdf(earning = work_df['primary_earning'].values, 
-                    esperance_taux_marginal = esperance_rapport_mtr,
+                    taux_marginal = work_df['taux_marginal'].values,
                     weights = work_df['wprm'].values, 
                     elasticity = 0.25,
                     period = annee)
