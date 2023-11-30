@@ -82,7 +82,7 @@ def compute_intensive_revenue_function(earning, ipol_MTR_earning, weights, elast
 
     return x_values, cdf, pdf, intensive_revenue_function
 
-def plot_intensive_revenue_function(primary_grid, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, period):
+def plot_intensive_revenue_function(primary_grid, primary_earning, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, secondary_earning, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, weights, period):
     
 
     plt.plot(primary_grid, cdf_primary, label='primary') 
@@ -120,6 +120,13 @@ def plot_intensive_revenue_function(primary_grid, cdf_primary, pdf_primary, inte
     integral_trap_secondary = np.trapz(intensive_secondary_revenue_function, secondary_grid)
     print("Secondary revenue function integral", integral_trap_secondary)
 
+    ratio = integral_trap_primary/integral_trap_secondary
+    print("ratio", ratio)
+
+    is_winner = secondary_earning*ratio > primary_earning
+    pourcentage_gagnants = 100*np.sum(is_winner*weights)/np.sum(weights)
+    print("Pourcentage de gagnants", period, pourcentage_gagnants)
+
 
 
 
@@ -149,7 +156,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     primary_grid, cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(earning = work_df['primary_earning'].values, 
                     ipol_MTR_earning = ipol_MTR_primary,
                     weights = work_df['wprm'].values, 
-                    elasticity = 0.25,
+                    elasticity = 0.75,
                     period = annee)
     
     secondary_grid, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function = compute_intensive_revenue_function(earning = work_df['secondary_earning'].values, 
@@ -158,7 +165,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     elasticity = 0.25,
                     period = annee)
     
-    plot_intensive_revenue_function(primary_grid, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, annee)
+    plot_intensive_revenue_function(primary_grid, work_df['primary_earning'].values, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, work_df['secondary_earning'].values, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, work_df['wprm'].values, annee)
     
 
 launch_utils()
