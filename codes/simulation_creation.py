@@ -328,6 +328,7 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     result_df['single_earning'] = single_earning
     result_df['primary_age'] = primary_age
     result_df['secondary_age'] = secondary_age
+    result_df['total_earning'] = primary_earning + secondary_earning
 
     print(result_df)
 
@@ -355,7 +356,7 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
 
     # we create a dataframe only for singles, with positive earnings and adult
     df_celib = result_df[~result_df['maries_ou_pacses']]
-    df_celib = df_celib.drop(['primary_earning', 'secondary_earning', 'primary_age', 'secondary_age', 'maries_ou_pacses'], axis = 1)
+    df_celib = df_celib.drop(['total_earning', 'primary_earning', 'secondary_earning', 'primary_age', 'secondary_age', 'maries_ou_pacses'], axis = 1)
     df_celib = df_celib[df_celib['single_earning'] >= 0]
     df_celib = df_celib[df_celib['age'] >= 18]
     df_celib = df_celib.sort_values(by='single_earning')

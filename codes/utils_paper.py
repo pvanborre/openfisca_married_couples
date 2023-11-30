@@ -4,6 +4,30 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 import click
 from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric.smoothers_lowess import lowess
+import statsmodels.api as sm
+
+def mtr(earning_tab, earning, taux_marginal, period):
+
+
+
+
+    kernel = sm.nonparametric.KDEMultivariate(earning, var_type='c', bw='normal_reference')
+    print(kernel.bw)
+    mtr_smoothed = lowess(taux_marginal, earning_tab)
+
+    plt.plot(earning_tab[earning_tab<200000], mtr_smoothed[earning_tab<200000], label='MTR')   
+    plt.xlabel('Gross income')
+    plt.ylabel('MTR')
+    plt.title("MTR - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/mtr_kde_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+
+
 
 
 
@@ -92,10 +116,15 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
     print(work_df)
 
-    primary_cdf_pdf(earning = work_df['primary_earning'].values, 
-                    taux_marginal = work_df['taux_marginal'].values,
-                    weights = work_df['wprm'].values, 
-                    elasticity = 0.25,
-                    period = annee)
+    mtr(earning_tab = work_df['total_earning'].values, 
+        earning = work_df[['total_earning']],
+        taux_marginal = work_df['taux_marginal'].values,
+        period = annee)
+
+    # primary_cdf_pdf(earning = work_df['primary_earning'].values, 
+    #                 taux_marginal = work_df['taux_marginal'].values,
+    #                 weights = work_df['wprm'].values, 
+    #                 elasticity = 0.25,
+    #                 period = annee)
 
 launch_utils()
