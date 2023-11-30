@@ -7,23 +7,49 @@ from statsmodels.nonparametric.kernel_regression import KernelReg
 from statsmodels.nonparametric.smoothers_lowess import lowess
 import statsmodels.api as sm
 
-def mtr(earning_tab, earning, taux_marginal, period):
 
+def mtr(total_earning, taux_marginal, period):
+    sorted_indices = np.argsort(total_earning)
+    total_earning = total_earning[sorted_indices]
+    taux_marginal = taux_marginal[sorted_indices]
 
+    x_values = np.linspace(np.percentile(total_earning, 1), np.percentile(total_earning, 99.9), 100)
+    ipol_MTR = np.interp(x_values, total_earning, taux_marginal)
 
-
-    kernel = sm.nonparametric.KDEMultivariate(earning, var_type='c', bw='normal_reference')
-    print(kernel.bw)
-    mtr_smoothed = lowess(taux_marginal, earning_tab)
-
-    plt.plot(earning_tab[earning_tab<200000], mtr_smoothed[earning_tab<200000], label='MTR')   
+    plt.plot(x_values, ipol_MTR/(1-ipol_MTR), label='MTR ratio')   
     plt.xlabel('Gross income')
-    plt.ylabel('MTR')
-    plt.title("MTR - {annee}".format(annee = period))
+    plt.ylabel('MTR ratio')
+    plt.title("MTR ratio - {annee}".format(annee = period))
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/test_cdf/mtr_kde_{annee}.png'.format(annee = period))
+    plt.savefig('../outputs/test_cdf/mtr_ratio_{annee}.png'.format(annee = period))
     plt.close()
+
+    return ipol_MTR
+
+def earning_adapted_mtr(earning, total_earning, ipol_MTR, period):
+    earning_sampled = np.linspace(np.percentile(earning, 1), np.percentile(earning, 99.9), 100)
+    total_earning_sampled = np.linspace(np.percentile(total_earning, 1), np.percentile(total_earning, 99.9), 100)
+
+    output = []
+    for i in range(len(earning_sampled)):
+        j = np.argmin(np.abs(earning - earning_sampled[i]))
+        k = np.argmin(np.abs(total_earning_sampled - total_earning[j]))
+        output.append(ipol_MTR[k])
+
+    output = np.array(output)
+
+    plt.plot(earning_sampled, output/(1-output), label='MTR ratio')   
+    plt.xlabel('Gross income')
+    plt.ylabel('MTR ratio')
+    plt.title("MTR ratio - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/mtr_ratio_by_earning_{annee}.png'.format(annee = period))
+    plt.close()
+
+
+    return output
 
 
 
@@ -39,7 +65,7 @@ def primary_cdf_pdf(earning, taux_marginal, weights, elasticity, period):
     earning.sort()
 
     kde = gaussian_kde(earning, weights=weights)
-    x_values = np.linspace(np.percentile(earning, 1), np.percentile(earning, 99.9), 1000)
+    x_values = np.linspace(np.percentile(earning, 1), np.percentile(earning, 99.9), 100)
 
     pdf = kde(x_values)
     cdf = np.cumsum(pdf) / np.sum(pdf)
@@ -91,20 +117,6 @@ def primary_cdf_pdf(earning, taux_marginal, weights, elasticity, period):
     print("Integral of smoothed_y primary", integral_trap_primary)
 
 
-    # expérience ici 
-    tab_bandwidth = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
-    for bandwidth in tab_bandwidth:
-        kernel_reg = KernelReg(endog=taux_marginal, exog=earning, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
-        smoothed_y_primary, _ = kernel_reg.fit()
-        plt.plot(earning[earning<200000], smoothed_y_primary[earning<200000], label='MTR')   
-        plt.xlabel('Gross income')
-        plt.ylabel('MTR')
-        plt.title("MTR - {annee}".format(annee = period))
-        plt.legend()
-        plt.show()
-        plt.savefig('../outputs/test_cdf/mtr_{bandwidth}_{annee}.png'.format(bandwidth=bandwidth, annee = period))
-        plt.close()
-
 
 
 
@@ -116,10 +128,14 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
     print(work_df)
 
-    mtr(earning_tab = work_df['total_earning'].values, 
-        earning = work_df[['total_earning']],
+    ipol_MTR = mtr(total_earning = work_df['total_earning'].values,
         taux_marginal = work_df['taux_marginal'].values,
         period = annee)
+    
+    earning_adapted_mtr(earning=work_df['primary_earning'].values,
+                        total_earning=work_df['total_earning'].values,
+                        ipol_MTR=ipol_MTR,
+                        period=annee)
 
     # primary_cdf_pdf(earning = work_df['primary_earning'].values, 
     #                 taux_marginal = work_df['taux_marginal'].values,
