@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 import click
+from statsmodels.nonparametric.kernel_regression import KernelReg
 
 
 def mtr(total_earning, taux_marginal, period):
@@ -67,8 +68,18 @@ def find_closest_earning_and_tax_rate(original_earnings, average_marginal_tax_ra
     plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
     plt.close()
 
-    # TODO kernel reg ?
-
+    bandwidth = 6000
+    kernel_reg = KernelReg(endog=closest_mtr_ratios, exog=grid_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    smoothed_y_primary, _ = kernel_reg.fit()
+    plt.plot(grid_earnings, smoothed_y_primary, label='MTR')   
+    plt.xlabel('Gross income')
+    plt.ylabel('MTR')
+    plt.title("MTR - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/ratio_exp_{bandwidth}_{annee}.png'.format(bandwidth=bandwidth, annee = period))
+    plt.close()
+    
     return closest_mtr_ratios
 
 def earning_adapted_mtr(earning, total_earning, ipol_MTR, period):
