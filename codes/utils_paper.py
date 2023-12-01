@@ -28,6 +28,49 @@ def mtr(total_earning, taux_marginal, period):
 
     return ipol_MTR
 
+
+
+def mtr_v2(earning, taux_marginal, weights, period):
+    mtr_ratio = taux_marginal/(1-taux_marginal)
+
+    unique_earning = np.unique(earning)
+    mean_tax_rates = np.zeros_like(unique_earning, dtype=float)
+
+    for i, unique_value in enumerate(unique_earning):
+        indices = np.where(earning == unique_value)
+        mean_tax_rate = np.average(mtr_ratio[indices], weights=weights[indices])
+        mean_tax_rates[i] = mean_tax_rate
+
+    # plt.scatter(unique_earning, mean_tax_rates, label='MTR ratio')   
+    # plt.xlabel('Gross income')
+    # plt.ylabel('MTR ratio')
+    # plt.title("MTR ratio - {annee}".format(annee = period))
+    # plt.legend()
+    # plt.show()
+    # plt.savefig('../outputs/test_cdf/mtr_ratio3_{annee}.png'.format(annee = period))
+    # plt.close()
+
+    return unique_earning, mean_tax_rates
+
+def find_closest_earning_and_tax_rate(original_earnings, average_marginal_tax_rates, period):
+    grid_earnings = np.linspace(np.percentile(original_earnings, 1), np.percentile(original_earnings, 99.9), 100)
+
+    closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
+    closest_mtr_ratios = average_marginal_tax_rates[closest_indices]
+
+    plt.scatter(grid_earnings, closest_mtr_ratios, label='MTR ratio')   
+    plt.xlabel('Gross income')
+    plt.ylabel('MTR ratio')
+    plt.title("MTR ratio - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
+    plt.close()
+
+    # TODO kernel reg ?
+
+    return closest_mtr_ratios
+
 def earning_adapted_mtr(earning, total_earning, ipol_MTR, period):
     """
     we need to convert the marginal tax rates that we got in the mtr function from mtr on a grid of total_earnings to a grid of primary/secondary earnings
@@ -142,6 +185,15 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     ipol_MTR = mtr(total_earning = work_df['total_earning'].values,
         taux_marginal = work_df['taux_marginal'].values,
         period = annee)
+    
+    unique_earning, mean_tax_rates = mtr_v2(earning = work_df['primary_earning'].values, 
+                                            taux_marginal = work_df['taux_marginal'].values, 
+                                            weights = work_df['wprm'].values,
+                                            period = annee)
+    
+    mtr_ratios_grid = find_closest_earning_and_tax_rate(original_earnings = unique_earning, 
+                                                        average_marginal_tax_rates = mean_tax_rates, 
+                                                        period = annee)
     
     ipol_MTR_primary = earning_adapted_mtr(earning=work_df['primary_earning'].values,
                         total_earning=work_df['total_earning'].values,
