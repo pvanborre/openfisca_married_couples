@@ -157,9 +157,17 @@ def plot_intensive_revenue_function(primary_grid, primary_earning, cdf_primary, 
 @click.option('-m', '--want_to_mute_decote', default = False, type = bool, required = True)
 def launch_utils(annee = None, want_to_mute_decote = None):
     work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
+    work_df = work_df.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
     print(work_df)
-    # TODO here get rid of the bottom 5% of the distribution (in terms of total earnings i think)
+    print()
 
+    # get rid of the bottom 5% of the distribution (in terms of total earnings)
+    # TODO not good see what Pierre really meant by this
+    # threshold = np.percentile( work_df['total_earning'].values, 5)
+    # print("threshold income not taken into account", threshold)
+    # work_df = work_df[work_df['total_earning'] > threshold]
+
+    # TODO : add extensive margin may change the shmilblick
     
     unique_primary_earning, primary_mean_tax_rates = computes_mtr_ratios_knowing_earning(earning = work_df['primary_earning'].values, 
                                             taux_marginal = work_df['taux_marginal'].values, 
@@ -180,16 +188,18 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                                                         period = annee)
     
 
+    elasticity_primary = 0.25
+
     primary_grid, cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(earning = work_df['primary_earning'].values, 
                     mtr_ratios_grid = primary_mtr_ratios_grid,
                     weights = work_df['wprm'].values, 
-                    elasticity = 0.75,
+                    elasticity = elasticity_primary,
                     period = annee)
     
     secondary_grid, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function = compute_intensive_revenue_function(earning = work_df['secondary_earning'].values, 
                     mtr_ratios_grid = secondary_mtr_ratios_grid,
                     weights = work_df['wprm'].values, 
-                    elasticity = 0.25,
+                    elasticity = 1 - elasticity_primary,
                     period = annee)
     
     plot_intensive_revenue_function(primary_grid, work_df['primary_earning'].values, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, work_df['secondary_earning'].values, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, work_df['wprm'].values, annee)
