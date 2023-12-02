@@ -102,6 +102,48 @@ def compute_intensive_revenue_function(earning, mtr_ratios_grid, weights, elasti
 
     return x_values, cdf, pdf, intensive_revenue_function
 
+
+def util_extensive_revenue_function(earning, total_earning, tax, sec_earnings, dec_earnings, sec_weights, dec_weights):
+    """
+    This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then total_earnings, taxes 
+    Then other inputs are specific to single and dual earner couples (sec and dec)
+    This computes the integrand of the extensive revenue function, that is T/(ym - T) * elast * pdfsec/dec * sharesec/dec
+    """
+    # TODO first compute the esperance separately because has to be on a grid of primary earnings, then the integrand, then the integration
+    # separate in 3 steps
+    sec_share = np.sum(sec_weights)/(np.sum(sec_weights) + np.sum(dec_weights))
+
+    sec_earnings.sort()
+    sec_kde = gaussian_kde(sec_earnings, weights=sec_weights)
+    sec_pdf = sec_kde(earning)
+
+    denominator = total_earning+tax
+    denominator[denominator == 0] = 0.001
+
+    # tax is negative (that is why the -tax)
+    sec_within_integral = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90))) * sec_pdf * sec_share
+    
+    dec_earnings.sort()
+    dec_kde = gaussian_kde(dec_earnings, weights=dec_weights)
+    dec_pdf = dec_kde(earning)
+
+    dec_within_integral = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90))) * dec_pdf * (1-sec_share)
+    
+    return sec_within_integral, dec_within_integral
+
+
+
+def compute_extensive_revenue_function(earning, weights, period):
+    """
+    Compute extensive revenue function
+    """
+    return 0
+
+
+
+
+
+
 def plot_intensive_revenue_function(primary_grid, primary_earning, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, secondary_earning, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, weights, period):
     
 
@@ -167,7 +209,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     # print("threshold income not taken into account", threshold)
     # work_df = work_df[work_df['total_earning'] > threshold]
 
-    # TODO : add extensive margin may change the shmilblick
+    
     
     unique_primary_earning, primary_mean_tax_rates = computes_mtr_ratios_knowing_earning(earning = work_df['primary_earning'].values, 
                                             taux_marginal = work_df['taux_marginal'].values, 
@@ -201,6 +243,21 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     weights = work_df['wprm'].values, 
                     elasticity = 1 - elasticity_primary,
                     period = annee)
+    
+    df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
+    df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
+
+    primary_sec_within_integral, primary_dec_within_integral = util_extensive_revenue_function(earning = work_df['primary_earning'].values, 
+                                    total_earning = work_df['total_earning'].values, 
+                                    tax = work_df['ancien_irpp'].values, 
+                                    sec_earnings = df_single_earner_couples['primary_earning'].values, 
+                                    dec_earnings = df_dual_earner_couples['primary_earning'].values, 
+                                    sec_weights = df_single_earner_couples['wprm'].values,
+                                    dec_weights = df_dual_earner_couples['wprm'].values)
+
+
+
+
     
     plot_intensive_revenue_function(primary_grid, work_df['primary_earning'].values, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, work_df['secondary_earning'].values, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, work_df['wprm'].values, annee)
     
