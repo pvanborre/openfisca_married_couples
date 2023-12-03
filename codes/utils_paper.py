@@ -44,40 +44,18 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
     closest_mtr_ratios = average_ratios[closest_indices]
 
-    # all values before smoothing
-    # plt.scatter(grid_earnings, closest_mtr_ratios, label='MTR ratio')   
-    # plt.xlabel('Gross income')
-    # plt.ylabel('MTR ratio')
-    # plt.title("MTR ratio - {annee}".format(annee = period))
-    # plt.legend()
-    # plt.show()
-    # plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
-    # plt.close()
-
     bandwidth = 5000
     kernel_reg = KernelReg(endog=closest_mtr_ratios, exog=grid_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
     plt.scatter(grid_earnings, closest_mtr_ratios, label='MTR ratio without smoothing', color = 'lightgreen')
     plt.plot(grid_earnings, smoothed_y_primary, label='MTR ratio with smoothing', color = 'red')   
     plt.xlabel('Gross income')
-    plt.ylabel('MTR')
-    plt.title("MTR - {annee}".format(annee = period))
+    plt.ylabel("MTR ratio T'/(1-T')")
+    plt.title("MTR ratio - {annee}".format(annee = period))
     plt.legend()
     plt.show()
     plt.savefig('../outputs/mtr_ratio_by_{name}/mtr_ratio_by_{name}_{annee}.png'.format(name = name, annee = period))
     plt.close()
-
-    # another approach lowess : gives almost the same results as before 
-    # lowess = sm.nonparametric.lowess(closest_mtr_ratios, grid_earnings, frac = 0.25)
-    # smoothed_y_primary = lowess[:, 1]
-    # plt.plot(grid_earnings, smoothed_y_primary, label='MTR')   
-    # plt.xlabel('Gross income')
-    # plt.ylabel('MTR')
-    # plt.title("MTR - {annee}".format(annee = period))
-    # plt.legend()
-    # plt.show()
-    # plt.savefig('../outputs/test_cdf/ratio_exp_lowess_{annee}.png'.format(annee = period))
-    # plt.close()
 
 
 
