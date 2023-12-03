@@ -339,20 +339,18 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     df_married = df_married[df_married['secondary_earning'] >= 0]
     df_married = df_married[df_married['primary_age'] >= 18]
     df_married = df_married[df_married['secondary_age'] >= 18]
-    df_married.to_csv(f'excel/{period}/married_adults_{period}.csv', index=False)
-
+    
     # we restrict to couples in which both spouses are between 25 and 55 years old
     df_married_25_55 = df_married[df_married['primary_age'] >= 25]
     df_married_25_55 = df_married_25_55[df_married_25_55['primary_age'] <= 55]
     df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] >= 25]
     df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] <= 55]
-    df_married_25_55.to_csv(f'excel/{period}/married_25_55_{period}.csv', index=False)
+    
 
     # we construct single and dual earner couples
     single_earner_couples_25_55 = df_married_25_55[df_married_25_55['secondary_earning'] == 0]
     dual_earner_couples_25_55 = df_married_25_55[df_married_25_55['secondary_earning'] > 0]
-    single_earner_couples_25_55.to_csv(f'excel/{period}/single_earner_couples_25_55_{period}.csv', index=False)
-    dual_earner_couples_25_55.to_csv(f'excel/{period}/dual_earner_couples_25_55_{period}.csv', index=False)
+    
 
     # we create a dataframe only for singles, with positive earnings and adult
     df_celib = result_df[~result_df['maries_ou_pacses']]
@@ -360,14 +358,32 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     df_celib = df_celib[df_celib['single_earning'] >= 0]
     df_celib = df_celib[df_celib['age'] >= 18]
     df_celib = df_celib.sort_values(by='single_earning')
-    df_celib.to_csv(f'excel/{period}/single_adults_{period}.csv', index=False)
+    
 
     df_celib_25_55 = df_celib[df_celib['age'] >= 25]
     df_celib_25_55 = df_celib_25_55[df_celib_25_55['age'] <= 25]
     df_celib_25_55 = df_celib_25_55.sort_values(by='single_earning')
+    
+
+
+    # save as csv and get rid of some useless variables
+    df_married = df_married.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    df_married_25_55 = df_married_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    single_earner_couples_25_55 = single_earner_couples_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    dual_earner_couples_25_55 = dual_earner_couples_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+
+    df_celib = df_celib.drop(['idfoy', 'age'], axis = 1)
+    df_celib_25_55 = df_celib_25_55.drop(['idfoy', 'age'], axis = 1)
+
+    df_married.to_csv(f'excel/{period}/married_adults_{period}.csv', index=False)
+    df_married_25_55.to_csv(f'excel/{period}/married_25_55_{period}.csv', index=False)
+    single_earner_couples_25_55.to_csv(f'excel/{period}/single_earner_couples_25_55_{period}.csv', index=False)
+    dual_earner_couples_25_55.to_csv(f'excel/{period}/dual_earner_couples_25_55_{period}.csv', index=False)
+
+    df_celib.to_csv(f'excel/{period}/single_adults_{period}.csv', index=False)
     df_celib_25_55.to_csv(f'excel/{period}/singles_25_55_{period}.csv', index=False)
-  
-  
+
+    
     
     
 

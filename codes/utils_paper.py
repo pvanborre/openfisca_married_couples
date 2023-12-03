@@ -236,7 +236,7 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
 @click.option('-m', '--want_to_mute_decote', default = False, type = bool, required = True)
 def launch_utils(annee = None, want_to_mute_decote = None):
     work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
-    work_df = work_df.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    
     print(work_df)
     print()
 
@@ -289,6 +289,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     
     # compute_intensive_revenue_function computes pdf and cdf, and then takes as input the ratios on the grid and the elasticity
     # returns the intensive primary revenue function, and also the pdf and cdf that we plot in the function plot_intensive_revenue_function
+    
     elasticity_primary = 0.25
 
     cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(
