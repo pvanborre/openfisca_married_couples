@@ -3,19 +3,25 @@ Repo to store codes using the microsimulation tool OpenFisca in order to simulat
 
 # Description 
 
+General context : this code was used to apply the framework of the paper 'The taxation of couples' (https://www.cesifo.org/en/publications/2023/working-paper/taxation-couples, section 7.3) by Felix J. Bierbrauer, Pierre C. Boyer, Andreas Peichl, Daniel Weishaar to the French situation.
+We look at reforms towards individualization of taxes for married couples.
+Then, after the reform, the marginal tax rate on primary earnings is higher than in the status quo, and the marginal tax rate on secondary earnings is lower. It is a revenue-neutral reform toward individual taxation where the tax system is modified so that the increased revenue from higher taxes on primary earnings equals the loss of revenue due to the lower taxes on secondary earnings.
+
 In the _codes_ folder, you will find the 2 most important codes :
 
 + _without\_reform.py_, that computes the tax paid by French "foyers_fiscaux" in the situation of a given year.
 
-+ _reform\_towards\_individualization.py_, that computes the tax paid by French "foyers_fiscaux" in the reformed situation of a given year. Then, after the reform, the marginal tax rate on primary earnings is higher than in the status quo, and the marginal tax rate on secondary earnings is lower. It is a revenue-neutral reform toward individual taxation where the tax system is modified so that the increased revenue from higher taxes on primary earnings equals the loss of revenue due to the lower taxes on secondary earnings. For more details see the paper by Pierre Boyer (https://www.cesifo.org/en/publications/2023/working-paper/taxation-couples, section 7.3). This code also stores all graphs 14 of the paper in the _output_ folder.
++ _simulation\_creation.py_, that computes variables of interest in the OpenFisca simulation for all French "foyers_fiscaux" for a given year.
 
-+ _plot\_across\_years.sh_ : bash script that gets the percentage of winners of a reform towards individual taxation across years
++ _utils\_paper.py_, that computes revenue functions, key element of the paper to assess the number of winners in such a reform towards individualization.
+
++ _plot\_across\_years.sh_ : bash script that gets the percentage of winners of a reform towards individual taxation across years.
 
 + _plot\_across\_years.py_ : python plot to plot the output of the _plot\_across\_years.sh_ files. This corresponds to graph 15 section 7.3 of the paper.
 
 + _test\_without\_data.py_, only useful to check that your installation without the .h5 part has succeded.
 
-
++ _reform\_towards\_individualization.py_, old version no longer used
 
 
 In the _data_ folder, the .h5 files (ERFS-FPR) are stored year per year.
@@ -116,8 +122,8 @@ You can now launch python codes running on data provided you have the .h5 data (
 ```sh
 # replace 2018 by any YEAR you are interested in and you have the openfisca_erfs_fpr_YEAR.h5 stored in the folder openfisca_married_couples/data/YEAR
 
-python without_reform.py -y 2018
-python reform_towards_individualization.py -y 2018
+python simulation_creation.py -y 2018 # this creates some useful excel files, this line needs to be run only once 
+python utils_paper.py -y 2018
 ```
 
 
@@ -349,3 +355,4 @@ If you want to run all codes in a single command you could do this :
 ```sh
 bash graphe15.sh
 ``` 
+If you have an error with this file (no line works), this is maybe because of the End Of File (EOF). So you can just copy paste the content of the file in your terminal to solve this issue.
