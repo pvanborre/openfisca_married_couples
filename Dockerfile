@@ -10,6 +10,7 @@ RUN pip install tables
 RUN pip install matplotlib
 RUN pip install scikit-learn
 RUN pip install tabulate
+RUN pip install statsmodels
 
 WORKDIR /app
 
