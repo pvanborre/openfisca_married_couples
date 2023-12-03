@@ -57,8 +57,6 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     plt.savefig('../outputs/mtr_ratio_by_{name}/mtr_ratio_by_{name}_{annee}.png'.format(name = name, annee = period))
     plt.close()
 
-
-
     return smoothed_y_primary
 
 
@@ -94,7 +92,7 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
 def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
     """
     This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then total earnings, tax before reform and weights
-    This computes E(T/(ym-T) * pelast | yp/s) for all distinct values of primary earings (or secondary earnings)
+    This computes E(T/(ym-T) * pelast | y1/2) for all distinct values of primary earings (or secondary earnings)
     So it returns this numpy array of size unique primary/secondary earnings
     """
 
@@ -126,11 +124,10 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
     """
 
     # defines the grid and gets E(T/(ym-T) * pelast) on this grid (take closest value from the original earnings)
-    
     closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
     closest_tax_ratios = average_ratios[closest_indices]
 
-
+    # then computes the pdf and the integrand, for both single and dual earner couples
     sec_share = np.sum(sec_weights)/(np.sum(sec_weights) + np.sum(dec_weights))
 
     sorted_indices_dec = np.argsort(dec_earnings)
@@ -151,7 +148,7 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
         sec_within_integral = closest_tax_ratios * sec_pdf * sec_share
         return sec_within_integral, dec_within_integral
     
-    else:
+    else: # the single earner secondary has no sense, since all secondary earnings are then 0
         return 0, dec_within_integral
 
 
@@ -176,10 +173,17 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
 
 
 
-def graphe14(primary_grid, primary_earning, primary_mtr_ratios_grid, extensive_primary_revenue_function, secondary_grid, secondary_earning, secondary_mtr_ratios_grid, extensive_secondary_revenue_function, weights, period):
- 
-    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
-    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
+def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_grid, extensive_primary_revenue_function, secondary_grid, secondary_earning, secondary_mtr_ratios_grid, extensive_secondary_revenue_function, weights, period):
+    """
+    For different elasticities scenarios we :
+        - compute the intensive revenue function and then add the extensive revenue function (this extensive part does not depend on the elasticity)
+        - plot the primary and secondary revenue functions
+        - compute the integrals of these primary and secondary revenue functions and then deduce the ratio between these 2 integrals
+        - with this ratio, compute the percentage of winners of a reform towards individualization in this elasticity scenario
+
+    Then we plot also the lines that separates winners from losers of such a reform
+    Finally we also plot pdf and cdf for primary and secondary earnings, that were used to compute the intensive revenue function
+    """
 
     eps1_tab = [0.25, 0.5, 0.75]
     eps2_tab = [0.75, 0.5, 0.25]
@@ -188,7 +192,9 @@ def graphe14(primary_grid, primary_earning, primary_mtr_ratios_grid, extensive_p
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
-
+    ################################################################################
+    ################# Computation of revenues functions ############################
+    ################################################################################
     for i in range(len(eps1_tab)):
         primary_elasticity_maries_pacses =  eps1_tab[i]
         secondary_elasticity_maries_pacses = eps2_tab[i]
@@ -242,7 +248,9 @@ def graphe14(primary_grid, primary_earning, primary_mtr_ratios_grid, extensive_p
     plt.savefig('../outputs/revenue_functions/revenue_functions_{annee}.png'.format(annee = period))
     plt.close()
 
-
+    ################################################################################
+    ################# Separate winners from losers #################################
+    ################################################################################
     plt.figure()
     x = np.linspace(0, 600000, 4)
     plt.plot(x, x, c = '#828282')
@@ -274,6 +282,9 @@ def graphe14(primary_grid, primary_earning, primary_mtr_ratios_grid, extensive_p
     plt.savefig('../outputs/winners_political_economy/winners_political_economy_{annee}.png'.format(annee = period))
     plt.close()
 
+    ################################################################################
+    ################# Plot cdf and pdf #############################################
+    ################################################################################
     plt.plot(primary_grid, cdf_primary, label='primary') 
     plt.plot(secondary_grid, cdf_secondary, label='secondary')   
     plt.xlabel('Gross income')
@@ -407,7 +418,7 @@ def launch_utils(annee = None):
     secondary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = secondary_grid_earnings, within_integral = secondary_dec_within_integral) + 0
     
 
-    graphe14(primary_grid = primary_grid_earnings, 
+    winners_political_economy(primary_grid = primary_grid_earnings, 
              primary_earning = work_df['primary_earning'].values, 
              primary_mtr_ratios_grid = primary_mtr_ratios_grid, 
              extensive_primary_revenue_function = primary_extensive_revenue_function, 
