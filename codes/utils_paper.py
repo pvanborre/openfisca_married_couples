@@ -7,6 +7,7 @@ from statsmodels.nonparametric.kernel_regression import KernelReg
 import statsmodels.api as sm
 from scipy.interpolate import interp1d
 from scipy.integrate import trapz
+import sys
 
 ################################################################################
 ################# Intensive revenue function ###################################
@@ -404,6 +405,7 @@ def launch_utils(annee = None):
                     tax=work_df['ancien_irpp'].values,
                     weights=work_df['wprm'].values)
     
+    # for single earner couples (sec), the secondary earning is always 0
     secondary_sec_within_integral, secondary_dec_within_integral = util_extensive_revenue_function(
                     grid_earnings = secondary_grid_earnings,
                     original_earnings = unique_secondary_earning,
@@ -431,4 +433,13 @@ def launch_utils(annee = None):
 
 
 
+
+def redirect_print_to_file(filename):
+    sys.stdout = open(filename, 'a')
+    
+redirect_print_to_file('output_graphe_15.txt')
+
 launch_utils()
+
+sys.stdout.close()
+sys.stdout = sys.__stdout__
