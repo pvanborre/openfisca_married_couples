@@ -90,9 +90,11 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
     Computes the pdf and cdf of earnings, and the intensive revenue function
     """
 
-    earning.sort()
+    sorted_indices = np.argsort(earning)
+    earning_sorted = earning[sorted_indices]
+    weights_sorted = weights[sorted_indices]
 
-    kde = gaussian_kde(earning, weights=weights)
+    kde = gaussian_kde(earning_sorted, weights=weights_sorted)
     pdf = kde(grid_earnings)
     cdf = np.cumsum(pdf) / np.sum(pdf)
 
@@ -175,14 +177,20 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
 
     sec_share = np.sum(sec_weights)/(np.sum(sec_weights) + np.sum(dec_weights))
 
-    dec_earnings.sort()
-    dec_kde = gaussian_kde(dec_earnings, weights=dec_weights)
+    sorted_indices_dec = np.argsort(dec_earnings)
+    dec_earnings_sorted = dec_earnings[sorted_indices_dec]
+    dec_weights_sorted = dec_weights[sorted_indices_dec]
+
+    dec_kde = gaussian_kde(dec_earnings_sorted, weights=dec_weights_sorted)
     dec_pdf = dec_kde(grid_earnings)
     dec_within_integral = closest_tax_ratios * dec_pdf * (1-sec_share)
 
     if name == "primary":
-        sec_earnings.sort()
-        sec_kde = gaussian_kde(sec_earnings, weights=sec_weights)
+        sorted_indices_sec = np.argsort(sec_earnings)
+        sec_earnings_sorted = sec_earnings[sorted_indices_sec]
+        sec_weights_sorted = sec_weights[sorted_indices_sec]
+
+        sec_kde = gaussian_kde(sec_earnings_sorted, weights=sec_weights_sorted)
         sec_pdf = sec_kde(grid_earnings) 
         sec_within_integral = closest_tax_ratios * sec_pdf * sec_share
         return sec_within_integral, dec_within_integral
@@ -211,6 +219,10 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
 ################################################################################
 
 def plot_revenue_function(primary_grid, primary_earning, intensive_primary_revenue_function, extensive_primary_revenue_function, secondary_grid, secondary_earning, intensive_secondary_revenue_function, extensive_secondary_revenue_function, weights, period):
+    """
+    We plot the primary and the secondary revenue function
+    Then we compute both integrals and look at the ratio so that we can look at the number of winners of a reform towards individualization
+    """
     primary_revenue_function = intensive_primary_revenue_function + extensive_primary_revenue_function
     secondary_revenue_function = intensive_secondary_revenue_function + extensive_secondary_revenue_function
     
@@ -233,6 +245,9 @@ def plot_revenue_function(primary_grid, primary_earning, intensive_primary_reven
     print("ratio", ratio)
 
     is_winner = secondary_earning*ratio > primary_earning
+    print(secondary_earning[0:30])
+    print(primary_earning[0:30])
+    print(is_winner)
     pourcentage_gagnants = 100*np.sum(is_winner*weights)/np.sum(weights)
     print("Pourcentage de gagnants", period, pourcentage_gagnants)
 
@@ -248,7 +263,6 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     
     print(work_df)
     print()
-
         
     df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
     df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
@@ -299,7 +313,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     # compute_intensive_revenue_function computes pdf and cdf, and takes as input the ratios on the grid and the elasticity
     # returns the intensive primary revenue function, and also the pdf and cdf that we plot in the function plot_cdf_pdf
     
-    elasticity_primary = 0.25
+    elasticity_primary = 0.75
 
     cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(
                     grid_earnings = primary_grid_earnings,
