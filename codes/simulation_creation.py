@@ -16,16 +16,16 @@ pandas.options.display.max_columns = None
 
 # tax function Tm1(y1, y2) = Tm0(ym) + τm hm(y1, y2) where h is a reform direction
 # reform direction hm(y1, y2) = τ1 y1 + τ2y2  
-# on suppose ici pour simplifier que τm = 1 donc nouvel_IRPP = ancien_IRPP + τ1 revenu_principal + τ2 revenu_secondaire
+# to simplify we suppose that τm = 1 so new_tax = old_tax + τ1 primary_earning + τ2 secondary_earning
 
-# l'idée est de reprendre la formule de l'impot et d'ajouter un terme tau_1 * y1 + tau_2 * y2 pour les couples mariés ou pacsés (on ne change rien pour les célibataires ou veufs)
-# pour cela on cherche d'abord à créer une variable de revenu y pour chaque individu, où on somme ses traitements, salaires, pensions, rentes et ajoute également les autres revenus en faisant un equal splitting au sein du ménage
-# ensuite on crée y1 et y2 en comparant le revenu du déclarant principal du foyer fiscal et celui de son conjoint, le max étant y1 (primary_earning), le min étant y2 (secondary earning)
-# remarque : ces variables y1 et y2 n'ont de sens que si le couple est marié ou pacsés, dans le cas contraire je choisis que y1 = y2 = 0
-# on définit tau_2 = - tau_1 * sum(y1)/sum(y2) où la somme porte sur tous les couples mariés, afin de s'assurer un budget constant pour l'Etat 
+# we take the tax formula of OpenFisca and we add a term tau_1 * y1 + tau_2 * y2 for married couples (we do not change anything for singles)
+# to do so we create an earning variable for each individual, where we sum all individual earnings and then add also households earnings (that we equally split between both spouses if they are married)
+# Then we create y1 and y2 by comparing the income of the primary declarant of the household and that of their spouse, where the maximum is y1 (primary_earning) and the minimum is y2 (secondary earning).
+# Note: These variables y1 and y2 only make sense if the couple is married or in a civil partnership; otherwise, I set y1 = y2 = 0.
+# We define tau_2 = - tau_1 * sum(y1)/sum(y2) where the sum is over all married couples, to ensure a constant budget for the state.
 
 
-# tout d'abord on update la valeur de quelques paramètres (étaient null et des formules demandaient leurs valeurs, qu'on met donc à 0)
+# First, we update the value of some parameters (which were null, and some formulas required their values, so we set them to 0).
 def modify_parameters(parameters):
     reform_period = periods.period("2003")
     parameters.impot_revenu.calcul_reductions_impots.divers.intemp.max.update(period = reform_period, value = 0)
@@ -37,13 +37,36 @@ def modify_parameters(parameters):
 
 
 class vers_individualisation(Reform):
-    name = "on code la réforme nouvel impot = ancien impot + tau_1 revenu_1 + tau_2 revenu_2"
+    name = "we code the reform new_tax = old_tax + τ1 primary_earning + τ2 secondary_earning"
     def apply(self):
 
-        # on applique la modification des paramètres pour l'année 2003
+        # we apply the parameters modification for year 2003
         self.modify_parameters(modifier_function = modify_parameters)
 
-        class revenu_individu(Variable):
+        # here we sum all individual earnings and we compute an equal splitting for both spouses of the household
+        class revenu_individu_couple(Variable):
+            # I could have used revenu_categoriel (same modulo a deduction)
+            value_type = float
+            entity = Individu
+            label = "Revenu d'un individu du foyer fiscal, si le couple est marié"
+            definition_period = YEAR
+
+            def formula(individu, period):
+                traitements_salaires_pensions_rentes = individu('traitements_salaires_pensions_rentes', period)
+
+                rev_cat_rvcm = individu.foyer_fiscal('revenu_categoriel_capital', period)
+                rev_cat_rfon = individu.foyer_fiscal('revenu_categoriel_foncier', period)
+                rev_cat_rpns = individu.foyer_fiscal('revenu_categoriel_non_salarial', period)
+                rev_cat_pv = individu.foyer_fiscal('revenu_categoriel_plus_values', period)  
+
+                maries_ou_pacses = individu.foyer_fiscal('maries_ou_pacses', period)
+                
+                # on fait un equal splitting des revenus (problème : si enfants ont des revenus les somme aussi, on suppose que cela n'arrive pas)     
+                return maries_ou_pacses * (traitements_salaires_pensions_rentes + rev_cat_rvcm/2 + rev_cat_rfon/2 + rev_cat_rpns/2 + rev_cat_pv/2)
+        
+        self.add_variable(revenu_individu_couple)
+
+        class revenu_individu_celib(Variable):
             # I could have used revenu_categoriel (same modulo a deduction)
             value_type = float
             entity = Individu
@@ -56,12 +79,15 @@ class vers_individualisation(Reform):
                 rev_cat_rvcm = individu.foyer_fiscal('revenu_categoriel_capital', period)
                 rev_cat_rfon = individu.foyer_fiscal('revenu_categoriel_foncier', period)
                 rev_cat_rpns = individu.foyer_fiscal('revenu_categoriel_non_salarial', period)
-                rev_cat_pv = individu.foyer_fiscal('revenu_categoriel_plus_values', period)  
+                rev_cat_pv = individu.foyer_fiscal('revenu_categoriel_plus_values', period) 
+
+                celibataire_ou_divorce = individu.foyer_fiscal('celibataire_ou_divorce', period)
+                veuf = individu.foyer_fiscal('veuf', period) 
                 
-                # on fait un equal splitting des revenus (problème : si enfants ont des revenus les somme aussi, on suppose que cela n'arrive pas)     
-                return traitements_salaires_pensions_rentes + rev_cat_rvcm/2 + rev_cat_rfon/2 + rev_cat_rpns/2 + rev_cat_pv/2
+                # no need for equal splitting anymore here 
+                return (traitements_salaires_pensions_rentes + rev_cat_rvcm + rev_cat_rfon + rev_cat_rpns + rev_cat_pv) * (celibataire_ou_divorce | veuf)
         
-        self.add_variable(revenu_individu)
+        self.add_variable(revenu_individu_celib)
 
 
         class revenu_celibataire(Variable):
@@ -72,7 +98,7 @@ class vers_individualisation(Reform):
 
  
             def formula(foyer_fiscal, period):
-                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_celib', period) # est de taille nb individus
                 revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
                 revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
 
@@ -91,7 +117,7 @@ class vers_individualisation(Reform):
             definition_period = YEAR
 
             def formula(foyer_fiscal, period):
-                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_couple', period) # est de taille nb individus
                 revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
                 revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
 
@@ -108,7 +134,7 @@ class vers_individualisation(Reform):
             definition_period = YEAR
 
             def formula(foyer_fiscal, period):
-                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_couple', period) # est de taille nb individus
                 revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
                 revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
 
@@ -125,7 +151,7 @@ class vers_individualisation(Reform):
             definition_period = YEAR
 
             def formula(foyer_fiscal, period):
-                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_couple', period) # est de taille nb individus
                 revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
                 revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
 
@@ -149,7 +175,7 @@ class vers_individualisation(Reform):
             definition_period = YEAR
 
             def formula(foyer_fiscal, period):
-                revenu_individu_i = foyer_fiscal.members('revenu_individu', period) # est de taille nb individus
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_couple', period) # est de taille nb individus
                 revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
                 revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
 
@@ -167,7 +193,7 @@ class vers_individualisation(Reform):
         self.add_variable(secondary_age)
 
         
-
+# finally this reform is not really needed
 class mute_decote(Reform):
     name = "Mute the decote mechanism for couples"
     def apply(self):
@@ -198,6 +224,14 @@ class mute_decote(Reform):
  
 
         
+#################################################################################################################################################
+# General context : OpenFisca considers that there are 4 distinct entities in the population (for more information see the documentation https://openfisca.org/doc/key-concepts/index.html)
+# Of course individuals and households, that were initially defined in the ERFS database
+# And also foyers fiscaux, that is the French tax unit (each foyer fiscal fills in a tax declaration)
+# And families, but we don't use them 
+# I wanted to emphasis the fact that foyers fiscaux and families are build by the OpenFisca model, they were not native in the ERFS data
+# for more details on this foyers fiscal and families imputation see https://github.com/openfisca/openfisca-france-data/blob/master/openfisca_france_data/erfs_fpr/input_data_builder/step_04_famille.py
+#################################################################################################################################################
 
 def initialiser_simulation(tax_benefit_system, data_persons):
 
@@ -227,7 +261,7 @@ def initialiser_simulation(tax_benefit_system, data_persons):
 
 
 
-
+# here we define the entities of the OpenFisca model
 def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entite, id_entite_join, role_entite, nom_role_0, nom_role_1, nom_role_2):
 
     # il faut bien mettre le bon nombre d'entites avec le .unique()
