@@ -15,7 +15,7 @@ from scipy.integrate import trapz
 def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights, period):
     """
     This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then the marginal tax rates and the weights
-    This computes E(T'/(1-T') | yp/s) for all distinct values of primary earings (or secondary earnings)
+    This computes E(T'/(1-T') | y1/2) for all distinct values of primary earings (or secondary earnings)
     So it returns this numpy array of size unique primary/secondary earnings
     """
     mtr_ratio = taux_marginal/(1-taux_marginal)
@@ -53,7 +53,7 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
     plt.close()
 
-    bandwidth = 5000
+    bandwidth = 1000
     kernel_reg = KernelReg(endog=closest_mtr_ratios, exog=grid_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
     plt.plot(grid_earnings, smoothed_y_primary, label='MTR')   
@@ -103,9 +103,8 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
     return cdf, pdf, intensive_revenue_function
 
 
-def plot_intensive_revenue_function(primary_grid, primary_earning, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid, secondary_earning, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, weights, period):
+def plot_cdf_pdf(primary_grid, cdf_primary, pdf_primary, secondary_grid,  cdf_secondary, pdf_secondary, period):
     
-
     plt.plot(primary_grid, cdf_primary, label='primary') 
     plt.plot(secondary_grid, cdf_secondary, label='secondary')   
     plt.xlabel('Gross income')
@@ -126,29 +125,7 @@ def plot_intensive_revenue_function(primary_grid, primary_earning, cdf_primary, 
     plt.savefig('../outputs/test_cdf/pdf_{annee}.png'.format(annee = period))
     plt.close()
 
-    plt.plot(primary_grid, intensive_primary_revenue_function, label='primary') 
-    plt.plot(secondary_grid, intensive_secondary_revenue_function, label='secondary')    
-    plt.xlabel('Gross income')
-    plt.ylabel('Integral revenue function')
-    plt.title("Integral revenue function - {annee}".format(annee = period))
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/test_cdf/revenue_function_{annee}.png'.format(annee = period))
-    plt.close()
-
-    integral_trap_primary = np.trapz(intensive_primary_revenue_function, primary_grid)
-    print("Primary revenue function integral", integral_trap_primary)
-    integral_trap_secondary = np.trapz(intensive_secondary_revenue_function, secondary_grid)
-    print("Secondary revenue function integral", integral_trap_secondary)
-
-    ratio = integral_trap_primary/integral_trap_secondary
-    print("ratio", ratio)
-
-    is_winner = secondary_earning*ratio > primary_earning
-    pourcentage_gagnants = 100*np.sum(is_winner*weights)/np.sum(weights)
-    print("Pourcentage de gagnants", period, pourcentage_gagnants)
-
-
+    
 
 
 
@@ -183,7 +160,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, pe
 
 
 
-def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights):
+def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights, name):
     """
     This takes as input numpy arrays of size number unique foyers_fiscaux, primary or secondary unique earnings, and average ratios E(T/(ym-T) * pelast)
     Then other inputs are specific to single and dual earner couples (sec and dec)
@@ -198,17 +175,20 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
 
     sec_share = np.sum(sec_weights)/(np.sum(sec_weights) + np.sum(dec_weights))
 
-    sec_earnings.sort()
-    sec_kde = gaussian_kde(sec_earnings, weights=sec_weights)
-    sec_pdf = sec_kde(grid_earnings) 
-    sec_within_integral = closest_tax_ratios * sec_pdf * sec_share
-    
     dec_earnings.sort()
     dec_kde = gaussian_kde(dec_earnings, weights=dec_weights)
     dec_pdf = dec_kde(grid_earnings)
     dec_within_integral = closest_tax_ratios * dec_pdf * (1-sec_share)
+
+    if name == "primary":
+        sec_earnings.sort()
+        sec_kde = gaussian_kde(sec_earnings, weights=sec_weights)
+        sec_pdf = sec_kde(grid_earnings) 
+        sec_within_integral = closest_tax_ratios * sec_pdf * sec_share
+        return sec_within_integral, dec_within_integral
     
-    return sec_within_integral, dec_within_integral
+    else:
+        return 0, dec_within_integral
 
 
 
@@ -226,6 +206,35 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
     return cumulative_integrals - cumulative_integrals[-1]
 
 
+################################################################################
+################# Altogether ###################################################
+################################################################################
+
+def plot_revenue_function(primary_grid, primary_earning, intensive_primary_revenue_function, extensive_primary_revenue_function, secondary_grid, secondary_earning, intensive_secondary_revenue_function, extensive_secondary_revenue_function, weights, period):
+    primary_revenue_function = intensive_primary_revenue_function + extensive_primary_revenue_function
+    secondary_revenue_function = intensive_secondary_revenue_function + extensive_secondary_revenue_function
+    
+    plt.plot(primary_grid, primary_revenue_function, label='primary') 
+    plt.plot(secondary_grid, secondary_revenue_function, label='secondary')    
+    plt.xlabel('Gross income')
+    plt.ylabel('Integral revenue function')
+    plt.title("Integral revenue function - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test_cdf/revenue_function_{annee}.png'.format(annee = period))
+    plt.close()
+
+    integral_trap_primary = np.trapz(primary_revenue_function, primary_grid)
+    print("Primary revenue function integral", integral_trap_primary)
+    integral_trap_secondary = np.trapz(secondary_revenue_function, secondary_grid)
+    print("Secondary revenue function integral", integral_trap_secondary)
+
+    ratio = integral_trap_primary/integral_trap_secondary
+    print("ratio", ratio)
+
+    is_winner = secondary_earning*ratio > primary_earning
+    pourcentage_gagnants = 100*np.sum(is_winner*weights)/np.sum(weights)
+    print("Pourcentage de gagnants", period, pourcentage_gagnants)
 
 
 ################################################################################
@@ -287,8 +296,8 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                                                         average_ratios = secondary_mean_tax_rates, 
                                                         period = annee)
     
-    # compute_intensive_revenue_function computes pdf and cdf, and then takes as input the ratios on the grid and the elasticity
-    # returns the intensive primary revenue function, and also the pdf and cdf that we plot in the function plot_intensive_revenue_function
+    # compute_intensive_revenue_function computes pdf and cdf, and takes as input the ratios on the grid and the elasticity
+    # returns the intensive primary revenue function, and also the pdf and cdf that we plot in the function plot_cdf_pdf
     
     elasticity_primary = 0.25
 
@@ -308,8 +317,15 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     elasticity = 1 - elasticity_primary,
                     period = annee)
     
-    plot_intensive_revenue_function(primary_grid_earnings, work_df['primary_earning'].values, cdf_primary, pdf_primary, intensive_primary_revenue_function, secondary_grid_earnings, work_df['secondary_earning'].values, cdf_secondary, pdf_secondary, intensive_secondary_revenue_function, work_df['wprm'].values, annee)
+    plot_cdf_pdf(primary_grid = primary_grid_earnings, 
+                 cdf_primary = cdf_primary, 
+                 pdf_primary = pdf_primary, 
+                 secondary_grid = secondary_grid_earnings, 
+                 cdf_secondary = cdf_secondary, 
+                 pdf_secondary = pdf_secondary, 
+                 period = annee)
     
+
     
     ################################################################################
     ################# Extensive part ###############################################
@@ -332,7 +348,8 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     sec_earnings = df_single_earner_couples['primary_earning'].values, 
                     dec_earnings = df_dual_earner_couples['primary_earning'].values, 
                     sec_weights = df_single_earner_couples['wprm'].values,
-                    dec_weights = df_dual_earner_couples['wprm'].values)
+                    dec_weights = df_dual_earner_couples['wprm'].values, 
+                    name = "primary")
 
 
     primary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_sec_within_integral) + compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_dec_within_integral)
@@ -352,13 +369,24 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     sec_earnings = df_single_earner_couples['secondary_earning'].values, 
                     dec_earnings = df_dual_earner_couples['secondary_earning'].values, 
                     sec_weights = df_single_earner_couples['wprm'].values,
-                    dec_weights = df_dual_earner_couples['wprm'].values)
+                    dec_weights = df_dual_earner_couples['wprm'].values,
+                    name = "secondary")
 
 
-    secondary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = secondary_grid_earnings, within_integral = secondary_sec_within_integral) + compute_extensive_revenue_function(grid_earnings = secondary_grid_earnings, within_integral = secondary_dec_within_integral)
+    secondary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = secondary_grid_earnings, within_integral = secondary_dec_within_integral) + 0
     
 
-    
+    plot_revenue_function(primary_grid = primary_grid_earnings, 
+                          primary_earning = work_df['primary_earning'].values, 
+                          intensive_primary_revenue_function = intensive_primary_revenue_function, 
+                          extensive_primary_revenue_function = primary_extensive_revenue_function, 
+                          secondary_grid = secondary_grid_earnings, 
+                          secondary_earning = work_df['secondary_earning'].values, 
+                          intensive_secondary_revenue_function = intensive_secondary_revenue_function, 
+                          extensive_secondary_revenue_function = secondary_extensive_revenue_function, 
+                          weights = work_df['wprm'].values, 
+                          period = annee)
+
 
 
 launch_utils()
