@@ -12,7 +12,7 @@ echo "output_graphe_15.txt has been created."
 
 for i in $(seq 2002 2019);
 do
-    python reform_towards_individualization.py -y $i
+    python utils_paper.py -y $i
 done
 
 python graphe15_across_years.py

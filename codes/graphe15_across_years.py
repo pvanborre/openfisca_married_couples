@@ -35,6 +35,6 @@ plt.title('Reform towards individual taxation: Share of winners over time')
 plt.grid()
 
 plt.show()
-plt.savefig('../outputs/15/graphe_15.png')
+plt.savefig('../outputs/winners_over_time/winners_over_time.png')
 
 
