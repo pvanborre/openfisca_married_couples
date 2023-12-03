@@ -53,7 +53,7 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
     plt.close()
 
-    bandwidth = 1000
+    bandwidth = 5000
     kernel_reg = KernelReg(endog=closest_mtr_ratios, exog=grid_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
     plt.plot(grid_earnings, smoothed_y_primary, label='MTR')   
@@ -245,9 +245,6 @@ def plot_revenue_function(primary_grid, primary_earning, intensive_primary_reven
     print("ratio", ratio)
 
     is_winner = secondary_earning*ratio > primary_earning
-    print(secondary_earning[0:30])
-    print(primary_earning[0:30])
-    print(is_winner)
     pourcentage_gagnants = 100*np.sum(is_winner*weights)/np.sum(weights)
     print("Pourcentage de gagnants", period, pourcentage_gagnants)
 
