@@ -12,7 +12,7 @@ from scipy.integrate import trapz
 ################# Intensive revenue function ###################################
 ################################################################################
 
-def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights, period):
+def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights):
     """
     This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then the marginal tax rates and the weights
     This computes E(T'/(1-T') | y1/2) for all distinct values of primary earings (or secondary earnings)
@@ -32,7 +32,7 @@ def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights, period)
 
 
 
-def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_ratios, period):
+def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_ratios, name, period):
     """
     This takes as input numpy arrays of size unique primary/secondary earnings computed by the above function, 
     that is distinct primary/secondary earnings and the ratios E(T'/(1-T'))
@@ -44,25 +44,27 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
     closest_mtr_ratios = average_ratios[closest_indices]
 
-    plt.scatter(grid_earnings, closest_mtr_ratios, label='MTR ratio')   
-    plt.xlabel('Gross income')
-    plt.ylabel('MTR ratio')
-    plt.title("MTR ratio - {annee}".format(annee = period))
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
-    plt.close()
+    # all values before smoothing
+    # plt.scatter(grid_earnings, closest_mtr_ratios, label='MTR ratio')   
+    # plt.xlabel('Gross income')
+    # plt.ylabel('MTR ratio')
+    # plt.title("MTR ratio - {annee}".format(annee = period))
+    # plt.legend()
+    # plt.show()
+    # plt.savefig('../outputs/test_cdf/mtr_ratio2_{annee}.png'.format(annee = period))
+    # plt.close()
 
     bandwidth = 5000
     kernel_reg = KernelReg(endog=closest_mtr_ratios, exog=grid_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     smoothed_y_primary, _ = kernel_reg.fit()
-    plt.plot(grid_earnings, smoothed_y_primary, label='MTR')   
+    plt.scatter(grid_earnings, closest_mtr_ratios, label='MTR ratio without smoothing', color = 'lightgreen')
+    plt.plot(grid_earnings, smoothed_y_primary, label='MTR ratio with smoothing', color = 'red')   
     plt.xlabel('Gross income')
     plt.ylabel('MTR')
     plt.title("MTR - {annee}".format(annee = period))
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/test_cdf/ratio_exp_{bandwidth}_{annee}.png'.format(bandwidth=bandwidth, annee = period))
+    plt.savefig('../outputs/mtr_ratio_by_{name}/mtr_ratio_by_{name}_{annee}.png'.format(name = name, annee = period))
     plt.close()
 
     # another approach lowess : gives almost the same results as before 
@@ -85,7 +87,7 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
 
 
 
-def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, weights, elasticity, period):
+def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, weights, elasticity):
     """
     Computes the pdf and cdf of earnings, and the intensive revenue function
     """
@@ -105,37 +107,13 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
     return cdf, pdf, intensive_revenue_function
 
 
-def plot_cdf_pdf(primary_grid, cdf_primary, pdf_primary, secondary_grid,  cdf_secondary, pdf_secondary, period):
-    
-    plt.plot(primary_grid, cdf_primary, label='primary') 
-    plt.plot(secondary_grid, cdf_secondary, label='secondary')   
-    plt.xlabel('Gross income')
-    plt.ylabel('CDF')
-    plt.title("Cumulative distribution function - {annee}".format(annee = period))
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/test_cdf/cdf_{annee}.png'.format(annee = period))
-    plt.close()
-    
-    plt.plot(primary_grid, pdf_primary, label='primary') 
-    plt.plot(secondary_grid, pdf_secondary, label='secondary')   
-    plt.xlabel('Gross income')
-    plt.ylabel('PDF')
-    plt.title("Probability distribution function - {annee}".format(annee = period))
-    plt.legend()
-    plt.show()
-    plt.savefig('../outputs/test_cdf/pdf_{annee}.png'.format(annee = period))
-    plt.close()
-
-    
-
 
 
 ################################################################################
 ################# Extensive revenue function ###################################
 ################################################################################
 
-def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, period):
+def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
     """
     This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then total earnings, tax before reform and weights
     This computes E(T/(ym-T) * pelast | yp/s) for all distinct values of primary earings (or secondary earnings)
@@ -218,35 +196,129 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
 ################# Altogether ###################################################
 ################################################################################
 
-def plot_revenue_function(primary_grid, primary_earning, intensive_primary_revenue_function, extensive_primary_revenue_function, secondary_grid, secondary_earning, intensive_secondary_revenue_function, extensive_secondary_revenue_function, weights, period):
-    """
-    We plot the primary and the secondary revenue function
-    Then we compute both integrals and look at the ratio so that we can look at the number of winners of a reform towards individualization
-    """
-    primary_revenue_function = intensive_primary_revenue_function + extensive_primary_revenue_function
-    secondary_revenue_function = intensive_secondary_revenue_function + extensive_secondary_revenue_function
-    
-    plt.plot(primary_grid, primary_revenue_function, label='primary') 
-    plt.plot(secondary_grid, secondary_revenue_function, label='secondary')    
-    plt.xlabel('Gross income')
-    plt.ylabel('Integral revenue function')
-    plt.title("Integral revenue function - {annee}".format(annee = period))
-    plt.legend()
+
+
+def graphe14(primary_grid, primary_earning, primary_mtr_ratios_grid, extensive_primary_revenue_function, secondary_grid, secondary_earning, secondary_mtr_ratios_grid, extensive_secondary_revenue_function, weights, period):
+ 
+    # Titre graphique : Gagnants et perdants d'une réforme vers l'individualisation de l'impôt, 
+    # parmi les couples mariés ou pacsés, en janvier de l'année considérée
+
+    eps1_tab = [0.25, 0.5, 0.75]
+    eps2_tab = [0.75, 0.5, 0.25]
+    rapport = [0.0]*len(eps1_tab)
+    pourcentage_gagnants = [0.0]*len(eps1_tab)
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+
+
+    for i in range(len(eps1_tab)):
+        primary_elasticity_maries_pacses =  eps1_tab[i]
+        secondary_elasticity_maries_pacses = eps2_tab[i]
+        
+        cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(
+                    grid_earnings = primary_grid,
+                    earning = primary_earning, 
+                    mtr_ratios_grid = primary_mtr_ratios_grid,
+                    weights = weights, 
+                    elasticity = primary_elasticity_maries_pacses)
+         
+        primary_revenue_function = intensive_primary_revenue_function + extensive_primary_revenue_function
+
+        cdf_secondary, pdf_secondary, intensive_secondary_revenue_function = compute_intensive_revenue_function(
+                    grid_earnings = secondary_grid,
+                    earning = secondary_earning, 
+                    mtr_ratios_grid = secondary_mtr_ratios_grid,
+                    weights = weights, 
+                    elasticity = secondary_elasticity_maries_pacses)
+         
+        secondary_revenue_function = intensive_secondary_revenue_function + extensive_secondary_revenue_function
+
+        integral_trap_primary = np.trapz(primary_revenue_function, primary_grid)
+        print("Primary revenue function integral", integral_trap_primary)
+        integral_trap_secondary = np.trapz(secondary_revenue_function, secondary_grid)
+        print("Secondary revenue function integral", integral_trap_secondary)
+
+        rapport[i] = integral_trap_primary/integral_trap_secondary
+        print('rapport integrales scenario ', i, " ", rapport[i])
+
+        is_winner = secondary_earning*rapport[i] > primary_earning
+        pourcentage_gagnants[i] = 100*np.sum(is_winner*weights)/np.sum(weights)
+        print("Scenario", i)
+        print("Pourcentage de gagnants", period, i, pourcentage_gagnants[i])
+
+        axes[i].plot(primary_grid, primary_revenue_function, label = 'primary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        axes[i].plot(secondary_grid, secondary_revenue_function, label = 'secondary ep = {ep}, es = {es}'.format(ep = eps1_tab[i], es = eps2_tab[i]))
+        
+        axes[i].legend()
+
+
+        axes[i].set_xlabel('Gross income')
+        axes[i].set_ylabel('R function')
+        axes[i].set_title('Scenario {}'.format(i))
+
+
+
+
+    plt.tight_layout()  
     plt.show()
-    plt.savefig('../outputs/test_cdf/revenue_function_{annee}.png'.format(annee = period))
+    plt.savefig('../outputs/revenue_functions/revenue_functions_{annee}.png'.format(annee = period))
     plt.close()
 
-    integral_trap_primary = np.trapz(primary_revenue_function, primary_grid)
-    print("Primary revenue function integral", integral_trap_primary)
-    integral_trap_secondary = np.trapz(secondary_revenue_function, secondary_grid)
-    print("Secondary revenue function integral", integral_trap_secondary)
 
-    ratio = integral_trap_primary/integral_trap_secondary
-    print("ratio", ratio)
+    plt.figure()
+    x = np.linspace(0, 600000, 4)
+    plt.plot(x, x, c = '#828282')
 
-    is_winner = secondary_earning*ratio > primary_earning
-    pourcentage_gagnants = 100*np.sum(is_winner*weights)/np.sum(weights)
-    print("Pourcentage de gagnants", period, pourcentage_gagnants)
+    green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
+    for i in range(len(eps1_tab)):
+        color = green_shades[i]
+        plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 100000*i, 300000), bbox = dict(boxstyle ="round", fc = color))
+
+    plt.scatter(secondary_earning, primary_earning, s = 0.1, c = '#828282') 
+
+    #plt.axis("equal")
+
+    eps = 5000
+    plt.xlim(-eps, max(secondary_earning)) 
+    plt.ylim(-eps, max(primary_earning)) 
+
+    plt.grid()
+    
+
+
+    plt.xlabel('Secondary earner')
+    plt.ylabel('Primary earner')
+    plt.title("Reform towards individual taxation: Political economy - {}".format(period))
+
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/winners_political_economy/winners_political_economy_{annee}.png'.format(annee = period))
+    plt.close()
+
+    plt.plot(primary_grid, cdf_primary, label='primary') 
+    plt.plot(secondary_grid, cdf_secondary, label='secondary')   
+    plt.xlabel('Gross income')
+    plt.ylabel('CDF')
+    plt.title("Cumulative distribution function - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/cdf_primary_secondary/cdf_primary_secondary_{annee}.png'.format(annee = period))
+    plt.close()
+    
+    plt.plot(primary_grid, pdf_primary, label='primary') 
+    plt.plot(secondary_grid, pdf_secondary, label='secondary')   
+    plt.xlabel('Gross income')
+    plt.ylabel('PDF')
+    plt.title("Probability distribution function - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/pdf_primary_secondary/pdf_primary_secondary_{annee}.png'.format(annee = period))
+    plt.close()
+
+    
+
+
 
 
 ################################################################################
@@ -254,8 +326,7 @@ def plot_revenue_function(primary_grid, primary_earning, intensive_primary_reven
 ################################################################################
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
-@click.option('-m', '--want_to_mute_decote', default = False, type = bool, required = True)
-def launch_utils(annee = None, want_to_mute_decote = None):
+def launch_utils(annee = None):
     work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
     
     print(work_df)
@@ -285,56 +356,29 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     unique_primary_earning, primary_mean_tax_rates = computes_mtr_ratios_knowing_earning(
                                             earning = work_df['primary_earning'].values, 
                                             taux_marginal = work_df['taux_marginal'].values, 
-                                            weights = work_df['wprm'].values,
-                                            period = annee)
+                                            weights = work_df['wprm'].values)
     
     primary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
                                                         grid_earnings = primary_grid_earnings,
                                                         original_earnings = unique_primary_earning, 
                                                         average_ratios = primary_mean_tax_rates, 
+                                                        name = "primary",
                                                         period = annee)
     
     # Secondary : 2 same preliminary steps
     unique_secondary_earning, secondary_mean_tax_rates = computes_mtr_ratios_knowing_earning(
                                             earning = work_df['secondary_earning'].values, 
                                             taux_marginal = work_df['taux_marginal'].values, 
-                                            weights = work_df['wprm'].values,
-                                            period = annee)
+                                            weights = work_df['wprm'].values)
     
     secondary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
                                                         grid_earnings = secondary_grid_earnings,
                                                         original_earnings = unique_secondary_earning, 
                                                         average_ratios = secondary_mean_tax_rates, 
+                                                        name = "secondary",
                                                         period = annee)
     
-    # compute_intensive_revenue_function computes pdf and cdf, and takes as input the ratios on the grid and the elasticity
-    # returns the intensive primary revenue function, and also the pdf and cdf that we plot in the function plot_cdf_pdf
     
-    elasticity_primary = 0.75
-
-    cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(
-                    grid_earnings = primary_grid_earnings,
-                    earning = work_df['primary_earning'].values, 
-                    mtr_ratios_grid = primary_mtr_ratios_grid,
-                    weights = work_df['wprm'].values, 
-                    elasticity = elasticity_primary,
-                    period = annee)
-    
-    cdf_secondary, pdf_secondary, intensive_secondary_revenue_function = compute_intensive_revenue_function(
-                    grid_earnings = secondary_grid_earnings,
-                    earning = work_df['secondary_earning'].values, 
-                    mtr_ratios_grid = secondary_mtr_ratios_grid,
-                    weights = work_df['wprm'].values, 
-                    elasticity = 1 - elasticity_primary,
-                    period = annee)
-    
-    plot_cdf_pdf(primary_grid = primary_grid_earnings, 
-                 cdf_primary = cdf_primary, 
-                 pdf_primary = pdf_primary, 
-                 secondary_grid = secondary_grid_earnings, 
-                 cdf_secondary = cdf_secondary, 
-                 pdf_secondary = pdf_secondary, 
-                 period = annee)
     
 
     
@@ -349,8 +393,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     earning=work_df['primary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['wprm'].values,
-                    period=annee)
+                    weights=work_df['wprm'].values)
     
     primary_sec_within_integral, primary_dec_within_integral = util_extensive_revenue_function(
                     grid_earnings = primary_grid_earnings,
@@ -370,8 +413,7 @@ def launch_utils(annee = None, want_to_mute_decote = None):
                     earning=work_df['secondary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['wprm'].values,
-                    period=annee)
+                    weights=work_df['wprm'].values)
     
     secondary_sec_within_integral, secondary_dec_within_integral = util_extensive_revenue_function(
                     grid_earnings = secondary_grid_earnings,
@@ -387,16 +429,16 @@ def launch_utils(annee = None, want_to_mute_decote = None):
     secondary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = secondary_grid_earnings, within_integral = secondary_dec_within_integral) + 0
     
 
-    plot_revenue_function(primary_grid = primary_grid_earnings, 
-                          primary_earning = work_df['primary_earning'].values, 
-                          intensive_primary_revenue_function = intensive_primary_revenue_function, 
-                          extensive_primary_revenue_function = primary_extensive_revenue_function, 
-                          secondary_grid = secondary_grid_earnings, 
-                          secondary_earning = work_df['secondary_earning'].values, 
-                          intensive_secondary_revenue_function = intensive_secondary_revenue_function, 
-                          extensive_secondary_revenue_function = secondary_extensive_revenue_function, 
-                          weights = work_df['wprm'].values, 
-                          period = annee)
+    graphe14(primary_grid = primary_grid_earnings, 
+             primary_earning = work_df['primary_earning'].values, 
+             primary_mtr_ratios_grid = primary_mtr_ratios_grid, 
+             extensive_primary_revenue_function = primary_extensive_revenue_function, 
+             secondary_grid = secondary_grid_earnings, 
+             secondary_earning = work_df['secondary_earning'].values,
+             secondary_mtr_ratios_grid = secondary_mtr_ratios_grid, 
+             extensive_secondary_revenue_function = secondary_extensive_revenue_function, 
+             weights = work_df['wprm'].values, 
+             period = annee)
 
 
 
