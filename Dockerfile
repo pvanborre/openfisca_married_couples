@@ -14,11 +14,19 @@ RUN pip install statsmodels
 
 WORKDIR /app
 
-RUN git clone https://github.com/openfisca/openfisca-core.git
-RUN git clone https://github.com/openfisca/openfisca-france.git
+RUN git clone -n https://github.com/openfisca/openfisca-core.git && \
+    cd openfisca-core && \
+    git checkout 9b160f96b7eaae7f796ba7bf2fef5434830acf42
 
-# better practice to add the specific tag of the repo ?
-# RUN git clone --branch <tag_or_branch> https://github.com/example/repo.git
+WORKDIR /app
+
+RUN git clone -n https://github.com/openfisca/openfisca-france.git && \
+    cd openfisca-france && \
+    git checkout 5e900ca5bad464f389ce8718bb8fd4bd18f1d6c8
+
+
+# for reproductibility best practice is to specify a commit ID 
+# I put commit IDs of December, 8th 2023
 
 
 WORKDIR /app/openfisca-core 

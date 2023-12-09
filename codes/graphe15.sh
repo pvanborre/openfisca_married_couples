@@ -12,6 +12,11 @@ echo "output_graphe_15.txt has been created."
 
 for i in $(seq 2002 2019);
 do
+    python simulation_creation.py -y $i
+done
+
+for i in $(seq 2002 2019);
+do
     python utils_paper.py -y $i
 done
 

@@ -302,6 +302,14 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     data_persons = data_persons_brut.merge(data_households_brut, right_index = True, left_on = "idmen", suffixes = ("", "_x"))
     
     print("want_to_mute", want_to_mute_decote)
+    
+    # Weight adjustment : wprm weights are for households, whereas we work on foyers fiscaux
+    # the idea in OpenFisca France-data is to say that individuals have the weight of their households (what is done in the left join above)
+    # and then summing over individuals of the foyer fiscal gives the weight of the foyer fiscal
+    sum_wprm_by_idfoy = data_persons.groupby('idfoy')['wprm'].sum().reset_index()
+    sum_wprm_by_idfoy = sum_wprm_by_idfoy.rename(columns={'wprm': 'weight_foyerfiscal'})
+    data_persons = pandas.merge(data_persons, sum_wprm_by_idfoy, on='idfoy')
+
     print("Table des personnes")
     print(data_persons, "\n\n\n\n\n")
 
@@ -328,10 +336,10 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
 
     for ma_variable in data_persons.columns.tolist():
         # variables pouvant entrer dans la simulation 
-        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "wprm", "prest_precarite_hand",
+        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "prest_precarite_hand",
                             "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
                             "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
-                            "idmen_x", "idfoy_x", "idfam_x"]:
+                            "idmen_x", "idfoy_x", "idfam_x", "weight_foyerfiscal"]:
             # variables définies au niveau de l'individu
             if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
                 simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
@@ -349,9 +357,10 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     primary_age = simulation.calculate('primary_age', period)
     secondary_age = simulation.calculate('secondary_age', period)
 
+
     # we take our original data and keep only the id of the foyer_fiscal and the weight of the household + the age of the first person of the foyer_fiscal
     result_df = data_persons.drop_duplicates(subset='idfoy', keep='first')
-    result_df = result_df[['idfoy', 'age', 'wprm']]
+    result_df = result_df[['idfoy', 'age', 'weight_foyerfiscal']]
 
     # then we add all columns computed in the simulation
     result_df['ancien_irpp'] = ancien_irpp
