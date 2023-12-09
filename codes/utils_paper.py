@@ -348,7 +348,7 @@ def launch_utils(annee = None):
     unique_primary_earning, primary_mean_tax_rates = computes_mtr_ratios_knowing_earning(
                                             earning = work_df['primary_earning'].values, 
                                             taux_marginal = work_df['taux_marginal'].values, 
-                                            weights = work_df['wprm'].values)
+                                            weights = work_df['weight_foyerfiscal'].values)
     
     primary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
                                                         grid_earnings = primary_grid_earnings,
@@ -361,7 +361,7 @@ def launch_utils(annee = None):
     unique_secondary_earning, secondary_mean_tax_rates = computes_mtr_ratios_knowing_earning(
                                             earning = work_df['secondary_earning'].values, 
                                             taux_marginal = work_df['taux_marginal'].values, 
-                                            weights = work_df['wprm'].values)
+                                            weights = work_df['weight_foyerfiscal'].values)
     
     secondary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
                                                         grid_earnings = secondary_grid_earnings,
@@ -385,7 +385,7 @@ def launch_utils(annee = None):
                     earning=work_df['primary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['wprm'].values)
+                    weights=work_df['weight_foyerfiscal'].values)
     
     primary_sec_within_integral, primary_dec_within_integral = util_extensive_revenue_function(
                     grid_earnings = primary_grid_earnings,
@@ -393,8 +393,8 @@ def launch_utils(annee = None):
                     average_ratios = primary_mean_tax_rates,
                     sec_earnings = df_single_earner_couples['primary_earning'].values, 
                     dec_earnings = df_dual_earner_couples['primary_earning'].values, 
-                    sec_weights = df_single_earner_couples['wprm'].values,
-                    dec_weights = df_dual_earner_couples['wprm'].values, 
+                    sec_weights = df_single_earner_couples['weight_foyerfiscal'].values,
+                    dec_weights = df_dual_earner_couples['weight_foyerfiscal'].values, 
                     name = "primary")
 
 
@@ -405,7 +405,7 @@ def launch_utils(annee = None):
                     earning=work_df['secondary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['wprm'].values)
+                    weights=work_df['weight_foyerfiscal'].values)
     
     # for single earner couples (sec), the secondary earning is always 0
     secondary_sec_within_integral, secondary_dec_within_integral = util_extensive_revenue_function(
@@ -414,8 +414,8 @@ def launch_utils(annee = None):
                     average_ratios = secondary_mean_tax_rates,
                     sec_earnings = df_single_earner_couples['secondary_earning'].values, 
                     dec_earnings = df_dual_earner_couples['secondary_earning'].values, 
-                    sec_weights = df_single_earner_couples['wprm'].values,
-                    dec_weights = df_dual_earner_couples['wprm'].values,
+                    sec_weights = df_single_earner_couples['weight_foyerfiscal'].values,
+                    dec_weights = df_dual_earner_couples['weight_foyerfiscal'].values,
                     name = "secondary")
 
 
@@ -430,7 +430,7 @@ def launch_utils(annee = None):
              secondary_earning = work_df['secondary_earning'].values,
              secondary_mtr_ratios_grid = secondary_mtr_ratios_grid, 
              extensive_secondary_revenue_function = secondary_extensive_revenue_function, 
-             weights = work_df['wprm'].values, 
+             weights = work_df['weight_foyerfiscal'].values, 
              period = annee)
 
 
