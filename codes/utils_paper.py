@@ -99,7 +99,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
 
     # tax is negative (that is why the -tax)
     denominator = total_earning+tax
-    denominator[denominator == 0] = 0.001 # is this the right thing to do ? look at what happens when deno = 0
+
     
     # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume for the extensive elasticity
     tax_ratio = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)))

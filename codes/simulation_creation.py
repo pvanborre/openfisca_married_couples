@@ -372,6 +372,10 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     result_df['primary_age'] = primary_age
     result_df['secondary_age'] = secondary_age
     result_df['total_earning'] = primary_earning + secondary_earning
+    result_df['denominator'] = primary_earning + secondary_earning + ancien_irpp # denominator in the computation of the extensive revenue function
+
+    # we lose many individuals with this line... 
+    result_df = result_df[result_df['denominator'] != 0]
 
     print(result_df)
 
