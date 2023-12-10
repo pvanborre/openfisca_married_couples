@@ -170,53 +170,6 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
     return cumulative_integrals - cumulative_integrals[-1]
 
 
-################################################################################
-################# Welfare ######################################################
-################################################################################
-
-
-def median_share_primary(primary_earning, total_earning, weights, period):
-    """
-    Here we compute the share of the primary earning in the total earning of the foyer fiscal
-    For each decile of total earning we then compute the median of this share
-    """
-    total_earning[total_earning == 0] = 0.001
-    primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0 (because since we limited to nonnegative primary and secondary earning, a total earning equals to 0 means that both primary and secondary earnings equal 0)
-    share_primary = primary_earning/total_earning * 100 
-
-    earning_sorted = np.sort(total_earning)
-    deciles = np.percentile(earning_sorted, np.arange(10, 100, 10)) # gives 9 values in total_earning that correspond to the decile values
-    decile_numbers = np.digitize(total_earning, deciles) # gives for each value of total earning the decile (number between 0 and 9) it is associated to
-
-    
-    decile_medians = []
-    for i in range(10):
-        decile_share_primary = share_primary[decile_numbers == i] # we only keep values of the ith decile to get subarrays
-        decile_weights = weights[decile_numbers == i]
-
-        # computes the weighted median, i was inspired by https://stackoverflow.com/questions/20601872/numpy-or-scipy-to-calculate-weighted-median
-        sorted_indices = np.argsort(decile_share_primary)
-        cumulative_weights = np.cumsum(decile_weights[sorted_indices]) # we sort the weights according to earnings, and then build a cumulative tab of weights
-        median_index = np.searchsorted(cumulative_weights, 0.5 * cumulative_weights[-1]) # we take the sum of all weights divided by 2, and we look for the indice where it would be inserted without changing the order (that is the median weight position)
-        median_index_unsorted = sorted_indices[median_index]
-        decile_medians.append(decile_share_primary[median_index_unsorted]) 
-
-    
-    decile_medians = np.array(decile_medians)
-    print("share of primary for year", period, decile_medians)
-
-    plt.figure()
-    plt.scatter(np.arange(1,11), decile_medians, s = 10)
-    plt.xticks(np.arange(1,11))
-    plt.xlabel('Gross income decile')
-    plt.ylabel('Percent')
-    plt.title("Median share of primary earner - {annee}".format(annee = period))
-    plt.show()
-    plt.savefig('../outputs/median_share_primary/median_share_primary_{annee}.png'.format(annee = period))
-    plt.close()
-
-    
-
 
 
 ################################################################################
@@ -357,8 +310,116 @@ def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_
     plt.savefig('../outputs/pdf_primary_secondary/pdf_primary_secondary_{annee}.png'.format(annee = period))
     plt.close()
 
+    return rapport
+
     
 
+
+################################################################################
+################# Welfare ######################################################
+################################################################################
+
+
+def median_share_primary(primary_earning, total_earning, weights, period):
+    """
+    Here we compute the share of the primary earning in the total earning of the foyer fiscal
+    For each decile of total earning we then compute the median of this share
+    """
+    total_earning[total_earning == 0] = 0.001
+    primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0 (because since we limited to nonnegative primary and secondary earning, a total earning equals to 0 means that both primary and secondary earnings equal 0)
+    share_primary = primary_earning/total_earning * 100 
+
+    earning_sorted = np.sort(total_earning)
+    deciles = np.percentile(earning_sorted, np.arange(10, 100, 10)) # gives 9 values in total_earning that correspond to the decile values
+    decile_numbers = np.digitize(total_earning, deciles) # gives for each value of total earning the decile (number between 0 and 9) it is associated to
+
+    
+    decile_medians = []
+    for i in range(10):
+        decile_share_primary = share_primary[decile_numbers == i] # we only keep values of the ith decile to get subarrays
+        decile_weights = weights[decile_numbers == i]
+
+        # computes the weighted median, i was inspired by https://stackoverflow.com/questions/20601872/numpy-or-scipy-to-calculate-weighted-median
+        sorted_indices = np.argsort(decile_share_primary)
+        cumulative_weights = np.cumsum(decile_weights[sorted_indices]) # we sort the weights according to earnings, and then build a cumulative tab of weights
+        median_index = np.searchsorted(cumulative_weights, 0.5 * cumulative_weights[-1]) # we take the sum of all weights divided by 2, and we look for the indice where it would be inserted without changing the order (that is the median weight position)
+        median_index_unsorted = sorted_indices[median_index]
+        decile_medians.append(decile_share_primary[median_index_unsorted]) 
+
+    
+    decile_medians = np.array(decile_medians)
+    print("share of primary for year", period, decile_medians)
+
+    plt.figure()
+    plt.scatter(np.arange(1,11), decile_medians, s = 10)
+    plt.xticks(np.arange(1,11))
+    plt.xlabel('Gross income decile')
+    plt.ylabel('Percent')
+    plt.title("Median share of primary earner - {annee}".format(annee = period))
+    plt.show()
+    plt.savefig('../outputs/median_share_primary/median_share_primary_{annee}.png'.format(annee = period))
+    plt.close()
+
+    
+def main_welfare_graph(primary_earning, secondary_earning, total_earning, weights, slopes_lines, period):
+    """
+    TODO 
+    """
+    eps1_tab = [0.25, 0.5, 0.75]
+    eps2_tab = [0.75, 0.5, 0.25]
+
+    # get rid of the bottom 5% of the distribution (in terms of total earnings) : but doesn't change...
+    threshold = np.percentile(total_earning, 5)
+    print("threshold income not taken into account for welfare", threshold)
+    primary_earning = primary_earning[total_earning > threshold]
+    secondary_earning = secondary_earning[total_earning > threshold]
+    weights = weights[total_earning > threshold]
+    total_earning = total_earning[total_earning > threshold]
+
+    # equal weights
+    welfare_weight = np.ones_like(primary_earning)
+    x_equal_weights = np.average(welfare_weight*secondary_earning, weights = weights)
+    y_equal_weights = np.average(welfare_weight*primary_earning, weights = weights)
+    print("equal weights : ", x_equal_weights, y_equal_weights)
+    plt.plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red', label = "equal weights")
+    #plt.scatter(x_equal_weights, y_equal_weights, color='red', marker='x', s=100) #other way to display the cross
+
+    # decreasing
+    total_earning = primary_earning + secondary_earning
+    total_earning[total_earning == 0] = 1 
+    welfare_weight = np.power(total_earning, -0.8)
+    x_decreasing = np.average(welfare_weight*secondary_earning, weights = weights)
+    y_decreasing = np.average(welfare_weight*primary_earning, weights = weights)
+    print("decreasing ", x_decreasing, y_decreasing)
+    plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple', label = "decreasing")
+
+
+    
+    borne = 50000
+    x = np.linspace(0, borne, 4)
+    plt.plot(x, x, c = '#828282')
+
+    green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
+    for i in range(len(eps1_tab)):
+        color = green_shades[i]
+        plt.plot(x, slopes_lines[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
+
+    plt.scatter(secondary_earning, primary_earning, s = 0.1, c = '#828282') 
+
+    eps = 500
+    plt.xlim(-eps, borne) 
+    plt.ylim(-eps, borne) 
+
+    plt.grid()
+    plt.xlabel('Secondary earner')
+    plt.ylabel('Primary earner')
+    plt.title("Reform towards individual taxation: Welfare - {}".format(period))
+
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/welfare/welfare_{annee}.png'.format(annee = period))
+    plt.close()
+    
 
 
 
@@ -471,7 +532,7 @@ def launch_utils(annee = None):
     secondary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = secondary_grid_earnings, within_integral = secondary_dec_within_integral) + 0
     
 
-    winners_political_economy(primary_grid = primary_grid_earnings, 
+    slopes_lines = winners_political_economy(primary_grid = primary_grid_earnings, 
              primary_earning = work_df['primary_earning'].values, 
              primary_mtr_ratios_grid = primary_mtr_ratios_grid, 
              extensive_primary_revenue_function = primary_extensive_revenue_function, 
@@ -490,6 +551,14 @@ def launch_utils(annee = None):
                          total_earning = work_df['total_earning'].values, 
                          weights = work_df['weight_foyerfiscal'].values, 
                          period = annee)
+    
+    main_welfare_graph(primary_earning = work_df['primary_earning'].values,
+                       secondary_earning = work_df['secondary_earning'].values,
+                       total_earning = work_df['total_earning'].values,
+                       weights = work_df['weight_foyerfiscal'].values,
+                       slopes_lines = slopes_lines,
+                       period = annee)
+    
 
 
 
