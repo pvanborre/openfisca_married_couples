@@ -171,6 +171,47 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
 
 
 ################################################################################
+################# Welfare ######################################################
+################################################################################
+
+
+def median_share_primary(primary_earning, total_earning, weights, period):
+    """
+    Here we compute the share of the primary earning in the total earning of the foyer fiscal
+    For each decile of total earning we then compute the median of this share
+    """
+    share_primary = primary_earning/total_earning * 100 
+
+    earning_sorted = np.sort(total_earning)
+    deciles = np.percentile(earning_sorted, np.arange(10, 100, 10)) # gives 10 values in total_earning that corresponds to the decile values
+    decile_numbers = np.digitize(total_earning, deciles) # gives for each value of total earning the decile (number between 0 and 1) it is associated to
+    print("deciles", deciles)
+    print(decile_numbers)
+    
+    decile_medians = []
+    for i in range(10):
+        decile_share_primary = share_primary[decile_numbers == i] # we only keep values of the ith decile
+        decile_medians.append(np.median(decile_share_primary))
+        
+    decile_medians = np.array(decile_medians)
+    print("share of primary for year", period, decile_medians)
+
+    # TODO add weights
+    
+    plt.figure()
+    plt.scatter(np.arange(1,11), decile_medians, s = 10)
+    plt.xlabel('Gross income decile')
+    plt.ylabel('Percent')
+    plt.title("Median share of primary earner - {annee}".format(annee = period))
+    plt.show()
+    plt.savefig('../outputs/median_share_primary/median_share_primary_{annee}.png'.format(annee = period))
+    plt.close()
+
+    
+
+
+
+################################################################################
 ################# Altogether ###################################################
 ################################################################################
 
@@ -432,6 +473,15 @@ def launch_utils(annee = None):
              extensive_secondary_revenue_function = secondary_extensive_revenue_function, 
              weights = work_df['weight_foyerfiscal'].values, 
              period = annee)
+    
+    ################################################################################
+    ################# Welfare part #################################################
+    ################################################################################
+
+    median_share_primary(primary_earning = work_df['primary_earning'].values, 
+                         total_earning = work_df['total_earning'].values, 
+                         weights = work_df['weight_foyerfiscal'].values, 
+                         period = annee)
 
 
 
