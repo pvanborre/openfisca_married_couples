@@ -180,6 +180,8 @@ def median_share_primary(primary_earning, total_earning, weights, period):
     Here we compute the share of the primary earning in the total earning of the foyer fiscal
     For each decile of total earning we then compute the median of this share
     """
+    total_earning[total_earning == 0] = 0.001
+    primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0
     share_primary = primary_earning/total_earning * 100 
 
     earning_sorted = np.sort(total_earning)
@@ -200,6 +202,7 @@ def median_share_primary(primary_earning, total_earning, weights, period):
     
     plt.figure()
     plt.scatter(np.arange(1,11), decile_medians, s = 10)
+    plt.xticks(np.arange(1,11))
     plt.xlabel('Gross income decile')
     plt.ylabel('Percent')
     plt.title("Median share of primary earner - {annee}".format(annee = period))
