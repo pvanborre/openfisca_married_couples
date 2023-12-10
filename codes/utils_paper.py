@@ -171,6 +171,55 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
 
 
 ################################################################################
+################# Welfare ######################################################
+################################################################################
+
+
+def median_share_primary(primary_earning, total_earning, weights, period):
+    """
+    Here we compute the share of the primary earning in the total earning of the foyer fiscal
+    For each decile of total earning we then compute the median of this share
+    """
+    total_earning[total_earning == 0] = 0.001
+    primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0 (because since we limited to nonnegative primary and secondary earning, a total earning equals to 0 means that both primary and secondary earnings equal 0)
+    share_primary = primary_earning/total_earning * 100 
+
+    earning_sorted = np.sort(total_earning)
+    deciles = np.percentile(earning_sorted, np.arange(10, 100, 10)) # gives 9 values in total_earning that correspond to the decile values
+    decile_numbers = np.digitize(total_earning, deciles) # gives for each value of total earning the decile (number between 0 and 9) it is associated to
+
+    
+    decile_medians = []
+    for i in range(10):
+        decile_share_primary = share_primary[decile_numbers == i] # we only keep values of the ith decile to get subarrays
+        decile_weights = weights[decile_numbers == i]
+
+        # computes the weighted median, i was inspired by https://stackoverflow.com/questions/20601872/numpy-or-scipy-to-calculate-weighted-median
+        sorted_indices = np.argsort(decile_share_primary)
+        cumulative_weights = np.cumsum(decile_weights[sorted_indices]) # we sort the weights according to earnings, and then build a cumulative tab of weights
+        median_index = np.searchsorted(cumulative_weights, 0.5 * cumulative_weights[-1]) # we take the sum of all weights divided by 2, and we look for the indice where it would be inserted without changing the order (that is the median weight position)
+        median_index_unsorted = sorted_indices[median_index]
+        decile_medians.append(decile_share_primary[median_index_unsorted]) 
+
+    
+    decile_medians = np.array(decile_medians)
+    print("share of primary for year", period, decile_medians)
+
+    plt.figure()
+    plt.scatter(np.arange(1,11), decile_medians, s = 10)
+    plt.xticks(np.arange(1,11))
+    plt.xlabel('Gross income decile')
+    plt.ylabel('Percent')
+    plt.title("Median share of primary earner - {annee}".format(annee = period))
+    plt.show()
+    plt.savefig('../outputs/median_share_primary/median_share_primary_{annee}.png'.format(annee = period))
+    plt.close()
+
+    
+
+
+
+################################################################################
 ################# Altogether ###################################################
 ################################################################################
 
@@ -432,6 +481,15 @@ def launch_utils(annee = None):
              extensive_secondary_revenue_function = secondary_extensive_revenue_function, 
              weights = work_df['weight_foyerfiscal'].values, 
              period = annee)
+    
+    ################################################################################
+    ################# Welfare part #################################################
+    ################################################################################
+
+    median_share_primary(primary_earning = work_df['primary_earning'].values, 
+                         total_earning = work_df['total_earning'].values, 
+                         weights = work_df['weight_foyerfiscal'].values, 
+                         period = annee)
 
 
 
