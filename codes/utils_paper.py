@@ -181,14 +181,13 @@ def median_share_primary(primary_earning, total_earning, weights, period):
     For each decile of total earning we then compute the median of this share
     """
     total_earning[total_earning == 0] = 0.001
-    primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0
+    primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0 (because since we limited to nonnegative primary and secondary earning, a total earning equals to 0 means that both primary and secondary earnings equal 0)
     share_primary = primary_earning/total_earning * 100 
 
     earning_sorted = np.sort(total_earning)
-    deciles = np.percentile(earning_sorted, np.arange(10, 100, 10)) # gives 10 values in total_earning that corresponds to the decile values
-    decile_numbers = np.digitize(total_earning, deciles) # gives for each value of total earning the decile (number between 0 and 1) it is associated to
-    print("deciles", deciles)
-    print(decile_numbers)
+    deciles = np.percentile(earning_sorted, np.arange(10, 100, 10)) # gives 9 values in total_earning that correspond to the decile values
+    decile_numbers = np.digitize(total_earning, deciles) # gives for each value of total earning the decile (number between 0 and 9) it is associated to
+
     
     decile_medians = []
     for i in range(10):
@@ -199,8 +198,8 @@ def median_share_primary(primary_earning, total_earning, weights, period):
         sorted_indices = np.argsort(decile_share_primary)
         cumulative_weights = np.cumsum(decile_weights[sorted_indices]) # we sort the weights according to earnings, and then build a cumulative tab of weights
         median_index = np.searchsorted(cumulative_weights, 0.5 * cumulative_weights[-1]) # we take the sum of all weights divided by 2, and we look for the indice where it would be inserted without changing the order (that is the median weight position)
-        median_index_sorted = sorted_indices[median_index]
-        decile_medians.append(decile_share_primary[median_index_sorted]) 
+        median_index_unsorted = sorted_indices[median_index]
+        decile_medians.append(decile_share_primary[median_index_unsorted]) 
 
     
     decile_medians = np.array(decile_medians)
