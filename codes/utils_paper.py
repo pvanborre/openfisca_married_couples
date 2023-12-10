@@ -8,6 +8,7 @@ import statsmodels.api as sm
 from scipy.interpolate import interp1d
 from scipy.integrate import trapz
 import sys
+from scipy.spatial.distance import cdist
 
 ################################################################################
 ################# Intensive revenue function ###################################
@@ -37,7 +38,7 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     """
     This takes as input numpy arrays of size unique primary/secondary earnings computed by the above function, 
     that is distinct primary/secondary earnings and the ratios E(T'/(1-T'))
-    The function creates a grid of earnings and for each earning of the grid, find the closest "real" earning and the corresponding MTR ratio
+    For each earning of the grid, this function finds the closest "real" earning and the corresponding MTR ratio
     Then it scatters these ratios.
     Since it is a stairs function with stairs overlapping, we decided to smooth the function using a kernel, and we plot the results
     """
@@ -56,6 +57,47 @@ def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_
     plt.legend()
     plt.show()
     plt.savefig('../outputs/mtr_ratio_by_{name}/mtr_ratio_by_{name}_{annee}.png'.format(name = name, annee = period))
+    plt.close()
+
+    return smoothed_y_primary
+
+
+def new_version_mtr_ratios(earnings, grid_earnings, marginal_tax_rates, name, period):
+    """
+    For each y1 of my sample i associate the closest y1 on the grid
+    Then for all y1 of the grid, i take all y1 of the sample that belong to his cluster (the ones that are the closest), and take the average of the MTR ratio on this cluster
+    """
+    distances = cdist(earnings.reshape(-1, 1), grid_earnings.reshape(-1, 1)) # output matrix of size Sample size * Grid size, distances[i,j] being the distance
+    closest_grid_indices = np.argmin(distances, axis=1) # output of size Sample size, filled with indices between 0 and Grid size, closest_grid_indices[i] being the index of the grid earning that is the closest to the ith earning of our sample
+
+    average_tax_ratios = np.zeros_like(grid_earnings)
+    empty = np.zeros_like(grid_earnings)
+    for i in range(len(grid_earnings)):
+        indices_for_grid_earning = np.where(closest_grid_indices == i) # we average on the cluster
+        empty[i] = len(indices_for_grid_earning[0])
+        if empty[i] > 0:
+            average_tax_ratios[i] = np.mean(marginal_tax_rates[indices_for_grid_earning]/(1 - marginal_tax_rates[indices_for_grid_earning]))
+
+    
+    new_grid_earnings = grid_earnings[empty > 0]
+    new_average_ratos = average_tax_ratios[empty > 0]
+    print("number of grid earnings removed", len(grid_earnings) - len(new_grid_earnings))
+    
+
+    bandwidth = 5000
+    # Be careful here : we define the regression on these new tabs but then we fit it on the whole grid earning
+    kernel_reg = KernelReg(endog=new_average_ratos, exog=new_grid_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    smoothed_y_primary, _ = kernel_reg.fit(grid_earnings)
+
+    plt.scatter(new_grid_earnings, new_average_ratos, label='MTR ratio without smoothing', color = 'lightgreen')
+    plt.plot(grid_earnings, smoothed_y_primary, label='MTR ratio with smoothing', color = 'red') 
+
+    plt.xlabel('Gross income')
+    plt.ylabel("MTR ratio T'/(1-T')")
+    plt.title("MTR ratio - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/test/mtr_ratio_by_{name}_{annee}.png'.format(name = name, annee = period))
     plt.close()
 
     return smoothed_y_primary
@@ -419,9 +461,23 @@ def launch_utils(annee = None):
                                                         name = "secondary",
                                                         period = annee)
     
-    
-    
+    ################################################################################
+    ####################### Intensive part, another version ########################
+    ############# where we compute the mean directly from the grid #################
+    ################################################################################
 
+    
+    primary_mtr_ratios_grid = new_version_mtr_ratios(earnings = work_df['primary_earning'].values, 
+                           grid_earnings = primary_grid_earnings, 
+                           marginal_tax_rates = work_df['taux_marginal'].values, 
+                           name = "primary",
+                           period = annee)
+    
+    secondary_mtr_ratios_grid = new_version_mtr_ratios(earnings = work_df['secondary_earning'].values, 
+                           grid_earnings = secondary_grid_earnings, 
+                           marginal_tax_rates = work_df['taux_marginal'].values, 
+                           name = "secondary",
+                           period = annee)
     
     ################################################################################
     ################# Extensive part ###############################################
