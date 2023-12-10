@@ -192,14 +192,20 @@ def median_share_primary(primary_earning, total_earning, weights, period):
     
     decile_medians = []
     for i in range(10):
-        decile_share_primary = share_primary[decile_numbers == i] # we only keep values of the ith decile
-        decile_medians.append(np.median(decile_share_primary))
-        
+        decile_share_primary = share_primary[decile_numbers == i] # we only keep values of the ith decile to get subarrays
+        decile_weights = weights[decile_numbers == i]
+
+        # computes the weighted median, i was inspired by https://stackoverflow.com/questions/20601872/numpy-or-scipy-to-calculate-weighted-median
+        sorted_indices = np.argsort(decile_share_primary)
+        cumulative_weights = np.cumsum(decile_weights[sorted_indices]) # we sort the weights according to earnings, and then build a cumulative tab of weights
+        median_index = np.searchsorted(cumulative_weights, 0.5 * cumulative_weights[-1]) # we take the sum of all weights divided by 2, and we look for the indice where it would be inserted without changing the order (that is the median weight position)
+        median_index_sorted = sorted_indices[median_index]
+        decile_medians.append(decile_share_primary[median_index_sorted]) 
+
+    
     decile_medians = np.array(decile_medians)
     print("share of primary for year", period, decile_medians)
 
-    # TODO add weights
-    
     plt.figure()
     plt.scatter(np.arange(1,11), decile_medians, s = 10)
     plt.xticks(np.arange(1,11))
