@@ -33,7 +33,7 @@ def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights):
 
 
 
-def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_ratios, name, period):
+def util_intensive_revenue_function(grid_earnings, original_earnings, average_ratios, name, period):
     """
     This takes as input numpy arrays of size unique primary/secondary earnings computed by the above function, 
     that is distinct primary/secondary earnings and the ratios E(T'/(1-T'))
@@ -89,19 +89,40 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
 ################# Extensive revenue function ###################################
 ################################################################################
 
-def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
+def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, period):
     """
     This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then total earnings, tax before reform and weights
     This computes E(T/(ym-T) * pelast | y1/2) for all distinct values of primary earings (or secondary earnings)
     So it returns this numpy array of size unique primary/secondary earnings
     """
+    ########## Computing the participation elasticity ####################
+
+    # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume in the paper for the extensive elasticity
+    participation_elasticity = 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90))
+    participation_elasticity[total_earning > np.percentile(total_earning, 90)] = 0.25
+    
+    sorted_indices = np.argsort(total_earning)
+    total_earning_sorted = total_earning[sorted_indices]
+    participation_elasticity_sorted = participation_elasticity[sorted_indices]
+    
+    plt.plot(total_earning_sorted, participation_elasticity_sorted)   
+    plt.xlabel('Gross income')
+    plt.ylabel("Participation elasticity")
+    plt.title("Participation elasticity - {annee}".format(annee = period))
+    plt.ylim(0,1)
+    plt.show()
+    plt.savefig('../outputs/participation_elasticity/participation_elasticity_{annee}.png'.format(annee = period))
+    plt.close()
+
+    ########## Computing the expected mean ####################
 
     # tax is negative (that is why the -tax)
     denominator = total_earning+tax
-    denominator[denominator == 0] = 0.001 # is this the right thing to do ? look at what happens when deno = 0
+    denominator[denominator == 0] = 1000 
+    # here I can put a random value, this won't affect the extensive revenue function
+    # since in the integral from y1 to ymax we don't have the y1 = 0 value (that is equivalent to total_earning = 0)
     
-    # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume for the extensive elasticity
-    tax_ratio = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)))
+    tax_ratio = (-tax)/denominator * participation_elasticity
 
     unique_earning = np.unique(earning)
     mean_tax_rates = np.zeros_like(unique_earning, dtype=float)
@@ -111,6 +132,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
         mean_tax_rate = np.average(tax_ratio[indices], weights=weights[indices])
         mean_tax_rates[i] = mean_tax_rate
 
+    print("mean tax rates", mean_tax_rates)
     return unique_earning, mean_tax_rates
 
 
@@ -118,16 +140,28 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
 
 
 
-def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights, name):
+def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights, period, name):
     """
     This takes as input numpy arrays of size number unique foyers_fiscaux, primary or secondary unique earnings, and average ratios E(T/(ym-T) * pelast)
     Then other inputs are specific to single and dual earner couples (sec and dec)
     This computes the integrand of the extensive revenue function on a specific grid of earnings, that is E(T/(ym-T) * pelast) * pdfsec/dec * sharesec/dec 
     """
 
-    # defines the grid and gets E(T/(ym-T) * pelast) on this grid (take closest value from the original earnings)
-    closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
-    closest_tax_ratios = average_ratios[closest_indices]
+
+    bandwidth = 5000
+    # define on all FoyersFiscaux
+    kernel_reg = KernelReg(endog=average_ratios, exog=original_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    # fit on the grid of earnings
+    ratio_fit, _ = kernel_reg.fit(grid_earnings)
+    plt.scatter(original_earnings, average_ratios, label='Integrand without smoothing', color = 'lightgreen')
+    plt.plot(grid_earnings, ratio_fit, label='Integrand with smoothing', color = 'red')   
+    plt.xlabel('Gross income')
+    plt.ylabel("Tm/(ym-Tm) PI")
+    plt.title("Integrand - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/integrand_{name}/integrand_{name}_{annee}.png'.format(name = name, annee = period))
+    plt.close()
 
     # then computes the pdf and the integrand, for both single and dual earner couples
     sec_share = np.sum(sec_weights)/(np.sum(sec_weights) + np.sum(dec_weights))
@@ -138,7 +172,7 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
 
     dec_kde = gaussian_kde(dec_earnings_sorted, weights=dec_weights_sorted)
     dec_pdf = dec_kde(grid_earnings)
-    dec_within_integral = closest_tax_ratios * dec_pdf * (1-sec_share)
+    dec_within_integral = ratio_fit * dec_pdf * (1-sec_share)
 
     if name == "primary":
         sorted_indices_sec = np.argsort(sec_earnings)
@@ -147,7 +181,7 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
 
         sec_kde = gaussian_kde(sec_earnings_sorted, weights=sec_weights_sorted)
         sec_pdf = sec_kde(grid_earnings) 
-        sec_within_integral = closest_tax_ratios * sec_pdf * sec_share
+        sec_within_integral = ratio_fit * sec_pdf * sec_share
         return sec_within_integral, dec_within_integral
     
     else: # the single earner secondary has no sense, since all secondary earnings are then 0
@@ -166,6 +200,7 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
         cumulative_integrals[i + 1] = cumulative_integrals[i] + trapz(within_integral[i:i + 2], grid_earnings[i:i + 2])
 
     # - integral from y1 to y1_max = integral from y1_0 to y1 - integral from y1_0 to y1_max
+    
     return cumulative_integrals - cumulative_integrals[-1]
 
 
@@ -489,7 +524,7 @@ def launch_utils(annee = None):
                                             taux_marginal = work_df['taux_marginal'].values, 
                                             weights = work_df['weight_foyerfiscal'].values)
     
-    primary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
+    primary_mtr_ratios_grid = util_intensive_revenue_function(
                                                         grid_earnings = primary_grid_earnings,
                                                         original_earnings = unique_primary_earning, 
                                                         average_ratios = primary_mean_tax_rates, 
@@ -502,7 +537,7 @@ def launch_utils(annee = None):
                                             taux_marginal = work_df['taux_marginal'].values, 
                                             weights = work_df['weight_foyerfiscal'].values)
     
-    secondary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
+    secondary_mtr_ratios_grid = util_intensive_revenue_function(
                                                         grid_earnings = secondary_grid_earnings,
                                                         original_earnings = unique_secondary_earning, 
                                                         average_ratios = secondary_mean_tax_rates, 
@@ -524,7 +559,8 @@ def launch_utils(annee = None):
                     earning=work_df['primary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['weight_foyerfiscal'].values)
+                    weights=work_df['weight_foyerfiscal'].values,
+                    period = annee)
     
     primary_sec_within_integral, primary_dec_within_integral = util_extensive_revenue_function(
                     grid_earnings = primary_grid_earnings,
@@ -534,17 +570,20 @@ def launch_utils(annee = None):
                     dec_earnings = df_dual_earner_couples['primary_earning'].values, 
                     sec_weights = df_single_earner_couples['weight_foyerfiscal'].values,
                     dec_weights = df_dual_earner_couples['weight_foyerfiscal'].values, 
+                    period = annee,
                     name = "primary")
 
 
     primary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_sec_within_integral) + compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_dec_within_integral)
-    
+    print("primary extensive revenue function", primary_extensive_revenue_function)
+
     # Secondary : the same 3 steps as for primary
     unique_secondary_earning, secondary_mean_tax_rates = computes_tax_ratios_knowing_earning(
                     earning=work_df['secondary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['weight_foyerfiscal'].values)
+                    weights=work_df['weight_foyerfiscal'].values,
+                    period = annee)
     
     # for single earner couples (sec), the secondary earning is always 0
     secondary_sec_within_integral, secondary_dec_within_integral = util_extensive_revenue_function(
@@ -555,6 +594,7 @@ def launch_utils(annee = None):
                     dec_earnings = df_dual_earner_couples['secondary_earning'].values, 
                     sec_weights = df_single_earner_couples['weight_foyerfiscal'].values,
                     dec_weights = df_dual_earner_couples['weight_foyerfiscal'].values,
+                    period = annee,
                     name = "secondary")
 
 
