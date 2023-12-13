@@ -89,12 +89,32 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
 ################# Extensive revenue function ###################################
 ################################################################################
 
-def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
+def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, period):
     """
     This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then total earnings, tax before reform and weights
     This computes E(T/(ym-T) * pelast | y1/2) for all distinct values of primary earings (or secondary earnings)
     So it returns this numpy array of size unique primary/secondary earnings
     """
+    ########## Computing the participation elasticity ####################
+
+    # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume in the paper for the extensive elasticity
+    participation_elasticity = 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90))
+    participation_elasticity[total_earning > np.percentile(total_earning, 90)] = 0.25
+    
+    sorted_indices = np.argsort(total_earning)
+    total_earning_sorted = total_earning[sorted_indices]
+    participation_elasticity_sorted = participation_elasticity[sorted_indices]
+    
+    plt.plot(total_earning_sorted, participation_elasticity_sorted)   
+    plt.xlabel('Gross income')
+    plt.ylabel("Participation elasticity")
+    plt.title("Participation elasticity - {annee}".format(annee = period))
+    plt.ylim(0,1)
+    plt.show()
+    plt.savefig('../outputs/participation_elasticity/participation_elasticity_{annee}.png'.format(annee = period))
+    plt.close()
+
+    ########## Computing the expected mean ####################
 
     # tax is negative (that is why the -tax)
     denominator = total_earning+tax
@@ -102,8 +122,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
     # here I can put a random value, this won't affect the extensive revenue function
     # since in the integral from y1 to ymax we don't have the y1 = 0 value (that is equivalent to total_earning = 0)
     
-    # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume in the paper for the extensive elasticity
-    tax_ratio = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)))
+    tax_ratio = (-tax)/denominator * participation_elasticity
 
     unique_earning = np.unique(earning)
     mean_tax_rates = np.zeros_like(unique_earning, dtype=float)
@@ -113,6 +132,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
         mean_tax_rate = np.average(tax_ratio[indices], weights=weights[indices])
         mean_tax_rates[i] = mean_tax_rate
 
+    print("mean tax rates", mean_tax_rates)
     return unique_earning, mean_tax_rates
 
 
@@ -542,7 +562,8 @@ def launch_utils(annee = None):
                     earning=work_df['primary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['weight_foyerfiscal'].values)
+                    weights=work_df['weight_foyerfiscal'].values,
+                    period = annee)
     
     primary_sec_within_integral, primary_dec_within_integral = util_extensive_revenue_function(
                     grid_earnings = primary_grid_earnings,
@@ -564,7 +585,8 @@ def launch_utils(annee = None):
                     earning=work_df['secondary_earning'].values,
                     total_earning=work_df['total_earning'].values,
                     tax=work_df['ancien_irpp'].values,
-                    weights=work_df['weight_foyerfiscal'].values)
+                    weights=work_df['weight_foyerfiscal'].values,
+                    period = annee)
     
     # for single earner couples (sec), the secondary earning is always 0
     secondary_sec_within_integral, secondary_dec_within_integral = util_extensive_revenue_function(
