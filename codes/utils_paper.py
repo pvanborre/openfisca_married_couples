@@ -98,7 +98,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
 
     # tax is negative (that is why the -tax)
     denominator = total_earning+tax
-    denominator[denominator == 0] = 0.001 # is this the right thing to do ? look at what happens when deno = 0
+    denominator[denominator == 0] = 1000 # here I can put a random value, this won't affect the results since in the integral from y1 to ymax we don't have the y1 = 0 value (that is equivalent to total_earning = 0)
     
     # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume for the extensive elasticity
     tax_ratio = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)))
@@ -166,6 +166,7 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
         cumulative_integrals[i + 1] = cumulative_integrals[i] + trapz(within_integral[i:i + 2], grid_earnings[i:i + 2])
 
     # - integral from y1 to y1_max = integral from y1_0 to y1 - integral from y1_0 to y1_max
+    
     return cumulative_integrals - cumulative_integrals[-1]
 
 
@@ -538,7 +539,8 @@ def launch_utils(annee = None):
 
 
     primary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_sec_within_integral) + compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_dec_within_integral)
-    
+    print("primary extensive revenue function", primary_extensive_revenue_function)
+
     # Secondary : the same 3 steps as for primary
     unique_secondary_earning, secondary_mean_tax_rates = computes_tax_ratios_knowing_earning(
                     earning=work_df['secondary_earning'].values,
