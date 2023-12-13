@@ -115,7 +115,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, pe
     plt.xlabel('Gross income')
     plt.ylabel("Participation elasticity")
     plt.title("Participation elasticity - {annee}".format(annee = period))
-    plt.ylim(0,1)
+    plt.ylim(0, 1)
     plt.show()
     plt.savefig('../outputs/participation_elasticity/participation_elasticity_{annee}.png'.format(annee = period))
     plt.close()
@@ -138,7 +138,6 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, pe
         mean_tax_rate = np.average(tax_ratio[indices], weights=weights[indices])
         mean_tax_rates[i] = mean_tax_rate
 
-    #print("mean tax rates", mean_tax_rates)
     return unique_earning, mean_tax_rates
 
 
@@ -155,17 +154,20 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
     To do so, we first fit using a gaussan kernel our E(T/(ym-T) * pelast), and then we compute our pdf 
     """
 
+    if name == "primary":
+        bandwidth = 8000
+    else:
+        bandwidth = 4000
 
-    bandwidth = 5000
     # define on all FoyersFiscaux
     kernel_reg = KernelReg(endog=average_ratios, exog=original_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     # fit on the grid of earnings
     ratio_fit, _ = kernel_reg.fit(grid_earnings)
-    plt.scatter(original_earnings, average_ratios, label='Integrand without smoothing', color = 'lightgreen')
-    plt.plot(grid_earnings, ratio_fit, label='Integrand with smoothing', color = 'red')   
+    plt.scatter(original_earnings, average_ratios, label='Extensive expectation without smoothing', color = 'lightgreen')
+    plt.plot(grid_earnings, ratio_fit, label='Extensive expectation with smoothing', color = 'red')   
     plt.xlabel('Gross income')
-    plt.ylabel("Tm/(ym-Tm) PI")
-    plt.title("Integrand - {annee}".format(annee = period))
+    plt.ylabel("E(Tm/(ym-Tm) pelast)")
+    plt.title("Extensive expectation - {annee}".format(annee = period))
     plt.legend()
     plt.show()
     plt.savefig('../outputs/extensive_expectation_{name}/extensive_expectation_{name}_{annee}.png'.format(name = name, annee = period))
@@ -208,7 +210,6 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
         cumulative_integrals[i + 1] = cumulative_integrals[i] + trapz(within_integral[i:i + 2], grid_earnings[i:i + 2])
 
     # - integral from y1 to y1_max = integral from y1_0 to y1 - integral from y1_0 to y1_max
-    
     return cumulative_integrals - cumulative_integrals[-1]
 
 
