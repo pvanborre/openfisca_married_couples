@@ -368,13 +368,15 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     eps1_tab = [0.25, 0.5, 0.75]
     eps2_tab = [0.75, 0.5, 0.25]
 
-    # get rid of the bottom 5% of the distribution (in terms of total earnings) : but doesn't change...
+    # we create a fictive individual that accounts for the bottom 5% of the distribution (that is why we sum the weights)
+    # the earnings of this fictive individual are the mean of the bottom 5% earnings 
+    # however I'm not convinced about why we do that ? what does it bring ?
     threshold = np.percentile(total_earning, 5)
     print("threshold income not taken into account for welfare", threshold)
-    primary_earning = primary_earning[total_earning > threshold]
-    secondary_earning = secondary_earning[total_earning > threshold]
-    weights = weights[total_earning > threshold]
-    total_earning = total_earning[total_earning > threshold]
+    primary_earning = np.append(primary_earning[total_earning > threshold], np.mean(primary_earning[total_earning <= threshold]))
+    secondary_earning = np.append(secondary_earning[total_earning > threshold], np.mean(secondary_earning[total_earning <= threshold]))
+    weights = np.append(weights[total_earning > threshold], np.sum(weights[total_earning <= threshold]))
+    total_earning = np.append(total_earning[total_earning > threshold], np.mean(total_earning[total_earning <= threshold]))
 
     # equal weights
     welfare_weight = np.ones_like(primary_earning)
@@ -382,16 +384,44 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     y_equal_weights = np.average(welfare_weight*primary_earning, weights = weights)
     print("equal weights : ", x_equal_weights, y_equal_weights)
     plt.plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red', label = "equal weights")
-    #plt.scatter(x_equal_weights, y_equal_weights, color='red', marker='x', s=100) #other way to display the cross
 
     # decreasing
-    total_earning = primary_earning + secondary_earning
-    total_earning[total_earning == 0] = 1 
-    welfare_weight = np.power(total_earning, -0.8)
+    total_earning_modified = np.copy(total_earning)
+    total_earning_modified[total_earning == 0] = 1 
+    welfare_weight = np.power(total_earning_modified, -0.8)
     x_decreasing = np.average(welfare_weight*secondary_earning, weights = weights)
     y_decreasing = np.average(welfare_weight*primary_earning, weights = weights)
     print("decreasing ", x_decreasing, y_decreasing)
     plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple', label = "decreasing")
+
+    # Rawlsian
+    P5 =  np.percentile(total_earning, 5) # not the real 5% since we already removed the bottom 5% 
+    print("P5", P5)
+    welfare_weight = 1*(total_earning <= P5)
+    x_rawlsian = np.average(welfare_weight*secondary_earning, weights = weights)
+    y_rawlsian = np.average(welfare_weight*primary_earning, weights = weights)
+    print("rawlsian ", x_rawlsian, y_rawlsian)
+    plt.plot(x_rawlsian, y_rawlsian, marker='+', markersize=10, color='orange', label = "rawlsian")
+
+    # secondary earner
+    total_earning_modified = np.copy(total_earning)
+    secondary_earning_modified = np.copy(secondary_earning) 
+    secondary_earning_modified[total_earning == 0] = 1
+    total_earning_modified[total_earning == 0] = 1 # so that the share secondary/total equals 1 when both incomes are 0
+    welfare_weight = secondary_earning_modified/total_earning_modified
+    x_secondary = np.average(welfare_weight*secondary_earning, weights = weights)
+    y_secondary = np.average(welfare_weight*primary_earning, weights = weights)
+    print("secondary earner ", x_secondary, y_secondary)
+    plt.plot(x_secondary, y_secondary, marker='+', markersize=10, color='blue', label = "secondary")
+
+    # rawslian secondary earner
+    welfare_weight = (total_earning <= P5)*secondary_earning_modified/total_earning_modified
+    x_rawlsian_secondary = np.average(welfare_weight*secondary_earning, weights = weights)
+    y_rawlsian_secondary = np.average(welfare_weight*primary_earning, weights = weights)
+    print("rawlsian secondary ", x_rawlsian_secondary, y_rawlsian_secondary)
+    plt.plot(x_rawlsian_secondary, y_rawlsian_secondary, marker='+', markersize=10, color='pink', label = "rawlsian secondary")
+
+
 
 
     
@@ -436,13 +466,6 @@ def launch_utils(annee = None):
         
     df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
     df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
-
-
-    # get rid of the bottom 5% of the distribution (in terms of total earnings)
-    # TODO not good see what Pierre really meant by this, or only for welfare ?
-    # threshold = np.percentile( work_df['total_earning'].values, 5)
-    # print("threshold income not taken into account", threshold)
-    # work_df = work_df[work_df['total_earning'] > threshold]
 
     primary_grid_earnings = np.linspace(np.percentile(work_df['primary_earning'].values, 1), np.percentile(work_df['primary_earning'].values, 99.9), 1000)
     secondary_grid_earnings = np.linspace(np.percentile(work_df['secondary_earning'].values, 1), np.percentile(work_df['secondary_earning'].values, 99.9), 1000)
