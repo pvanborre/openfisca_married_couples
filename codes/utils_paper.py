@@ -1,13 +1,15 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
 from scipy.stats import gaussian_kde
-import click
-from statsmodels.nonparametric.kernel_regression import KernelReg
-import statsmodels.api as sm
-from scipy.interpolate import interp1d
 from scipy.integrate import trapz
+
+from statsmodels.nonparametric.kernel_regression import KernelReg
+
+import click
 import sys
+
 
 ################################################################################
 ################# Intensive revenue function ###################################
@@ -15,7 +17,7 @@ import sys
 
 def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights):
     """
-    This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then the marginal tax rates and the weights
+    This takes as input numpy arrays of size number foyers_fiscaux : primary or secondary earnings, marginal tax rates and weights
     This computes E(T'/(1-T') | y1/2) for all distinct values of primary earings (or secondary earnings)
     So it returns this numpy array of size unique primary/secondary earnings
     """
@@ -35,10 +37,12 @@ def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights):
 
 def util_intensive_revenue_function(grid_earnings, original_earnings, average_ratios, name, period):
     """
-    This takes as input numpy arrays of size unique primary/secondary earnings computed by the above function, 
-    that is distinct primary/secondary earnings and the ratios E(T'/(1-T'))
-    The function creates a grid of earnings and fits a gaussian kernel to interpolate these points
-    Then it scatters all the ratios and plots the smoothing over the grid 
+    This takes as input a grid of earnings 
+    and 2 numpy arrays of size unique primary/secondary earnings computed by the above function, 
+    that is distinct primary/secondary earnings (original_earnings) and the ratios E(T'/(1-T')) (average_ratios)
+    The function fits a gaussian kernel to interpolate these ratios on the grid of earnings, 
+    and returns the fitted function (np array of the same size of the grid)
+    It also scatters all the ratios and plots the smoothing over the grid 
     """
 
     bandwidth = 5000
@@ -91,8 +95,10 @@ def compute_intensive_revenue_function(grid_earnings, earning, mtr_ratios_grid, 
 
 def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, period):
     """
-    This takes as input numpy arrays of size number foyers_fiscaux, primary or secondary earnings, and then total earnings, tax before reform and weights
+    This takes as input numpy arrays of size number foyers_fiscaux : primary or secondary earnings, total earnings, tax before reform and weights
     This computes E(T/(ym-T) * pelast | y1/2) for all distinct values of primary earings (or secondary earnings)
+    To do so, it first computes the participation elasticities pelast and plots it 
+    And then it can compute expected means (like in the function computes_mtr_ratios_knowing_earning)
     So it returns this numpy array of size unique primary/secondary earnings
     """
     ########## Computing the participation elasticity ####################
@@ -109,7 +115,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, pe
     plt.xlabel('Gross income')
     plt.ylabel("Participation elasticity")
     plt.title("Participation elasticity - {annee}".format(annee = period))
-    plt.ylim(0,1)
+    plt.ylim(0, 1)
     plt.show()
     plt.savefig('../outputs/participation_elasticity/participation_elasticity_{annee}.png'.format(annee = period))
     plt.close()
@@ -132,7 +138,6 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, pe
         mean_tax_rate = np.average(tax_ratio[indices], weights=weights[indices])
         mean_tax_rates[i] = mean_tax_rate
 
-    print("mean tax rates", mean_tax_rates)
     return unique_earning, mean_tax_rates
 
 
@@ -142,25 +147,30 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights, pe
 
 def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights, period, name):
     """
-    This takes as input numpy arrays of size number unique foyers_fiscaux, primary or secondary unique earnings, and average ratios E(T/(ym-T) * pelast)
+    This takes as input first a grid of earnings, and then 
+    numpy arrays of size number unique foyers_fiscaux : primary or secondary earnings, average ratios E(T/(ym-T) * pelast)
     Then other inputs are specific to single and dual earner couples (sec and dec)
     This computes the integrand of the extensive revenue function on a specific grid of earnings, that is E(T/(ym-T) * pelast) * pdfsec/dec * sharesec/dec 
+    To do so, we first fit using a gaussan kernel our E(T/(ym-T) * pelast), and then we compute our pdf 
     """
 
+    if name == "primary":
+        bandwidth = 8000
+    else:
+        bandwidth = 4000
 
-    bandwidth = 5000
     # define on all FoyersFiscaux
     kernel_reg = KernelReg(endog=average_ratios, exog=original_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
     # fit on the grid of earnings
     ratio_fit, _ = kernel_reg.fit(grid_earnings)
-    plt.scatter(original_earnings, average_ratios, label='Integrand without smoothing', color = 'lightgreen')
-    plt.plot(grid_earnings, ratio_fit, label='Integrand with smoothing', color = 'red')   
+    plt.scatter(original_earnings, average_ratios, label='Extensive expectation without smoothing', color = 'lightgreen')
+    plt.plot(grid_earnings, ratio_fit, label='Extensive expectation with smoothing', color = 'red')   
     plt.xlabel('Gross income')
-    plt.ylabel("Tm/(ym-Tm) PI")
-    plt.title("Integrand - {annee}".format(annee = period))
+    plt.ylabel("E(Tm/(ym-Tm) pelast)")
+    plt.title("Extensive expectation - {annee}".format(annee = period))
     plt.legend()
     plt.show()
-    plt.savefig('../outputs/integrand_{name}/integrand_{name}_{annee}.png'.format(name = name, annee = period))
+    plt.savefig('../outputs/extensive_expectation_{name}/extensive_expectation_{name}_{annee}.png'.format(name = name, annee = period))
     plt.close()
 
     # then computes the pdf and the integrand, for both single and dual earner couples
@@ -200,7 +210,6 @@ def compute_extensive_revenue_function(grid_earnings, within_integral):
         cumulative_integrals[i + 1] = cumulative_integrals[i] + trapz(within_integral[i:i + 2], grid_earnings[i:i + 2])
 
     # - integral from y1 to y1_max = integral from y1_0 to y1 - integral from y1_0 to y1_max
-    
     return cumulative_integrals - cumulative_integrals[-1]
 
 
@@ -235,15 +244,12 @@ def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_
     ################# Computation of revenues functions ############################
     ################################################################################
     for i in range(len(eps1_tab)):
-        primary_elasticity_maries_pacses =  eps1_tab[i]
-        secondary_elasticity_maries_pacses = eps2_tab[i]
-        
         cdf_primary, pdf_primary, intensive_primary_revenue_function = compute_intensive_revenue_function(
                     grid_earnings = primary_grid,
                     earning = primary_earning, 
                     mtr_ratios_grid = primary_mtr_ratios_grid,
                     weights = weights, 
-                    elasticity = primary_elasticity_maries_pacses)
+                    elasticity = eps1_tab[i])
          
         primary_revenue_function = intensive_primary_revenue_function + extensive_primary_revenue_function
 
@@ -252,7 +258,7 @@ def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_
                     earning = secondary_earning, 
                     mtr_ratios_grid = secondary_mtr_ratios_grid,
                     weights = weights, 
-                    elasticity = secondary_elasticity_maries_pacses)
+                    elasticity = eps2_tab[i])
          
         secondary_revenue_function = intensive_secondary_revenue_function + extensive_secondary_revenue_function
 
@@ -356,8 +362,8 @@ def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_
 
 def median_share_primary(primary_earning, total_earning, weights, period):
     """
-    Here we compute the share of the primary earning in the total earning of the foyer fiscal
-    For each decile of total earning we then compute the median of this share
+    Here we compute the share of the primary earning compared to the foyer fiscal total earning 
+    For each total earning decile we then compute the median of this share
     """
     total_earning[total_earning == 0] = 0.001
     primary_earning[total_earning == 0] = 0.001 #so that we get a share of 100% for the couples who earn both 0 (because since we limited to nonnegative primary and secondary earning, a total earning equals to 0 means that both primary and secondary earnings equal 0)
@@ -575,7 +581,7 @@ def launch_utils(annee = None):
 
 
     primary_extensive_revenue_function = compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_sec_within_integral) + compute_extensive_revenue_function(grid_earnings = primary_grid_earnings, within_integral = primary_dec_within_integral)
-    print("primary extensive revenue function", primary_extensive_revenue_function)
+    #print("primary extensive revenue function", primary_extensive_revenue_function)
 
     # Secondary : the same 3 steps as for primary
     unique_secondary_earning, secondary_mean_tax_rates = computes_tax_ratios_knowing_earning(
