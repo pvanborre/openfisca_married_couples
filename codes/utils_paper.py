@@ -505,14 +505,21 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
 ################################################################################
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
-def launch_utils(annee = None):
-    work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
+@click.option('-n', '--want_to_consider_null_earnings', default = False, type = bool, required = True)
+def launch_utils(annee = None, want_to_consider_null_earnings = None):
+
+    if want_to_consider_null_earnings:
+        # if we want to keep null total earnings 
+        work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
+        df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
+    else:
+        # we consider (default) the version where we removed total earning that were equal to 0
+        work_df = pd.read_csv(f'./excel/{annee}/married_25_55_positive_{annee}.csv')
+        df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_positive_{annee}.csv')
+    df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
     
     print(work_df)
     print()
-        
-    df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
-    df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
 
     primary_grid_earnings = np.linspace(np.percentile(work_df['primary_earning'].values, 1), np.percentile(work_df['primary_earning'].values, 99.9), 1000)
     secondary_grid_earnings = np.linspace(np.percentile(work_df['secondary_earning'].values, 1), np.percentile(work_df['secondary_earning'].values, 99.9), 1000)
