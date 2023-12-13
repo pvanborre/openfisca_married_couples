@@ -33,7 +33,7 @@ def computes_mtr_ratios_knowing_earning(earning, taux_marginal, weights):
 
 
 
-def find_closest_earning_and_tax_rate(grid_earnings, original_earnings, average_ratios, name, period):
+def util_intensive_revenue_function(grid_earnings, original_earnings, average_ratios, name, period):
     """
     This takes as input numpy arrays of size unique primary/secondary earnings computed by the above function, 
     that is distinct primary/secondary earnings and the ratios E(T'/(1-T'))
@@ -147,9 +147,6 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
     This computes the integrand of the extensive revenue function on a specific grid of earnings, that is E(T/(ym-T) * pelast) * pdfsec/dec * sharesec/dec 
     """
 
-    # defines the grid and gets E(T/(ym-T) * pelast) on this grid (take closest value from the original earnings)
-    # closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
-    # closest_tax_ratios = average_ratios[closest_indices]
 
     bandwidth = 5000
     # define on all FoyersFiscaux
@@ -527,7 +524,7 @@ def launch_utils(annee = None):
                                             taux_marginal = work_df['taux_marginal'].values, 
                                             weights = work_df['weight_foyerfiscal'].values)
     
-    primary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
+    primary_mtr_ratios_grid = util_intensive_revenue_function(
                                                         grid_earnings = primary_grid_earnings,
                                                         original_earnings = unique_primary_earning, 
                                                         average_ratios = primary_mean_tax_rates, 
@@ -540,7 +537,7 @@ def launch_utils(annee = None):
                                             taux_marginal = work_df['taux_marginal'].values, 
                                             weights = work_df['weight_foyerfiscal'].values)
     
-    secondary_mtr_ratios_grid = find_closest_earning_and_tax_rate(
+    secondary_mtr_ratios_grid = util_intensive_revenue_function(
                                                         grid_earnings = secondary_grid_earnings,
                                                         original_earnings = unique_secondary_earning, 
                                                         average_ratios = secondary_mean_tax_rates, 
