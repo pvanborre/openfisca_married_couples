@@ -363,7 +363,10 @@ def median_share_primary(primary_earning, total_earning, weights, period):
     
 def main_welfare_graph(primary_earning, secondary_earning, total_earning, weights, slopes_lines, period):
     """
-    TODO 
+    We plot the same graph as for the winners analysis, that is the lines that would separate winners from losers with different elasticities
+    Moreover, we produce a welfare analysis for different weights specifications, that is
+    we compute E(welfare_weight * primary_earning) and E(welfare_weight * secondary_earning) and 
+    like before, evaluate whether a reform is welfare damaging if the point lies below the line, welfare increasing above the line 
     """
     eps1_tab = [0.25, 0.5, 0.75]
     eps2_tab = [0.75, 0.5, 0.25]
@@ -449,7 +452,6 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
         axes[j].legend()
         axes[j].set_title(graphs_titles[j])
 
-    # plt.title("Reform towards individual taxation: Welfare - {}".format(period))
 
     plt.show()
     plt.savefig('../outputs/welfare/welfare_{annee}.png'.format(annee = period))
