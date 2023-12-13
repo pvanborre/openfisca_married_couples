@@ -368,6 +368,8 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     eps1_tab = [0.25, 0.5, 0.75]
     eps2_tab = [0.75, 0.5, 0.25]
 
+    fig, axes = plt.subplots(1, 2, figsize=(16, 4))
+
     # we create a fictive individual that accounts for the bottom 5% of the distribution (that is why we sum the weights)
     # the earnings of this fictive individual are the mean of the bottom 5% earnings 
     # however I'm not convinced about why we do that ? what does it bring ?
@@ -383,7 +385,7 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     x_equal_weights = np.average(welfare_weight*secondary_earning, weights = weights)
     y_equal_weights = np.average(welfare_weight*primary_earning, weights = weights)
     print("equal weights : ", x_equal_weights, y_equal_weights)
-    plt.plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red', label = "equal weights")
+    axes[0].plot(x_equal_weights, y_equal_weights, marker='+', markersize=10, color='red', label = "equal weights")
 
     # decreasing
     total_earning_modified = np.copy(total_earning)
@@ -392,7 +394,7 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     x_decreasing = np.average(welfare_weight*secondary_earning, weights = weights)
     y_decreasing = np.average(welfare_weight*primary_earning, weights = weights)
     print("decreasing ", x_decreasing, y_decreasing)
-    plt.plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple', label = "decreasing")
+    axes[1].plot(x_decreasing, y_decreasing, marker='+', markersize=10, color='purple', label = "decreasing")
 
     # Rawlsian
     P5 =  np.percentile(total_earning, 5) # not the real 5% since we already removed the bottom 5% 
@@ -401,7 +403,7 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     x_rawlsian = np.average(welfare_weight*secondary_earning, weights = weights)
     y_rawlsian = np.average(welfare_weight*primary_earning, weights = weights)
     print("rawlsian ", x_rawlsian, y_rawlsian)
-    plt.plot(x_rawlsian, y_rawlsian, marker='+', markersize=10, color='orange', label = "rawlsian")
+    axes[1].plot(x_rawlsian, y_rawlsian, marker='+', markersize=10, color='orange', label = "rawlsian")
 
     # secondary earner
     total_earning_modified = np.copy(total_earning)
@@ -412,40 +414,43 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
     x_secondary = np.average(welfare_weight*secondary_earning, weights = weights)
     y_secondary = np.average(welfare_weight*primary_earning, weights = weights)
     print("secondary earner ", x_secondary, y_secondary)
-    plt.plot(x_secondary, y_secondary, marker='+', markersize=10, color='blue', label = "secondary")
+    axes[0].plot(x_secondary, y_secondary, marker='+', markersize=10, color='blue', label = "secondary")
 
     # rawslian secondary earner
     welfare_weight = (total_earning <= P5)*secondary_earning_modified/total_earning_modified
     x_rawlsian_secondary = np.average(welfare_weight*secondary_earning, weights = weights)
     y_rawlsian_secondary = np.average(welfare_weight*primary_earning, weights = weights)
     print("rawlsian secondary ", x_rawlsian_secondary, y_rawlsian_secondary)
-    plt.plot(x_rawlsian_secondary, y_rawlsian_secondary, marker='+', markersize=10, color='pink', label = "rawlsian secondary")
+    axes[1].plot(x_rawlsian_secondary, y_rawlsian_secondary, marker='+', markersize=10, color='pink', label = "rawlsian secondary")
 
 
 
 
+    bornes = [50000, 1000]
+    bornes_inf = [500, 20]
+    graphs_titles = ["Middle of distribution - {}".format(period), "Bottom of distribution - {}".format(period)]
     
-    borne = 50000
-    x = np.linspace(0, borne, 4)
-    plt.plot(x, x, c = '#828282')
+    for j in range(2):
+        x = np.linspace(0, bornes[j], 4)
+        axes[j].plot(x, x, c = '#828282')
 
-    green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
-    for i in range(len(eps1_tab)):
-        color = green_shades[i]
-        plt.plot(x, slopes_lines[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
+        green_shades = [(0.0, 1.0, 0.0), (0.0, 0.8, 0.0), (0.0, 0.6, 0.0)]
+        for i in range(len(eps1_tab)):
+            color = green_shades[i]
+            axes[j].plot(x, slopes_lines[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
 
-    plt.scatter(secondary_earning, primary_earning, s = 0.1, c = '#828282') 
+        axes[j].scatter(secondary_earning, primary_earning, s = 0.1, c = '#828282') 
 
-    eps = 500
-    plt.xlim(-eps, borne) 
-    plt.ylim(-eps, borne) 
+        axes[j].set_xlim(-bornes_inf[j], bornes[j]) 
+        axes[j].set_ylim(-bornes_inf[j], bornes[j]) 
+        axes[j].grid()
+        axes[j].set_xlabel('Secondary earner')
+        axes[j].set_ylabel('Primary earner')
+        axes[j].legend()
+        axes[j].set_title(graphs_titles[j])
 
-    plt.grid()
-    plt.xlabel('Secondary earner')
-    plt.ylabel('Primary earner')
-    plt.title("Reform towards individual taxation: Welfare - {}".format(period))
+    # plt.title("Reform towards individual taxation: Welfare - {}".format(period))
 
-    plt.legend()
     plt.show()
     plt.savefig('../outputs/welfare/welfare_{annee}.png'.format(annee = period))
     plt.close()
