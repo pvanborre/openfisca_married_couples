@@ -98,9 +98,11 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
 
     # tax is negative (that is why the -tax)
     denominator = total_earning+tax
-    denominator[denominator == 0] = 1000 # here I can put a random value, this won't affect the results since in the integral from y1 to ymax we don't have the y1 = 0 value (that is equivalent to total_earning = 0)
+    denominator[denominator == 0] = 1000 
+    # here I can put a random value, this won't affect the extensive revenue function
+    # since in the integral from y1 to ymax we don't have the y1 = 0 value (that is equivalent to total_earning = 0)
     
-    # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume for the extensive elasticity
+    # 0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)) is the formula we assume in the paper for the extensive elasticity
     tax_ratio = (-tax)/denominator * (0.65 - 0.4 * np.sqrt(total_earning/np.percentile(total_earning, 90)))
 
     unique_earning = np.unique(earning)
@@ -118,7 +120,7 @@ def computes_tax_ratios_knowing_earning(earning, total_earning, tax, weights):
 
 
 
-def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights, name):
+def util_extensive_revenue_function(grid_earnings, original_earnings, average_ratios, sec_earnings, dec_earnings, sec_weights, dec_weights, period, name):
     """
     This takes as input numpy arrays of size number unique foyers_fiscaux, primary or secondary unique earnings, and average ratios E(T/(ym-T) * pelast)
     Then other inputs are specific to single and dual earner couples (sec and dec)
@@ -126,8 +128,23 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
     """
 
     # defines the grid and gets E(T/(ym-T) * pelast) on this grid (take closest value from the original earnings)
-    closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
-    closest_tax_ratios = average_ratios[closest_indices]
+    # closest_indices = np.argmin(np.abs(original_earnings[:, None] - grid_earnings), axis=0)
+    # closest_tax_ratios = average_ratios[closest_indices]
+
+    bandwidth = 5000
+    # define on all FoyersFiscaux
+    kernel_reg = KernelReg(endog=average_ratios, exog=original_earnings, var_type='c', reg_type='ll', bw=[bandwidth], ckertype='gaussian')
+    # fit on the grid of earnings
+    ratio_fit, _ = kernel_reg.fit(grid_earnings)
+    plt.scatter(original_earnings, average_ratios, label='Integrand without smoothing', color = 'lightgreen')
+    plt.plot(grid_earnings, ratio_fit, label='Integrand with smoothing', color = 'red')   
+    plt.xlabel('Gross income')
+    plt.ylabel("Tm/(ym-Tm) PI")
+    plt.title("Integrand - {annee}".format(annee = period))
+    plt.legend()
+    plt.show()
+    plt.savefig('../outputs/integrand_{name}/integrand_{name}_{annee}.png'.format(name = name, annee = period))
+    plt.close()
 
     # then computes the pdf and the integrand, for both single and dual earner couples
     sec_share = np.sum(sec_weights)/(np.sum(sec_weights) + np.sum(dec_weights))
@@ -138,7 +155,7 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
 
     dec_kde = gaussian_kde(dec_earnings_sorted, weights=dec_weights_sorted)
     dec_pdf = dec_kde(grid_earnings)
-    dec_within_integral = closest_tax_ratios * dec_pdf * (1-sec_share)
+    dec_within_integral = ratio_fit * dec_pdf * (1-sec_share)
 
     if name == "primary":
         sorted_indices_sec = np.argsort(sec_earnings)
@@ -147,7 +164,7 @@ def util_extensive_revenue_function(grid_earnings, original_earnings, average_ra
 
         sec_kde = gaussian_kde(sec_earnings_sorted, weights=sec_weights_sorted)
         sec_pdf = sec_kde(grid_earnings) 
-        sec_within_integral = closest_tax_ratios * sec_pdf * sec_share
+        sec_within_integral = ratio_fit * sec_pdf * sec_share
         return sec_within_integral, dec_within_integral
     
     else: # the single earner secondary has no sense, since all secondary earnings are then 0
@@ -535,6 +552,7 @@ def launch_utils(annee = None):
                     dec_earnings = df_dual_earner_couples['primary_earning'].values, 
                     sec_weights = df_single_earner_couples['weight_foyerfiscal'].values,
                     dec_weights = df_dual_earner_couples['weight_foyerfiscal'].values, 
+                    period = annee,
                     name = "primary")
 
 
@@ -557,6 +575,7 @@ def launch_utils(annee = None):
                     dec_earnings = df_dual_earner_couples['secondary_earning'].values, 
                     sec_weights = df_single_earner_couples['weight_foyerfiscal'].values,
                     dec_weights = df_dual_earner_couples['weight_foyerfiscal'].values,
+                    period = annee,
                     name = "secondary")
 
 
