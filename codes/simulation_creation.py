@@ -388,12 +388,15 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     df_married_25_55 = df_married_25_55[df_married_25_55['primary_age'] <= 55]
     df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] >= 25]
     df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] <= 55]
-    
 
     # we construct single and dual earner couples
     single_earner_couples_25_55 = df_married_25_55[df_married_25_55['secondary_earning'] == 0]
     dual_earner_couples_25_55 = df_married_25_55[df_married_25_55['secondary_earning'] > 0]
     
+    # we only keep couples where total earning is strictly positive
+    df_married_25_55_positive = df_married_25_55[df_married_25_55['total_earning'] > 0]
+    single_earner_couples_25_55_positive = df_married_25_55_positive[df_married_25_55_positive['secondary_earning'] == 0]
+    # for dual earner couple a positive dataframe has no sense since it is already the "normal" dataframe
 
     # we create a dataframe only for singles, with positive earnings and adult
     df_celib = result_df[~result_df['maries_ou_pacses']]
@@ -414,6 +417,9 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     df_married_25_55 = df_married_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
     single_earner_couples_25_55 = single_earner_couples_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
     dual_earner_couples_25_55 = dual_earner_couples_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    df_married_25_55_positive = df_married_25_55_positive.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    single_earner_couples_25_55_positive = single_earner_couples_25_55_positive.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+
 
     df_celib = df_celib.drop(['idfoy', 'age'], axis = 1)
     df_celib_25_55 = df_celib_25_55.drop(['idfoy', 'age'], axis = 1)
@@ -422,6 +428,9 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     df_married_25_55.to_csv(f'excel/{period}/married_25_55_{period}.csv', index=False)
     single_earner_couples_25_55.to_csv(f'excel/{period}/single_earner_couples_25_55_{period}.csv', index=False)
     dual_earner_couples_25_55.to_csv(f'excel/{period}/dual_earner_couples_25_55_{period}.csv', index=False)
+    df_married_25_55_positive.to_csv(f'excel/{period}/married_25_55_positive_{period}.csv', index=False)
+    single_earner_couples_25_55_positive.to_csv(f'excel/{period}/single_earner_couples_25_55_positive_{period}.csv', index=False)
+
 
     df_celib.to_csv(f'excel/{period}/single_adults_{period}.csv', index=False)
     df_celib_25_55.to_csv(f'excel/{period}/singles_25_55_{period}.csv', index=False)
@@ -429,16 +438,6 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
     
     
     
-
-    
-
-
-
-    
-
-
-
-
 
 
 simulation_reforme()
