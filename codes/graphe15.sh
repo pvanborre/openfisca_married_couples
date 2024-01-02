@@ -1,6 +1,20 @@
 #!/bin/bash
 
-# Delete output_graphe_15.txt that will store outputs
+################################################################################
+# Ensures we are at the good location to launch codes 
+expected_path="/app/codes"
+current_path=$(pwd)
+
+if [ "$current_path" != "$expected_path" ]; then
+    echo "Error: Please run this script from the 'codes' folder."
+    exit 1
+fi
+################################################################################
+
+
+
+################################################################################
+# Delete output_graphe_15.txt that will store text outputs
 if [ -e 'output_graphe_15.txt' ]; then
     rm 'output_graphe_15.txt'
     echo "output_graphe_15.txt has been removed."
@@ -10,9 +24,12 @@ fi
 
 touch "output_graphe_15.txt"
 echo "output_graphe_15.txt has been created."
+################################################################################
 
+
+
+################################################################################
 # Delete all csv files that store data 
-
 main_folder_path="./excel"
 
 for year_folder in {2002..2019}; do
@@ -25,19 +42,45 @@ for year_folder in {2002..2019}; do
         echo "$year_folder_path does not exist."
     fi
 done
-
 echo "Process completed."
+################################################################################
 
 
 
+################################################################################
+# Delete all png files that store outputs 
+outputs_folder_path="../outputs"
+
+if [ -d "$outputs_folder_path" ]; then
+    find "$outputs_folder_path" -type d -exec sh -c 'find "$0" -name "*.png" -type f -delete' {} \;
+    echo "All PNG files deleted in subfolders within $outputs_folder_path"
+else
+    echo "$outputs_folder_path does not exist."
+fi
+echo "Process completed."
+################################################################################
+
+
+
+################################################################################
+# Get data from the simulations
 for i in $(seq 2002 2019);
 do
     python simulation_creation.py -y $i
 done
+################################################################################
 
+
+################################################################################
+# Give all year-specific outputs
 for i in $(seq 2002 2019);
 do
     python utils_paper.py -y $i
 done
+################################################################################
 
+
+################################################################################
+# Plots results across time (percentage of winners)
 python graphe15_across_years.py
+################################################################################
