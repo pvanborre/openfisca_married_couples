@@ -126,6 +126,11 @@ python simulation_creation.py -y 2018 # this creates some useful excel files, th
 python utils_paper.py -y 2018
 ```
 
+If you want to run all codes in a single command you could do this :
+```sh
+bash graphe15.sh
+``` 
+If you have an error with this file (no line works), this is maybe because of the End Of File (EOF). So you can just copy paste the content of the file in your terminal to solve this issue.
 
 If you want to edit the codes, you can just open any code editor you like and edit codes on your disk. Inside the container Docker will be able to recognize modifications you did on your disk. (thanks to the -v flag we ran above).
 
@@ -339,20 +344,3 @@ Now run
 python /mnt/mon_input_data_builder/old_erfs/__init__.py  --configfile ~/.config/openfisca-survey-manager/raw_data.ini 2>&1
 ``` 
 
-
-
-### For all years 
-
-And now these followings commands should work (provided you modified the year at the beginning of the _without\_reform.py_ file):
-```sh
-# replace my 3 paths by where_you_cloned/openfisca_married_couples/codes and where_you_cloned/openfisca_married_couples/data and where_you_cloned/openfisca_married_couples/outputs
-docker run -it --name openfisca-container -v C:/Users/pvanb/Projects/openfisca_married_couples/codes:/app/codes -v C:/Users/pvanb/Projects/openfisca_married_couples/data:/app/data -v C:/Users/pvanb/Projects/openfisca_married_couples/outputs:/app/outputs public-openfisca-image /bin/bash
-
-python without_reform.py -y YEAR
-``` 
-
-If you want to run all codes in a single command you could do this :
-```sh
-bash graphe15.sh
-``` 
-If you have an error with this file (no line works), this is maybe because of the End Of File (EOF). So you can just copy paste the content of the file in your terminal to solve this issue.
