@@ -304,7 +304,7 @@ def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_
     for i in range(len(eps1_tab)):
         color = green_shades[i]
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
-        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 100000*i, 200000), bbox = dict(boxstyle ="round", fc = color))
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (max(secondary_earning)/4*(i+1), max(primary_earning)/2), bbox = dict(boxstyle ="round", fc = color))
 
     plt.scatter(secondary_earning, primary_earning, s = 0.1, c = '#828282') 
 
