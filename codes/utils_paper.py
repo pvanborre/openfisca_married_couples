@@ -509,23 +509,18 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
 @click.option('-r', '--robustness', default = False, type = bool, required = True)
 def launch_utils(annee = None, want_to_consider_null_earnings = None, robustness = None):
 
-    if want_to_consider_null_earnings:
-        # if we want to keep null total earnings 
+    if want_to_consider_null_earnings: # if we want to keep null total earnings 
         work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
-        df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
-        df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
-    elif robustness:
+
+    elif robustness: # if you want to do a robustness check (only implemented for annee == 2006)
         assert (annee == 2006)
-        # if you want to do a robustness check (only implemented for annee == 2006)
         work_df = pd.read_csv(f'./excel/{annee}/robustness_married_25_55_positive_{annee}.csv')
-        df_single_earner_couples = work_df[work_df['secondary_earning'] == 0]
-        df_dual_earner_couples = work_df[work_df['secondary_earning'] > 0]
-    else:
-        # we consider (default) the version where we removed total earning that were equal to 0
+        
+    else: # we consider (default) the version where we removed total earning that were equal to 0
         work_df = pd.read_csv(f'./excel/{annee}/married_25_55_positive_{annee}.csv')
-        df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_positive_{annee}.csv')
-        df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
     
+    df_single_earner_couples = work_df[work_df['secondary_earning'] == 0]
+    df_dual_earner_couples = work_df[work_df['secondary_earning'] > 0]
     print(work_df)
     print()
 
