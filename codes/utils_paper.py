@@ -304,7 +304,7 @@ def winners_political_economy(primary_grid, primary_earning, primary_mtr_ratios_
     for i in range(len(eps1_tab)):
         color = green_shades[i]
         plt.plot(x, rapport[i]*x, label = "ep = {ep}, es = {es}".format(ep = eps1_tab[i], es = eps2_tab[i]), color=color)
-        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (50000 + 100000*i, 200000), bbox = dict(boxstyle ="round", fc = color))
+        plt.annotate(str(round(pourcentage_gagnants[i]))+ " %", xy = (max(secondary_earning)/4*(i+1), max(primary_earning)/2), bbox = dict(boxstyle ="round", fc = color))
 
     plt.scatter(secondary_earning, primary_earning, s = 0.1, c = '#828282') 
 
@@ -506,18 +506,21 @@ def main_welfare_graph(primary_earning, secondary_earning, total_earning, weight
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
 @click.option('-n', '--want_to_consider_null_earnings', default = False, type = bool, required = True)
-def launch_utils(annee = None, want_to_consider_null_earnings = None):
+@click.option('-r', '--robustness', default = False, type = bool, required = True)
+def launch_utils(annee = None, want_to_consider_null_earnings = None, robustness = None):
 
-    if want_to_consider_null_earnings:
-        # if we want to keep null total earnings 
+    if want_to_consider_null_earnings: # if we want to keep null total earnings 
         work_df = pd.read_csv(f'./excel/{annee}/married_25_55_{annee}.csv')
-        df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_{annee}.csv')
-    else:
-        # we consider (default) the version where we removed total earning that were equal to 0
+
+    elif robustness: # if you want to do a robustness check (only implemented for annee == 2006)
+        assert (annee == 2006)
+        work_df = pd.read_csv(f'./excel/{annee}/robustness_married_25_55_positive_{annee}.csv')
+        
+    else: # we consider (default) the version where we removed total earning that were equal to 0
         work_df = pd.read_csv(f'./excel/{annee}/married_25_55_positive_{annee}.csv')
-        df_single_earner_couples = pd.read_csv(f'./excel/{annee}/single_earner_couples_25_55_positive_{annee}.csv')
-    df_dual_earner_couples = pd.read_csv(f'./excel/{annee}/dual_earner_couples_25_55_{annee}.csv')
     
+    df_single_earner_couples = work_df[work_df['secondary_earning'] == 0]
+    df_dual_earner_couples = work_df[work_df['secondary_earning'] > 0]
     print(work_df)
     print()
 
