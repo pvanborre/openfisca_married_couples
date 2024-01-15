@@ -1,5 +1,5 @@
 import numpy
-import pandas
+import pandas 
 
 import click
 
@@ -15,7 +15,6 @@ pandas.options.display.max_columns = None
 
 
 # The goal is to apply to all individuals the tax schedule for singles 
-# TODO deal with dependents : apply them only to one of the 2 spouses
 
 # First, we update the value of some parameters (which were null, and some formulas required their values, so we set them to 0).
 def modify_parameters(parameters):
@@ -27,18 +26,287 @@ def modify_parameters(parameters):
     return parameters
 
 
-
 class single_schedule(Reform):
-    name = "reform where everyone has the tax schedule for singles"
+    name = "reform where everyone is single"
     def apply(self):
 
         # we apply the parameters modification for year 2003
         self.modify_parameters(modifier_function = modify_parameters)
 
-        # TODO 
-        # keep primary and secondary I guess and apply these earnings to the forumla 
-        # need to do without any dependent + with all dependents of the couple : for which person we apply dependents (the one with highest earnings?)
- 
+        # By changing the 2 variables below, we make sure that every individual is single
+        class maries_ou_pacses(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "Married or pacses"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False
+
+        self.replace_variable(maries_ou_pacses)
+
+        class celibataire_ou_divorce(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "Single or divorced"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return True
+
+        self.replace_variable(celibataire_ou_divorce)
+
+
+
+        class revenu_individu_couple(Variable):
+            # I could have used revenu_categoriel (same modulo a deduction)
+            value_type = float
+            entity = Individu
+            label = "Revenu d'un individu du foyer fiscal, si le couple est marié"
+            definition_period = YEAR
+
+            def formula(individu, period):
+                traitements_salaires_pensions_rentes = individu('traitements_salaires_pensions_rentes', period)
+
+                rev_cat_rvcm = individu.foyer_fiscal('revenu_categoriel_capital', period)
+                rev_cat_rfon = individu.foyer_fiscal('revenu_categoriel_foncier', period)
+                rev_cat_rpns = individu.foyer_fiscal('revenu_categoriel_non_salarial', period)
+                rev_cat_pv = individu.foyer_fiscal('revenu_categoriel_plus_values', period)  
+
+                # on fait un equal splitting des revenus (problème : si enfants ont des revenus les somme aussi, on suppose que cela n'arrive pas)     
+                return traitements_salaires_pensions_rentes + rev_cat_rvcm/2 + rev_cat_rfon/2 + rev_cat_rpns/2 + rev_cat_pv/2
+        
+        self.add_variable(revenu_individu_couple)
+
+        class primary_earning(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Revenu le plus élevé du foyer fiscal, entre le déclarant principal et son conjoint"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_couple', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                return max_(revenu_declarant_principal, revenu_du_conjoint) 
+
+        self.add_variable(primary_earning)
+
+        class secondary_earning(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Revenu le moins élevé du foyer fiscal, entre le déclarant principal et son conjoint"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                revenu_individu_i = foyer_fiscal.members('revenu_individu_couple', period) # est de taille nb individus
+                revenu_declarant_principal = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.DECLARANT_PRINCIPAL) # est de taille nb foyers fiscaux
+                revenu_du_conjoint = foyer_fiscal.sum(revenu_individu_i, role = FoyerFiscal.CONJOINT) # est de taille nb foyers fiscaux 
+
+                return min_(revenu_declarant_principal, revenu_du_conjoint) 
+
+        self.add_variable(secondary_earning)
+
+
+class without_dependents(Reform):
+    name = "reform where nobody has dependents"
+    def apply(self):   
+
+        class nb_pac(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Everyone has no dependents"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return 0
+
+        self.replace_variable(nb_pac)
+
+        class nbptr(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "Everyone has 1 part"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return 1
+
+        self.replace_variable(nbptr)
+
+
+        class enfant_a_charge(Variable):
+            value_type = bool
+            entity = Individu
+            label = "Nobody is a dependent" # implies nbF, nbG, nbH, nbI equals 0 cf. https://github.com/openfisca/openfisca-france/blob/f770f896dc256a8a7715e002860130a6a0ea9d5c/openfisca_france/model/prelevements_obligatoires/impot_revenu/ir.py#L215
+            definition_period = YEAR
+
+            def formula(individu, period):
+                return False 
+
+        self.replace_variable(enfant_a_charge)
+
+        class enfant_majeur_celibataire_sans_enfant(Variable):
+            value_type = bool
+            entity = Individu
+            label = 'No adult child without children' # implies nbJ, nombre_enfants_majeurs_celibataires_sans_enfant equals 0
+            definition_period = YEAR
+
+            def formula(individu, period):
+                return False 
+        
+        self.replace_variable(enfant_majeur_celibataire_sans_enfant)
+            
+        # from now on a bit long but we set all measures designed to give more 'demi-parts' to 0
+        class caseE(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No supplementary demi-part"
+            end = '2012-12-31'
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseE)
+
+
+        class caseF(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No supplementary demi-part"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseF)
+
+        class caseG(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No war widowed pension"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseG)
+
+        class caseK(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No supplementary demi-part"
+            end = '2011-12-31'
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseK)
+
+        class caseL(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No supplementary demi-part"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseL)
+
+        class caseN(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "You live alone"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseN)
+
+        class caseP(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No invalidity pension"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseP)
+
+        class caseS(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No war widowed pension"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseS)
+
+        class caseT(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "Not isolated"
+            definition_period = MONTH
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseT)
+
+        class caseW(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "No war widowed pension"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                return False 
+            
+        self.replace_variable(caseW)
+
+
+
+
+class no_dependents_for_primary(Reform):
+    name = "reform where everyone has the tax schedule for singles, computes Ts(y1)"
+    def apply(self):   
+
+        class revenu_categoriel(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "We modify the earning that will be taken into account for the tax computation"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                primary_earning = foyer_fiscal('primary_earning', period)
+                return primary_earning
+
+        self.replace_variable(revenu_categoriel)
+
+
+class no_dependents_for_secondary(Reform):
+    name = "reform where everyone has the tax schedule for singles, computes Ts(y2)"
+    def apply(self):   
+
+        class revenu_categoriel(Variable):
+            value_type = float
+            entity = FoyerFiscal
+            label = "We modify the earning that will be taken into account for the tax computation"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                secondary_earning = foyer_fiscal('secondary_earning', period)
+                return secondary_earning
+
+        self.replace_variable(revenu_categoriel)
 
         
 #################################################################################################################################################
@@ -107,10 +375,50 @@ def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entit
 
 
 
+def simulation_function(tax_benefit_system_reforme, data_persons, annee):
+
+    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
+    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
+    period = str(annee)
+
+    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
+
+    for ma_variable in data_persons.columns.tolist():
+        # variables pouvant entrer dans la simulation 
+        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "prest_precarite_hand",
+                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
+                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
+                            "idmen_x", "idfoy_x", "idfam_x", "weight_foyerfiscal"]:
+            # variables définies au niveau de l'individu
+            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
+                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
+            # variables définies au niveau du ménage
+            else:
+                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
+    
+    # we compute variables of interest
+    revenu_categoriel = simulation.calculate('revenu_categoriel', period)
+    impot_revenu_restant_a_payer = simulation.calculate('impot_revenu_restant_a_payer', period)
+    
+
+    # we take our original data and keep only the id of the foyer_fiscal and the weight of the household 
+    result_df = data_persons.drop_duplicates(subset='idfoy', keep='first')
+    result_df = result_df[['idfoy', 'weight_foyerfiscal']]
+
+    # then we add all columns computed in the simulation
+    result_df['revenu_categoriel'] = revenu_categoriel
+    result_df['impot_revenu_restant_a_payer'] = impot_revenu_restant_a_payer
+
+    return result_df
+    # what is important to note is that in the baseline, all individuals in this dataset are not married
+    # therefore there is a need to perform a left join with the married dataset
+
+
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
-def simulation_reforme(annee = None):
+@click.option('-p', '--free_dependents_for_primary', default = None, type = bool, required = True)
+def simulation_reforme(annee = None, free_dependents_for_primary = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
@@ -133,75 +441,45 @@ def simulation_reforme(annee = None):
 
     tax_benefit_system = FranceTaxBenefitSystem()
 
-    tax_benefit_system_reforme = single_schedule(tax_benefit_system)
+    """
+    To emphasis what we want to do, we average : 
+    - T_single_with_dependents(y1) + T_single_without_dependents(y2) that is considering both spouses singles and assigning dependents to the primary earner
+    - T_single_without_dependents(y1) + T_single_with_dependents(y2) that is considering both spouses singles and assigning dependents to the secondary earner
+    Here in this file we computed T_single_without_dependents(y1) (if part below) and T_single_without_dependents(y2) (else part below)
+    """
 
-    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
+    if free_dependents_for_primary:
+        tax_benefit_system_no_dependents_primary = no_dependents_for_primary(without_dependents(single_schedule(tax_benefit_system)))
+        result_df = simulation_function(tax_benefit_system_no_dependents_primary, data_persons, annee)
+        result_df.rename(columns={'impot_revenu_restant_a_payer': 'tax_single_without_dependents_primary'}, inplace=True)
 
-    period = str(annee)
+    else:
+        tax_benefit_system_no_dependents_secondary = no_dependents_for_secondary(without_dependents(single_schedule(tax_benefit_system)))
+        result_df = simulation_function(tax_benefit_system_no_dependents_secondary, data_persons, annee)
+        result_df.rename(columns={'impot_revenu_restant_a_payer': 'tax_single_without_dependents_secondary'}, inplace=True)
 
-    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
-
-    for ma_variable in data_persons.columns.tolist():
-        # variables pouvant entrer dans la simulation 
-        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "prest_precarite_hand",
-                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
-                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
-                            "idmen_x", "idfoy_x", "idfam_x", "weight_foyerfiscal"]:
-            # variables définies au niveau de l'individu
-            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
-                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
-            # variables définies au niveau du ménage
-            else:
-                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
-    
-    # we compute variables of interest
-    var_to_create = simulation.calculate('', period)
-    # maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
-    # taux_marginal = simulation.calculate('ir_taux_marginal', period)
-    # primary_earning = simulation.calculate('primary_earning', period)
-    # secondary_earning = simulation.calculate('secondary_earning', period)
-    # single_earning = simulation.calculate('revenu_celibataire', period)
-    # primary_age = simulation.calculate('primary_age', period)
-    # secondary_age = simulation.calculate('secondary_age', period)
-
-
-    # we take our original data and keep only the id of the foyer_fiscal and the weight of the household + the age of the first person of the foyer_fiscal
-    result_df = data_persons.drop_duplicates(subset='idfoy', keep='first')
-    result_df = result_df[['idfoy', 'weight_foyerfiscal']]
-
-    # then we add all columns computed in the simulation
-    # result_df['ancien_irpp'] = ancien_irpp
-    # result_df['maries_ou_pacses'] = maries_ou_pacses
-    # result_df['taux_marginal'] = taux_marginal
-    # result_df['primary_earning'] = primary_earning
-    # result_df['secondary_earning'] = secondary_earning
-    # result_df['single_earning'] = single_earning
-    # result_df['primary_age'] = primary_age
-    # result_df['secondary_age'] = secondary_age
-    # result_df['total_earning'] = primary_earning + secondary_earning
-
+    print("Dataframe of this simulation")
     print(result_df)
 
-    # we create a dataframe only for married couples, with positive earnings and in which both spouses are adult
-    df_married = result_df[result_df['maries_ou_pacses']]
-    df_married = df_married.drop(['age', 'single_earning', 'maries_ou_pacses'], axis=1)
-    df_married = df_married[df_married['primary_earning'] >= 0]
-    df_married = df_married[df_married['secondary_earning'] >= 0]
-    df_married = df_married[df_married['primary_age'] >= 18]
-    df_married = df_married[df_married['secondary_age'] >= 18]
+    print("Dataframe of the other simulation, only married couples with some restrictions on age and earnings")
+    married_dataset = pandas.read_csv(f'./excel/{annee}/married_25_55_positive_{annee}.csv')
+    print(married_dataset)
+
+    print("Merging the two dataframes")
+    # keeps only married couples that we want (married couples with some restrictions on age and earnings)
+    merged_dataset = pandas.merge(married_dataset, result_df, how='left', on=['idfoy', 'weight_foyerfiscal'])
+    print(merged_dataset)
     
-    # we restrict to couples in which both spouses are between 25 and 55 years old
-    df_married_25_55 = df_married[df_married['primary_age'] >= 25]
-    df_married_25_55 = df_married_25_55[df_married_25_55['primary_age'] <= 55]
-    df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] >= 25]
-    df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] <= 55]
+
+    if free_dependents_for_primary:
+        merged_dataset = merged_dataset[['idfoy', 'weight_foyerfiscal', 'tax_single_without_dependents_primary']]
+        merged_dataset.to_csv(f'excel/{annee}/tax_single_without_dependents_primary_{annee}.csv', index=False)
+
+    else:
+        merged_dataset = merged_dataset[['idfoy', 'weight_foyerfiscal', 'tax_single_without_dependents_secondary']]
+        merged_dataset.to_csv(f'excel/{annee}/tax_single_without_dependents_secondary_{annee}.csv', index=False)
 
 
-    # we only keep couples where total earning is strictly positive
-    df_married_25_55_positive = df_married_25_55[df_married_25_55['total_earning'] > 0]
-
-    # TODO join with the other tables (keep only the main variables of the reform that we computed here)
-
+    
 simulation_reforme()
 
