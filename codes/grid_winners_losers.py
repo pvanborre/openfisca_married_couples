@@ -22,6 +22,7 @@ from filing as a married couple to the total income of the couple, i.e. Tm(y1+y2
 # page 100 paper 
 # code reform that computes a primary tax burden that would be as if it was a single man (account for a single declaration)
 # but how to allocate dependents ? we allocate them to one spouse only 
+# counterfactual tax burden is an AVERAGE over two hypothetical tax burdens in which dependents are allocated to either one of the spouses.
 
 # Daniel stata code 6D
 # goal is to store a new column in data_pre['bonus'] = (data_pre['taux_marginal'] - TODO)/(data_pre['primary_earning'] + data_pre['secondary_earning'])
@@ -30,6 +31,7 @@ from filing as a married couple to the total income of the couple, i.e. Tm(y1+y2
 # not that easy : better maybe to used dictionary form or at least look at the IRPP formula again on OF-France
 # dico seems the best thing to do to separate individuals without dealing with id_foy etc 
 # yes but as I considered at the beginning of the project it is not that easy though so ....
+# other idea : do a reform where we change the formula for the IR
 
 
 """
