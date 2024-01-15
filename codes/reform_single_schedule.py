@@ -1,5 +1,5 @@
 import numpy
-import pandas
+import pandas 
 
 import click
 
@@ -15,7 +15,6 @@ pandas.options.display.max_columns = None
 
 
 # The goal is to apply to all individuals the tax schedule for singles 
-# TODO deal with dependents : apply them only to one of the 2 spouses
 
 # First, we update the value of some parameters (which were null, and some formulas required their values, so we set them to 0).
 def modify_parameters(parameters):
@@ -26,7 +25,6 @@ def modify_parameters(parameters):
     parameters.impot_revenu.calcul_reductions_impots.divers.interets_emprunt_reprise_societe.taux.update(period = reform_period, value = 0)
     return parameters
 
-# TODO in the SAME FILE the other reform 
 
 class single_schedule(Reform):
     name = "reform where everyone is single"
@@ -34,20 +32,6 @@ class single_schedule(Reform):
 
         # we apply the parameters modification for year 2003
         self.modify_parameters(modifier_function = modify_parameters)
-       
-        # normally check that real = False for everyone 
-        # TODO need to see which couples are really married 
-        class real_maries_ou_pacses(Variable):
-            value_type = bool
-            entity = FoyerFiscal
-            label = "Married or pacses"
-            definition_period = YEAR
-
-            def formula(foyer_fiscal, period):
-                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
-                return maries_ou_pacses
-
-        self.add_variable(real_maries_ou_pacses)
 
         # By changing the 2 variables below, we make sure that every individual is single
         class maries_ou_pacses(Variable):
@@ -123,6 +107,7 @@ class single_schedule(Reform):
                 return min_(revenu_declarant_principal, revenu_du_conjoint) 
 
         self.add_variable(secondary_earning)
+
 
 
 
@@ -224,12 +209,12 @@ def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entit
 
     print("\n\n\n\n\n")
 
+
+
 def simulation_function(tax_benefit_system_reforme, data_persons, annee):
 
     simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-    
     #simulation.trace = True #utile pour voir toutes les étapes de la simulation
-
     period = str(annee)
 
     data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
@@ -250,10 +235,9 @@ def simulation_function(tax_benefit_system_reforme, data_persons, annee):
     # we compute variables of interest
     revenu_categoriel = simulation.calculate('revenu_categoriel', period)
     impot_revenu_restant_a_payer = simulation.calculate('impot_revenu_restant_a_payer', period)
-    impot_revenu_restant_a_payer = [-elem if elem < 0 else 0 for elem in impot_revenu_restant_a_payer]
+    
 
-
-    # we take our original data and keep only the id of the foyer_fiscal and the weight of the household + the age of the first person of the foyer_fiscal
+    # we take our original data and keep only the id of the foyer_fiscal and the weight of the household 
     result_df = data_persons.drop_duplicates(subset='idfoy', keep='first')
     result_df = result_df[['idfoy', 'weight_foyerfiscal']]
 
@@ -261,15 +245,9 @@ def simulation_function(tax_benefit_system_reforme, data_persons, annee):
     result_df['revenu_categoriel'] = revenu_categoriel
     result_df['impot_revenu_restant_a_payer'] = impot_revenu_restant_a_payer
 
-
-
-
-    print(result_df)
-
-    # we create a dataframe only for married couples, with positive earnings and in which both spouses are adult
-    # TODO : only keep real married people : left join avec table maries 
-
-    # TODO join with the other tables (keep only the main variables of the reform that we computed here)
+    return result_df
+    # what is important to note is that in the baseline, all individuals in this dataset are not married
+    # therefore there is a need to perform a left join with the married dataset
 
 
 
@@ -299,13 +277,44 @@ def simulation_reforme(annee = None, assign_dependents_for_primary = None):
 
     tax_benefit_system = FranceTaxBenefitSystem()
 
+    """
+    To emphasis what we want to do, we average : 
+    - T_single_with_dependents(y1) + T_single_without_dependents(y2) that is considering both spouses singles and assigning dependents to the primary earner
+    - T_single_without_dependents(y1) + T_single_with_dependents(y2) that is considering both spouses singles and assigning dependents to the secondary earner
+    Here in this file we computed T_single_with_dependents(y1) (if part below) and T_single_with_dependents(y2) (else part below)
+    """
+
     if assign_dependents_for_primary:
         tax_benefit_system_dependents_primary = dependents_for_primary(single_schedule(tax_benefit_system))
-        simulation_function(tax_benefit_system_dependents_primary, data_persons, annee)
+        result_df = simulation_function(tax_benefit_system_dependents_primary, data_persons, annee)
+        result_df.rename(columns={'impot_revenu_restant_a_payer': 'tax_single_with_dependents_primary'}, inplace=True)
 
     else:
         tax_benefit_system_dependents_secondary = dependents_for_secondary(single_schedule(tax_benefit_system))
-        simulation_function(tax_benefit_system_dependents_secondary, data_persons, annee)
+        result_df = simulation_function(tax_benefit_system_dependents_secondary, data_persons, annee)
+        result_df.rename(columns={'impot_revenu_restant_a_payer': 'tax_single_with_dependents_secondary'}, inplace=True)
+
+    print("Dataframe of this simulation")
+    print(result_df)
+
+    print("Dataframe of the other simulation, only married couples with some restrictions on age and earnings")
+    married_dataset = pandas.read_csv(f'./excel/{annee}/married_25_55_positive_{annee}.csv')
+    print(married_dataset)
+
+    print("Merging the two dataframes")
+    # keeps only married couples that we want (married couples with some restrictions on age and earnings)
+    merged_dataset = pandas.merge(married_dataset, result_df, how='left', on=['idfoy', 'weight_foyerfiscal'])
+    print(merged_dataset)
+    
+
+    if assign_dependents_for_primary:
+        merged_dataset = merged_dataset[['idfoy', 'weight_foyerfiscal', 'tax_single_with_dependents_primary']]
+        merged_dataset.to_csv(f'excel/{annee}/tax_single_with_dependents_primary_{annee}.csv', index=False)
+
+    else:
+        merged_dataset = merged_dataset[['idfoy', 'weight_foyerfiscal', 'tax_single_with_dependents_secondary']]
+        merged_dataset.to_csv(f'excel/{annee}/tax_single_with_dependents_secondary_{annee}.csv', index=False)
+
 
     
 simulation_reforme()
