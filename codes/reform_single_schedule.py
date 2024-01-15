@@ -26,7 +26,7 @@ def modify_parameters(parameters):
     parameters.impot_revenu.calcul_reductions_impots.divers.interets_emprunt_reprise_societe.taux.update(period = reform_period, value = 0)
     return parameters
 
-
+# TODO in the SAME FILE the other reform 
 
 class single_schedule(Reform):
     name = "reform where everyone is single"
@@ -35,6 +35,20 @@ class single_schedule(Reform):
         # we apply the parameters modification for year 2003
         self.modify_parameters(modifier_function = modify_parameters)
        
+        # normally check that real = False for everyone 
+        # TODO need to see which couples are really married 
+        class real_maries_ou_pacses(Variable):
+            value_type = bool
+            entity = FoyerFiscal
+            label = "Married or pacses"
+            definition_period = YEAR
+
+            def formula(foyer_fiscal, period):
+                maries_ou_pacses = foyer_fiscal('maries_ou_pacses', period)
+                return maries_ou_pacses
+
+        self.add_variable(real_maries_ou_pacses)
+
         # By changing the 2 variables below, we make sure that every individual is single
         class maries_ou_pacses(Variable):
             value_type = bool
@@ -210,12 +224,59 @@ def construire_entite(data_persons, sb, nom_entite, nom_entite_pluriel, id_entit
 
     print("\n\n\n\n\n")
 
+def simulation_function(tax_benefit_system_reforme, data_persons, annee):
+
+    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
+    
+    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
+
+    period = str(annee)
+
+    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
+
+    for ma_variable in data_persons.columns.tolist():
+        # variables pouvant entrer dans la simulation 
+        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "prest_precarite_hand",
+                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
+                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
+                            "idmen_x", "idfoy_x", "idfam_x", "weight_foyerfiscal"]:
+            # variables définies au niveau de l'individu
+            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
+                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
+            # variables définies au niveau du ménage
+            else:
+                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
+    
+    # we compute variables of interest
+    revenu_categoriel = simulation.calculate('revenu_categoriel', period)
+    impot_revenu_restant_a_payer = simulation.calculate('impot_revenu_restant_a_payer', period)
+    impot_revenu_restant_a_payer = [-elem if elem < 0 else 0 for elem in impot_revenu_restant_a_payer]
+
+
+    # we take our original data and keep only the id of the foyer_fiscal and the weight of the household + the age of the first person of the foyer_fiscal
+    result_df = data_persons.drop_duplicates(subset='idfoy', keep='first')
+    result_df = result_df[['idfoy', 'weight_foyerfiscal']]
+
+    # then we add all columns computed in the simulation
+    result_df['revenu_categoriel'] = revenu_categoriel
+    result_df['impot_revenu_restant_a_payer'] = impot_revenu_restant_a_payer
+
+
+
+
+    print(result_df)
+
+    # we create a dataframe only for married couples, with positive earnings and in which both spouses are adult
+    # TODO : only keep real married people : left join avec table maries 
+
+    # TODO join with the other tables (keep only the main variables of the reform that we computed here)
 
 
 
 @click.command()
 @click.option('-y', '--annee', default = None, type = int, required = True)
-def simulation_reforme(annee = None):
+@click.option('-p', '--assign_dependents_for_primary', default = None, type = bool, required = True)
+def simulation_reforme(annee = None, assign_dependents_for_primary = None):
     filename = "../data/{}/openfisca_erfs_fpr_{}.h5".format(annee, annee)
     data_persons_brut = pandas.read_hdf(filename, key = "individu_{}".format(annee))
     data_households_brut =  pandas.read_hdf(filename, key = "menage_{}".format(annee))
@@ -238,75 +299,14 @@ def simulation_reforme(annee = None):
 
     tax_benefit_system = FranceTaxBenefitSystem()
 
-    tax_benefit_system_reforme = single_schedule(tax_benefit_system)
+    if assign_dependents_for_primary:
+        tax_benefit_system_dependents_primary = dependents_for_primary(single_schedule(tax_benefit_system))
+        simulation_function(tax_benefit_system_dependents_primary, data_persons, annee)
 
-    simulation = initialiser_simulation(tax_benefit_system_reforme, data_persons)
-    #simulation.trace = True #utile pour voir toutes les étapes de la simulation
+    else:
+        tax_benefit_system_dependents_secondary = dependents_for_secondary(single_schedule(tax_benefit_system))
+        simulation_function(tax_benefit_system_dependents_secondary, data_persons, annee)
 
-    period = str(annee)
-
-    data_households = data_persons.drop_duplicates(subset='idmen', keep='first')
-
-    for ma_variable in data_persons.columns.tolist():
-        # variables pouvant entrer dans la simulation 
-        if ma_variable not in ["idfam", "idfoy", "idmen", "noindiv", "quifam", "quifoy", "quimen", "prest_precarite_hand",
-                            "taux_csg_remplacement", "idmen_original", "idfoy_original", "idfam_original",
-                            "idmen_original_x", "idfoy_original_x", "idfam_original_x", "wprm", "prest_precarite_hand",
-                            "idmen_x", "idfoy_x", "idfam_x", "weight_foyerfiscal"]:
-            # variables définies au niveau de l'individu
-            if ma_variable not in ["loyer", "zone_apl", "statut_occupation_logement", "taxe_habitation", "logement_conventionne"]:
-                simulation.set_input(ma_variable, period, numpy.array(data_persons[ma_variable]))
-            # variables définies au niveau du ménage
-            else:
-                simulation.set_input(ma_variable, period, numpy.array(data_households[ma_variable]))
     
-    # we compute variables of interest
-    var_to_create = simulation.calculate('', period)
-    # maries_ou_pacses = simulation.calculate('maries_ou_pacses', period)
-    # taux_marginal = simulation.calculate('ir_taux_marginal', period)
-    # primary_earning = simulation.calculate('primary_earning', period)
-    # secondary_earning = simulation.calculate('secondary_earning', period)
-    # single_earning = simulation.calculate('revenu_celibataire', period)
-    # primary_age = simulation.calculate('primary_age', period)
-    # secondary_age = simulation.calculate('secondary_age', period)
-
-
-    # we take our original data and keep only the id of the foyer_fiscal and the weight of the household + the age of the first person of the foyer_fiscal
-    result_df = data_persons.drop_duplicates(subset='idfoy', keep='first')
-    result_df = result_df[['idfoy', 'weight_foyerfiscal']]
-
-    # then we add all columns computed in the simulation
-    # result_df['ancien_irpp'] = ancien_irpp
-    # result_df['maries_ou_pacses'] = maries_ou_pacses
-    # result_df['taux_marginal'] = taux_marginal
-    # result_df['primary_earning'] = primary_earning
-    # result_df['secondary_earning'] = secondary_earning
-    # result_df['single_earning'] = single_earning
-    # result_df['primary_age'] = primary_age
-    # result_df['secondary_age'] = secondary_age
-    # result_df['total_earning'] = primary_earning + secondary_earning
-
-    print(result_df)
-
-    # we create a dataframe only for married couples, with positive earnings and in which both spouses are adult
-    df_married = result_df[result_df['maries_ou_pacses']]
-    df_married = df_married.drop(['age', 'single_earning', 'maries_ou_pacses'], axis=1)
-    df_married = df_married[df_married['primary_earning'] >= 0]
-    df_married = df_married[df_married['secondary_earning'] >= 0]
-    df_married = df_married[df_married['primary_age'] >= 18]
-    df_married = df_married[df_married['secondary_age'] >= 18]
-    
-    # we restrict to couples in which both spouses are between 25 and 55 years old
-    df_married_25_55 = df_married[df_married['primary_age'] >= 25]
-    df_married_25_55 = df_married_25_55[df_married_25_55['primary_age'] <= 55]
-    df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] >= 25]
-    df_married_25_55 = df_married_25_55[df_married_25_55['secondary_age'] <= 55]
-
-
-    # we only keep couples where total earning is strictly positive
-    df_married_25_55_positive = df_married_25_55[df_married_25_55['total_earning'] > 0]
-
-    # TODO join with the other tables (keep only the main variables of the reform that we computed here)
-
 simulation_reforme()
 
