@@ -408,12 +408,12 @@ def simulation_reforme(annee = None, want_to_mute_decote = None):
 
 
     # save as csv and get rid of some useless variables
-    df_married = df_married.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
-    df_married_25_55 = df_married_25_55.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
-    df_married_25_55_positive = df_married_25_55_positive.drop(['idfoy', 'primary_age', 'secondary_age'], axis = 1)
+    df_married = df_married.drop(['primary_age', 'secondary_age'], axis = 1)
+    df_married_25_55 = df_married_25_55.drop(['primary_age', 'secondary_age'], axis = 1)
+    df_married_25_55_positive = df_married_25_55_positive.drop(['primary_age', 'secondary_age'], axis = 1)
  
-    df_celib = df_celib.drop(['idfoy', 'age'], axis = 1)
-    df_celib_25_55 = df_celib_25_55.drop(['idfoy', 'age'], axis = 1)
+    df_celib = df_celib.drop(['age'], axis = 1)
+    df_celib_25_55 = df_celib_25_55.drop(['age'], axis = 1)
 
     df_married.to_csv(f'excel/{period}/married_adults_{period}.csv', index=False)
     df_married_25_55.to_csv(f'excel/{period}/married_25_55_{period}.csv', index=False)

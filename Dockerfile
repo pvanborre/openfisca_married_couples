@@ -7,6 +7,7 @@ RUN apt-get update && \
 
 RUN pip install pandas
 RUN pip install tables
+RUN pip install seaborn
 RUN pip install matplotlib
 RUN pip install scikit-learn
 RUN pip install tabulate

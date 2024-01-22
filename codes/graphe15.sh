@@ -126,3 +126,25 @@ done
 # Plots results across time (percentage of winners)
 python graphe15_across_years.py
 ################################################################################
+
+################################################################################
+# About grids (marriage and bonus penalties)
+for i in $(seq 2002 2019); do
+    # python simulation_creation.py -y "$i"
+    # python reform_single_schedule.py -y "$i" -p True
+    # python reform_single_schedule.py -y "$i" -p False
+    # python reform_single_without_dependents.py -y "$i" -p True
+    # python reform_single_without_dependents.py -y "$i" -p False
+    python grid_winners_losers.py -y "$i"
+done
+
+
+# About grids (comparisons between 2 consecutive grids)
+for i in $(seq 2002 2018); do
+    python grid_comparisons.py -b "$i" -a "$((i+1))"
+done
+
+################################################################################
+
+
+
