@@ -26,13 +26,16 @@ def plot_grid(dataset, period):
 
     pivot_df = weighted_average.pivot(index='share_rounded', columns='percentile_rounded', values='weighted_avg_bonus')
 
+    weighted_average.to_csv(f'excel/{period}/grid_marriage_bonus_{period}.csv', index=True)
+
     plt.figure(figsize=(10, 6))
-    sns.heatmap(pivot_df, annot=True, fmt=".0f", cmap="YlGnBu", cbar_kws={'label': 'Weighted Avg Bonus'})
+    sns.heatmap(pivot_df, annot=False, fmt=".0f", cmap="YlGnBu", cbar_kws={'label': 'Weighted Avg Bonus'}, vmin=-15, vmax=15)
+    
     plt.title('Weighted Average Bonus by Income Percentile and Share Primary - {annee}'.format(annee = period))
-    plt.xlabel('Share Primary')
-    plt.ylabel('Income Percentile')
+    plt.xlabel('Income Percentile')
+    plt.ylabel('Share primary')
     plt.show()
-    plt.savefig('../outputs/grid_maps/test_grid_map2_{annee}.png'.format(annee = period))
+    plt.savefig('../outputs/grid_maps/marriage_bonus_penalty_{annee}.png'.format(annee = period))
     plt.close()
 
 
@@ -94,14 +97,6 @@ def grid_winners_losers(annee = None):
 grid_winners_losers()
 
 
-"""
-python simulation_creation.py -y 2005
-python reform_single_schedule.py -y 2005 -p True
-python reform_single_schedule.py -y 2005 -p False
-python reform_single_without_dependents.py -y 2005 -p True
-python reform_single_without_dependents.py -y 2005 -p False
-python grid_winners_losers.py -y 2005
-"""
 
 
 
