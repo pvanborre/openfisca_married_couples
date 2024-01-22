@@ -30,7 +30,7 @@ def plot_grid(dataset, period):
     # Calculate the weighted average manually
     weighted_avg_bonus = weighted_avg_grid['bonus'] / weighted_avg_grid['weight_foyerfiscal']
 
-    print(weighted_avg_bonus)
+    #print(weighted_avg_bonus)
 
     # Plotting the heatmap
     plt.figure(figsize=(10, 8))
@@ -73,7 +73,7 @@ def grid_winners_losers(annee = None):
 
     # Relative marriage bonuses/penalties relate the absolute monetary advantage
     # from filing as a married couple to the total income of the couple, i.e. Tm(y1+y2)−(Ts(y1)+Ts(y2)) / y1+y2
-    merged_dataset['bonus'] = (-merged_dataset['ancien_irpp'] + merged_dataset['average_single_tax_burden'])/merged_dataset['total_earning']
+    merged_dataset['bonus'] = 100*(-merged_dataset['ancien_irpp'] + merged_dataset['average_single_tax_burden'])/merged_dataset['total_earning']
 
     # we add the share of the primary and the gross income percentile
     merged_dataset['share_primary'] = 100 * merged_dataset['primary_earning']/(merged_dataset['primary_earning'] + merged_dataset['secondary_earning'])
@@ -89,6 +89,7 @@ def grid_winners_losers(annee = None):
     merged_dataset = merged_dataset.drop(['income_percentile', 'share_primary'], axis=1)
 
     print(merged_dataset)
+    print(np.sum(merged_dataset['bonus'] > 0))
 
     plot_grid(merged_dataset, annee)
     
@@ -97,6 +98,14 @@ def grid_winners_losers(annee = None):
 grid_winners_losers()
 
 
+"""
+python simulation_creation.py -y 2005
+python reform_single_schedule.py -y 2005 -p True
+python reform_single_schedule.py -y 2005 -p False
+python reform_single_without_dependents.py -y 2005 -p True
+python reform_single_without_dependents.py -y 2005 -p False
+python grid_winners_losers.py -y 2005
+"""
 
 
 
