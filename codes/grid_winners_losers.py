@@ -21,27 +21,23 @@ def custom_round(value):
 
 
 def plot_grid(dataset, period):
-    # Create a grid and calculate the weighted average bonus for each cell
-    # TODO check these lines valid because values very low
-    weighted_avg_grid = pd.pivot_table(dataset, values=['bonus', 'weight_foyerfiscal'], index='share_rounded', columns='percentile_rounded', aggfunc='sum')
+    weighted_average = dataset.groupby(['percentile_rounded', 'share_rounded']).apply(lambda x: sum(x['bonus'] * x['weight_foyerfiscal']) / sum(x['weight_foyerfiscal'])).reset_index(name='weighted_avg_bonus')
+    print(weighted_average)
 
-    #print(weighted_avg_grid)
+    pivot_df = weighted_average.pivot(index='share_rounded', columns='percentile_rounded', values='weighted_avg_bonus')
 
-    # Calculate the weighted average manually
-    weighted_avg_bonus = weighted_avg_grid['bonus'] / weighted_avg_grid['weight_foyerfiscal']
-
-    #print(weighted_avg_bonus)
-
-    # Plotting the heatmap
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(weighted_avg_bonus, annot=True, cmap='viridis', fmt=".1f", cbar_kws={'label': 'Weighted Average Bonus'})
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(pivot_df, annot=True, fmt=".0f", cmap="YlGnBu", cbar_kws={'label': 'Weighted Avg Bonus'})
     plt.title('Weighted Average Bonus by Income Percentile and Share Primary - {annee}'.format(annee = period))
     plt.xlabel('Share Primary')
     plt.ylabel('Income Percentile')
-    # plt.ylim(0, 1)
     plt.show()
-    plt.savefig('../outputs/test_grid_map_{annee}.png'.format(annee = period))
+    plt.savefig('../outputs/grid_maps/test_grid_map2_{annee}.png'.format(annee = period))
     plt.close()
+
+
+
+
 
 
 
